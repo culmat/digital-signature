@@ -6,6 +6,7 @@ modules:
       resolver:
         function: resolver
       title: digital-signature
+      layout: bodied
       config:
         resource: macro-config
         viewportSize: max

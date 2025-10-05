@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { useConfig, Box, Heading, Text, List, ListItem, Checkbox, Stack, xcss } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, List, ListItem, Checkbox, Stack, AdfRenderer, xcss } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
 const App = () => {
   const [data, setData] = useState(null);
 
   const config = useConfig();
+  const context = useProductContext();
   
   const panelTitle = config?.panelTitle || '';
-
+  const macroBody = context?.extension?.macro?.body;
+  console.log('Macro body:', macroBody);
   const containerStyles = xcss({
     backgroundColor: 'elevation.surface.raised',
     boxShadow: 'elevation.shadow.raised',
@@ -35,9 +37,14 @@ const App = () => {
       
       {/* Panel Content */}
       <Stack space="space.200">
-        <Text>
-          This is the signature panel content. Users can digitally sign documents here.
-        </Text>
+        {/* Render the macro body content if it exists */}
+        {macroBody ? (
+          <AdfRenderer document={macroBody} />
+        ) : (
+          <Text>
+            No content added yet. Edit the macro and add content in the body.
+          </Text>
+        )}
         
         {/* Example signature list - this would be populated with actual signatures */}
         <List>
