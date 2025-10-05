@@ -28,7 +28,7 @@ We hope you love the plugin, trust us and find the license fee fair. If not you 
 You are also welcome to choose your own price and [support my open source developemnt with any amount](https://liberapay.com/culmat/).
 
 A detailed description of the available configuration fields and usage is described in
-the [Wiki...](https://github.com/culmat/digital-signature/wiki/tbd)
+the [Wiki...](https://github.com/culmat/digital-signature/wiki/Signature-Macro-Usage)
 
 ## Compatability
 
