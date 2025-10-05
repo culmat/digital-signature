@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ForgeReconciler, { useConfig, Button, Label, SectionMessage, Stack, Textfield } from '@forge/react';
+import ForgeReconciler, { useConfig, Button, Label, SectionMessage, Stack, Text, Textfield, Link } from '@forge/react';
 import { view } from '@forge/bridge';
 
 const useSubmit = () => {
@@ -27,22 +27,30 @@ const useSubmit = () => {
 };
 
 const Config = () => {
-  const [value, setValue] = useState('');
+  const [panelTitle, setPanelTitle] = useState('');
   const { error, message, submit } = useSubmit();
   const config = useConfig();
 
   useEffect(() => {
-    setValue(config?.myField);
-  }, [config?.myField]);
+    setPanelTitle(config?.panelTitle || '');
+  }, [config?.panelTitle]);
 
   return (
     <Stack space="space.200">
-      <Label labelFor="myField">Config field:</Label>
-      <Textfield id="myField" value={value} onChange={(e) => setValue(e.target.value)} />
+      <Text>Embeds a signature panel within which text may be digitally signed by one or more Confluence users.
+        See <Link href="https://github.com/culmat/digital-signature/wiki/Signature-Macro-Usage">documentation</Link>
+      </Text>
+      <Label labelFor="panelTitle">Panel Title</Label>
+      <Textfield 
+        id="panelTitle" 
+        value={panelTitle} 
+        onChange={(e) => setPanelTitle(e.target.value)}
+      />
+      <Text>Text displayed at the top of the signature panel.</Text>
       <Button appearance="subtle" onClick={view.close}>
         Close
       </Button>
-      <Button appearance="primary" onClick={() => submit({ myField: value })}>
+      <Button appearance="primary" onClick={() => submit({ panelTitle })}>
         Submit
       </Button>
       {typeof error !== 'undefined' && (
