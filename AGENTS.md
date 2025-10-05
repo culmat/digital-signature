@@ -68,6 +68,8 @@ When a Forge CLI command fails, ALWAYS display the output indicating the failure
 Use the `--help` flag to understand available commands.
 ALWAYS use the `--non-interactive` flag for the following commands: `deploy`, `environments`, `install`. NEVER use it for other commands.
 Use the `lint` command to quickly test for problems before deploying.
+it for other commands.
+After runner the linter use the option `--no-verify` when running forge deploy or forge tunnel.
 Use the `--verbose` command to troubleshoot a failing command.
 
 # Deployments
