@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, List, ListItem, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, xcss } from '@forge/react';
 import { invoke } from '@forge/bridge';
-import { checkForDynamicContent } from './utils/adfValidator';
+import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
 
 const App = () => {
   const [data, setData] = useState(null);
@@ -15,6 +15,12 @@ const App = () => {
   
   // Check for dynamic content in the macro body
   const dynamicContentWarning = macroBody ? checkForDynamicContent(macroBody) : null;
+  
+  // Check for insufficient text content
+  const textContentWarning = macroBody ? validateTextContent(macroBody) : null;
+  
+  // Combined validation - check dynamic content first, then text content
+  const validationWarning = dynamicContentWarning || textContentWarning;
   
   // Styles for the container box with elevation
   const containerStyles = xcss({
@@ -46,8 +52,8 @@ const App = () => {
     invoke('getText', { example: 'my-invoke-variable' }).then(setData);
   }, []);
 
-  // If dynamic content is detected, show warning instead of the macro
-  if (dynamicContentWarning) {
+  // If validation fails (dynamic content or insufficient text), show warning instead of the macro
+  if (validationWarning) {
     return (
       <SectionMessage 
         appearance="warning"
@@ -55,15 +61,22 @@ const App = () => {
       >
         <Stack space="space.100">
           <Text>
-            <Strong>{dynamicContentWarning.contentType} Found:</Strong> {dynamicContentWarning.contentDetails}
+            <Strong>{validationWarning.contentType}:</Strong> {validationWarning.contentDetails}
           </Text>
           <Text>
-            {dynamicContentWarning.message}
+            {validationWarning.message}
           </Text>
-          <Text>
-            For a legally binding digital signature, the document content must be static and unchangeable. 
-            Please remove the highlighted content from the macro body.
-          </Text>
+          {validationWarning.type === 'insufficient-content' ? (
+            <Text>
+              Please add the complete contract text within the macro body. The contract must be fully contained 
+              in this macro and not reference content elsewhere on the page.
+            </Text>
+          ) : (
+            <Text>
+              For a legally binding digital signature, the document content must be static and unchangeable. 
+              Please remove the highlighted content from the macro body.
+            </Text>
+          )}
         </Stack>
       </SectionMessage>
     );

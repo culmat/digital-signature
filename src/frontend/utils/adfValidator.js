@@ -4,6 +4,60 @@
  */
 
 /**
+ * Recursively extracts all text content from an ADF document
+ * 
+ * @param {Object} node - The ADF node to extract text from
+ * @returns {string} All text content concatenated together
+ */
+const extractTextContent = (node) => {
+    if (!node || typeof node !== 'object') {
+        return '';
+    }
+
+    let textContent = '';
+
+    // If this is a text node, add its text
+    if (node.type === 'text' && node.text) {
+        textContent += node.text;
+    }
+
+    // Recursively extract from content array
+    if (Array.isArray(node.content)) {
+        for (const childNode of node.content) {
+            textContent += extractTextContent(childNode);
+        }
+    }
+
+    return textContent;
+};
+
+/**
+ * Validates that the ADF document contains sufficient text content
+ * 
+ * @param {Object} node - The ADF document root node to validate
+ * @param {number} minCharacters - Minimum number of characters required (default: 10)
+ * @returns {Object|null} Validation error object if content is insufficient, null otherwise
+ */
+export const validateTextContent = (node, minCharacters = 10) => {
+    const textContent = extractTextContent(node);
+    const trimmedContent = textContent.trim();
+
+    if (trimmedContent.length < minCharacters) {
+        return {
+            type: 'insufficient-content',
+            message: 'The contract must be self-contained within the macro body and cannot rely on content from the surrounding Confluence page.',
+            contentType: 'Insufficient Content',
+            contentDetails: trimmedContent.length === 0
+                ? 'The macro body is empty or contains no text.'
+                : `Only ${trimmedContent.length} character${trimmedContent.length === 1 ? '' : 's'} of text found (minimum ${minCharacters} required).`,
+            actualContent: trimmedContent
+        };
+    }
+
+    return null;
+};
+
+/**
  * Extracts user-friendly details from an ADF node for display in error messages
  * 
  * @param {Object} node - The ADF node to extract details from
