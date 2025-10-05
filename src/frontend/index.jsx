@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { useConfig, Box, Heading, Text, List, ListItem, Checkbox, Stack } from '@forge/react';
+import ForgeReconciler, { useConfig, Box, Heading, Text, List, ListItem, Checkbox, Stack, xcss } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
 const App = () => {
@@ -9,18 +9,24 @@ const App = () => {
   
   const panelTitle = config?.panelTitle || '';
 
+  const containerStyles = xcss({
+    backgroundColor: 'elevation.surface.raised',
+    boxShadow: 'elevation.shadow.raised',
+    padding: 'space.200',
+    borderRadius: 'border.radius',
+  });
+
   useEffect(async () => {
     invoke('getText', { example: 'my-invoke-variable' }).then(setData);
   }, []);
 
   return (
     <Box 
-      backgroundColor="color.background.neutral" 
-      padding="space.200"
+      xcss={containerStyles}
     >
       {/* Panel Header */}
       <Box 
-        backgroundColor="color.background.neutral.bold" 
+        backgroundColor="color.background.neutral" 
         padding="space.150"
         xcss={{ marginBottom: 'space.150' }}
       >
