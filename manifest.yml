@@ -1,0 +1,27 @@
+modules:
+  macro:
+    - key: digital-signature-confluence-cloud-culmat
+      resource: main
+      render: native
+      resolver:
+        function: resolver
+      title: digital-signature
+      config:
+        resource: macro-config
+        viewportSize: max
+        render: native
+        title: Config
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+  - key: macro-config
+    path: src/frontend/config.jsx
+app:
+  runtime:
+    name: nodejs22.x
+    memoryMB: 256
+    architecture: arm64
+  id: ari:cloud:ecosystem::app/dc8dc7af-20f3-4ef1-bf5a-137dd0982545
