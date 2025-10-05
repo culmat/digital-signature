@@ -26,3 +26,28 @@ app:
     memoryMB: 256
     architecture: arm64
   id: ari:cloud:ecosystem::app/dc8dc7af-20f3-4ef1-bf5a-137dd0982545
+  storage:
+    entities:
+      - name: signature
+        attributes:
+          hash:
+            type: string
+          pageId:
+            type: string
+          signatures:
+            type: any
+          createdAt:
+            type: integer
+          lastModified:
+            type: integer
+          deletedAt:
+            type: integer
+        indexes:
+          - hash
+          - pageId
+          - name: by-deletion-time
+            range:
+              - deletedAt
+permissions:
+  scopes:
+    - storage:app

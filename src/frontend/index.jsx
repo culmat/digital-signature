@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, List, ListItem, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, xcss } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss } from '@forge/react';
 import { invoke } from '@forge/bridge';
 import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
+import { computeHash, signDocument, getSignatures } from './utils/signatureClient';
 
 const App = () => {
-  const [data, setData] = useState(null);
+  // State for signature data fetched from storage
+  const [signatureEntity, setSignatureEntity] = useState(null);
+  // State for loading indicators
+  const [isLoadingSignatures, setIsLoadingSignatures] = useState(true);
+  const [isSigning, setIsSigning] = useState(false);
+  // State for the current content hash
+  const [contentHash, setContentHash] = useState(null);
 
   const config = useConfig();
   const context = useProductContext();
@@ -48,9 +55,86 @@ const App = () => {
     padding: 'space.200',
   });
 
+  // Load signatures on mount and whenever macro body changes
   useEffect(() => {
-    invoke('getText', { example: 'my-invoke-variable' }).then(setData);
-  }, []);
+    const loadSignatures = async () => {
+      // Only load if we have valid content (passed validation)
+      if (!macroBody || validationWarning) {
+        setIsLoadingSignatures(false);
+        return;
+      }
+
+      try {
+        setIsLoadingSignatures(true);
+        
+        // Get page context for hash computation
+        const pageId = context?.extension?.content?.id;
+        const pageTitle = context?.extension?.content?.title || '';
+        
+        if (!pageId) {
+          console.error('No page ID found in context');
+          setIsLoadingSignatures(false);
+          return;
+        }
+
+        // Fetch signatures using the client helper (computes hash internally)
+        const result = await getSignatures(
+          invoke,
+          pageId,
+          pageTitle,
+          macroBody
+        );
+
+        if (result.success) {
+          setSignatureEntity(result.signature);
+          setContentHash(result.hash);
+        } else {
+          console.error('Failed to load signatures:', result.error);
+        }
+      } catch (error) {
+        console.error('Error loading signatures:', error);
+      } finally {
+        setIsLoadingSignatures(false);
+      }
+    };
+
+    loadSignatures();
+  }, [macroBody, context?.extension?.content?.id, validationWarning]);
+
+  // Handler for signing the document
+  const handleSign = async () => {
+    try {
+      setIsSigning(true);
+      
+      const pageId = context?.extension?.content?.id;
+      const pageTitle = context?.extension?.content?.title || '';
+      
+      if (!pageId || !macroBody) {
+        console.error('Missing required data for signing');
+        return;
+      }
+
+      // Sign using the client helper (computes hash internally)
+      const result = await signDocument(
+        invoke,
+        pageId,
+        pageTitle,
+        macroBody
+      );
+
+      if (result.success) {
+        // Update the signature entity with the new signature
+        setSignatureEntity(result.signature);
+        console.log(result.message);
+      } else {
+        console.error('Failed to sign:', result.error);
+      }
+    } catch (error) {
+      console.error('Error signing document:', error);
+    } finally {
+      setIsSigning(false);
+    }
+  };
 
   // If validation fails (dynamic content or insufficient text), show warning instead of the macro
   if (validationWarning) {
@@ -105,11 +189,37 @@ const App = () => {
             </Text>
           )}
           
-          {/* Example signature list - this would be populated with actual signatures */}
-          <Stack space="space.100">
-            <Checkbox isChecked isDisabled label="Example Signed User - 2025-10-05" />
-            <Checkbox isDisabled label="Example Unsigned User" />
-          </Stack>
+          {/* Signature section */}
+          {isLoadingSignatures ? (
+            <Spinner />
+          ) : (
+            <Stack space="space.100">
+              {/* Display existing signatures */}
+              {signatureEntity?.signatures && signatureEntity.signatures.length > 0 ? (
+                signatureEntity.signatures.map((sig) => (
+                  <Checkbox
+                    key={sig.accountId}
+                    isChecked
+                    isDisabled
+                    label={`${sig.accountId} - ${new Date(sig.signedAt * 1000).toLocaleString()}`}
+                  />
+                ))
+              ) : (
+                <Text>No signatures yet. Be the first to sign!</Text>
+              )}
+              
+              {/* Sign button - only show if content is valid */}
+              {macroBody && (
+                <Button
+                  appearance="primary"
+                  onClick={handleSign}
+                  isDisabled={isSigning}
+                >
+                  {isSigning ? 'Signing...' : 'Sign Document'}
+                </Button>
+              )}
+            </Stack>
+          )}
         </Stack>
       </Box>
     </Box>

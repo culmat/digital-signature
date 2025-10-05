@@ -1,0 +1,5 @@
+- optimize for many signatures. Sort by last signed, newest first, paginate and only show latest 10. Load more on user request
+- introduce seperate rendering for export with all signatures instead of pagination
+- implement event listener for page deletion
+- implement admin ui that shows number of signatures that can be cleaned up with storage space estimation and possibility to trigger cleanup
+
