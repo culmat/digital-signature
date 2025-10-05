@@ -1,5 +1,46 @@
+SIGNATURE DISPLAY & UX:
 - optimize for many signatures. Sort by last signed, newest first, paginate and only show latest 10. Load more on user request
-- introduce seperate rendering for export with all signatures instead of pagination
+- implement visibilityLimit feature (collapse signed/missing signatures when count exceeds limit with "Show all" button)
+- display user's full name instead of accountId (fetch via /wiki/api/v2/users-bulk API)
+- implement "panel" mode toggle (styled panel vs plain display)
+- format signature timestamps with locale-aware date formatter
+
+MACRO CONFIGURATION:
+- implement macro config UI with parameters: title, signers, signerGroups, inheritSigners, maxSignatures, visibilityLimit, notified, panel, protectedContent, signaturesVisible, pendingVisible
+- support "petition mode" (signerGroups="*" allows any logged-in user to sign)
+- support inheritSigners from page permissions (READERS_ONLY, WRITERS_ONLY, READERS_AND_WRITERS, NONE)
+- implement maxSignatures limit (prevent further signatures when reached, support 0 to disable signing)
+- implement visibility controls: signaturesVisible and pendingVisible (ALWAYS, IF_SIGNATORY, IF_SIGNED)
+
+NOTIFICATIONS & EMAIL:
+- implement notified users list (notify specified users when document is signed)
+- send in-app notifications when signature added
+- send email notifications when signature added
+- implement mailto links for signed/missing users with fallback to emails page when URL too long
+- create /emails endpoint to display email addresses of signed/unsigned users
+
+EXPORT & SHARING:
+- implement /export endpoint to generate printable HTML with all signatures and timestamps
+- create PDF export functionality with all signatures
+
+PROTECTED CONTENT:
+- implement protectedContent feature (create protected child page visible only to signers)
+- auto-grant VIEW permission to child page when user signs
+- use signature hash as protected page key
+
+LIFECYCLE & CLEANUP:
 - implement event listener for page deletion
 - implement admin ui that shows number of signatures that can be cleaned up with storage space estimation and possibility to trigger cleanup
 
+VALIDATION:
+- prevent duplicate signatures from same user
+
+MISSING SIGNATURES TRACKING:
+- track and display missing signatures (users who haven't signed yet)
+- sync missing signatures list when macro config changes (add/remove users)
+- support petition mode where missing list shows "*" for any user
+
+MIGRATION
+- define common format
+- implement export from legacy macro
+- implement import into forge macro
