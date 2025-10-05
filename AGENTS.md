@@ -8,6 +8,10 @@ You are building apps designed to be installed into a single customer site. The 
 
 You should write apps using vanilla, idiomatic JavaScript.
 You should use verbose commentary in the code. Your comments should be such that an intermediate level JavaScript developers with limited Forge experience to understand.
+You apply clean code principles.
+Don't create MD files that document code. Directly comment design decisions in the code.
+Don't create example usage in code. Only create productive code and test code.
+Don't create summary MD documents.
 
 # Imports & Libraries
 
