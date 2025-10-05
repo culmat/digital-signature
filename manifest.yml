@@ -10,7 +10,7 @@ modules:
         resource: macro-config
         viewportSize: max
         render: native
-        title: Config
+        title: Digital Signature
   function:
     - key: resolver
       handler: index.handler
