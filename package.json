@@ -8,8 +8,8 @@
     "lint": "eslint src/**/*"
   },
   "devDependencies": {
-    "eslint": "^8.56.0",
-    "eslint-plugin-react-hooks": "^4.6.0"
+    "eslint": "^9.37.0",
+    "eslint-plugin-react-hooks": "^5.0.0"
   },
   "dependencies": {
     "@forge/bridge": "5.5.0",
@@ -17,5 +17,13 @@
     "@forge/react": "11.4.0",
     "@forge/resolver": "1.7.0",
     "react": "^18.2.0"
+  },
+  "overrides": {
+    "@atlaskit/analytics-next-stable-react-context": {
+      "react": "$react"
+    },
+    "react-scrolllock": {
+      "react": "$react"
+    }
   }
 }
