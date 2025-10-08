@@ -4,6 +4,9 @@ import { invoke, view } from '@forge/bridge';
 import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
 import { computeHash, signDocument, getSignatures } from './utils/signatureClient';
 
+// Default locale fallback for date formatting
+const DEFAULT_LOCALE = 'en-GB';
+
 const App = () => {
   // State for signature data fetched from storage
   const [signatureEntity, setSignatureEntity] = useState(null);
@@ -14,6 +17,8 @@ const App = () => {
   const [contentHash, setContentHash] = useState(null);
   // State for the current user's accountId
   const [currentUserAccountId, setCurrentUserAccountId] = useState(null);
+  // State for the user's locale
+  const [userLocale, setUserLocale] = useState(DEFAULT_LOCALE);
 
   const config = useConfig();
   const context = useProductContext();
@@ -63,6 +68,7 @@ const App = () => {
       try {
         const context = await view.getContext();
         setCurrentUserAccountId(context.accountId);
+        setUserLocale(context.locale || DEFAULT_LOCALE); // Store user's locale with fallback
       } catch (error) {
         console.error('Error loading current user:', error);
       }
@@ -151,6 +157,16 @@ const App = () => {
     }
   };
 
+  // Helper function to format date using user's locale
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp * 1000);
+    const formatter = new Intl.DateTimeFormat(userLocale, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+    return formatter.format(date);
+  };
+
   // If validation fails (dynamic content or insufficient text), show warning instead of the macro
   if (validationWarning) {
     return (
@@ -216,7 +232,7 @@ const App = () => {
                     key={sig.accountId}
                     isChecked
                     isDisabled
-                    label={`${sig.accountId} - ${new Date(sig.signedAt * 1000).toLocaleString()}`}
+                    label={`${sig.accountId} - ${formatDate(sig.signedAt)}`}
                   />
                 ))
               ) : (

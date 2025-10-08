@@ -3,7 +3,7 @@ SIGNATURE DISPLAY & UX:
 - implement visibilityLimit feature (collapse signed/missing signatures when count exceeds limit with "Show all" button)
 - display user's full name instead of accountId (fetch via /wiki/api/v2/users-bulk API)
 - implement "panel" mode toggle (styled panel vs plain display)
-- format signature timestamps with locale-aware date formatter
+- https://developer.atlassian.com/platform/forge/internationalization/
 
 MACRO CONFIGURATION:
 - implement macro config UI with parameters: title, signers, signerGroups, inheritSigners, maxSignatures, visibilityLimit, notified, panel, protectedContent, signaturesVisible, pendingVisible
