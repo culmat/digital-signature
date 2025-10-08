@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss } from '@forge/react';
-import { invoke } from '@forge/bridge';
+import { invoke, view } from '@forge/bridge';
 import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
 import { computeHash, signDocument, getSignatures } from './utils/signatureClient';
 
@@ -12,6 +12,8 @@ const App = () => {
   const [isSigning, setIsSigning] = useState(false);
   // State for the current content hash
   const [contentHash, setContentHash] = useState(null);
+  // State for the current user's accountId
+  const [currentUserAccountId, setCurrentUserAccountId] = useState(null);
 
   const config = useConfig();
   const context = useProductContext();
@@ -54,6 +56,19 @@ const App = () => {
   const contentWrapperStyles = xcss({
     padding: 'space.200',
   });
+
+  // Load current user's accountId on mount using view.getContext()
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const context = await view.getContext();
+        setCurrentUserAccountId(context.accountId);
+      } catch (error) {
+        console.error('Error loading current user:', error);
+      }
+    }
+    fetchUser();
+  }, []);
 
   // Load signatures on mount and whenever macro body changes
   useEffect(() => {
@@ -208,8 +223,8 @@ const App = () => {
                 <Text>No signatures yet. Be the first to sign!</Text>
               )}
               
-              {/* Sign button - only show if content is valid */}
-              {macroBody && (
+              {/* Sign button - only show if content is valid and user hasn't signed yet */}
+              {macroBody && currentUserAccountId && !signatureEntity?.signatures?.some(sig => sig.accountId === currentUserAccountId) && (
                 <Button
                   appearance="primary"
                   onClick={handleSign}
