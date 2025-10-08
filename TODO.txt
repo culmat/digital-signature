@@ -32,9 +32,6 @@ LIFECYCLE & CLEANUP:
 - implement event listener for page deletion
 - implement admin ui that shows number of signatures that can be cleaned up with storage space estimation and possibility to trigger cleanup
 
-VALIDATION:
-- prevent duplicate signatures from same user
-
 MISSING SIGNATURES TRACKING:
 - track and display missing signatures (users who haven't signed yet)
 - sync missing signatures list when macro config changes (add/remove users)
