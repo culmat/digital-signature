@@ -4,12 +4,14 @@ SIGNATURE DISPLAY & UX:
 - display user's full name instead of accountId (fetch via /wiki/api/v2/users-bulk API)
 - implement "panel" mode toggle (styled panel vs plain display)
 - https://developer.atlassian.com/platform/forge/internationalization/
+- carefully review wording. check for usability, avoid technical terms like "panel"
 
 MACRO CONFIGURATION:
-- implement macro config UI with parameters: title, signers, signerGroups, inheritSigners, maxSignatures, visibilityLimit, notified, panel, protectedContent, signaturesVisible, pendingVisible
-- support "petition mode" (signerGroups="*" allows any logged-in user to sign)
+✅ implement macro config UI with parameters: signers, signerGroups, inheritViewers, inheritEditors, maxSignatures
+- implement macro config UI with parameters: title, visibilityLimit, notified, panel, protectedContent, signaturesVisible, pendingVisible
+✅ support "petition mode" (no restrictions = any logged-in user can sign, with UI warning)
 - support inheritSigners from page permissions (READERS_ONLY, WRITERS_ONLY, READERS_AND_WRITERS, NONE)
-- implement maxSignatures limit (prevent further signatures when reached, support 0 to disable signing)
+✅ implement maxSignatures limit (prevent further signatures when reached, support 0 to disable signing)
 - implement visibility controls: signaturesVisible and pendingVisible (ALWAYS, IF_SIGNATORY, IF_SIGNED)
 
 NOTIFICATIONS & EMAIL:
