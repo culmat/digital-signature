@@ -1,5 +1,40 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss, User, Inline } from '@forge/react';
+
+const Signatures = ({ signatures, preFix, formatDate }) => {
+  return (
+    <Box>
+      <Heading size="small">{preFix} ({signatures.length})</Heading>
+      <Stack space="space.100">
+        {signatures.map((sig) => {
+          // If sig is an object with accountId, treat as signed; if string, treat as pending
+          if (typeof sig === 'string') {
+            return <SignatureUser key={sig} accountId={sig} />;
+          } else {
+            return <SignatureUser key={sig.accountId} accountId={sig.accountId} date={formatDate(sig.signedAt)} />;
+          }
+        })}
+      </Stack>
+    </Box>
+  );
+};
+
+// Custom component to render a signature user with optional date and checkbox
+const SignatureUser = ({ accountId, date }) => {
+  return (
+    <Inline space="space.100">
+      <Checkbox
+        isChecked={!!date}
+        isDisabled
+        label=""
+      />
+      <Text>
+        <User accountId={accountId} />
+        {date ? <> – {date}</> : null}
+      </Text>
+    </Inline>
+  );
+};
 import { invoke, view } from '@forge/bridge';
 import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
 import { computeHash, signDocument, getSignatures } from './utils/signatureClient';
@@ -24,6 +59,7 @@ const App = () => {
   const context = useProductContext();
   
   const panelTitle = config?.panelTitle || '';
+  const configuredSigners = config?.signers || [];
   const macroBody = context?.extension?.macro?.body;
   
   // Check for dynamic content in the macro body
@@ -166,6 +202,25 @@ const App = () => {
     return formatter.format(date);
   };
 
+  // Calculate pending signatures (Phase 1: Named signers only)
+  const calculatePendingSignatures = () => {
+    // If no configured signers, petition mode - anyone can sign
+    if (configuredSigners.length === 0) {
+      return [];
+    }
+
+    // Get list of users who have already signed
+    const signedAccountIds = new Set(
+      (signatureEntity?.signatures || []).map(sig => sig.accountId)
+    );
+
+    // Pending = configured signers minus those who already signed
+    return configuredSigners.filter(accountId => !signedAccountIds.has(accountId));
+  };
+
+  const pendingSignatures = calculatePendingSignatures();
+  const hasPendingSignatures = pendingSignatures.length > 0;
+
   // If validation fails (dynamic content or insufficient text), show warning instead of the macro
   if (validationWarning) {
     return (
@@ -223,31 +278,42 @@ const App = () => {
           {isLoadingSignatures ? (
             <Spinner />
           ) : (
-            <Stack space="space.100">
-              {/* Display existing signatures */}
-              {signatureEntity?.signatures && signatureEntity.signatures.length > 0 ? (
-                signatureEntity.signatures.map((sig) => (
-                  <Checkbox
-                    key={sig.accountId}
-                    isChecked
-                    isDisabled
-                    label={`${sig.accountId} - ${formatDate(sig.signedAt)}`}
-                  />
-                ))
-              ) : (
-                <Text>No signatures yet. Be the first to sign!</Text>
+            <Stack space="space.200">
+              {/* Signed signatures section */}
+              {signatureEntity?.signatures && signatureEntity.signatures.length > 0 && (
+                <Signatures signatures={signatureEntity.signatures} preFix="Signed" formatDate={formatDate} />
+              )}
+
+              {/* Pending signatures section */}
+              {hasPendingSignatures && (
+                <Signatures signatures={pendingSignatures} preFix="Pending"/>
               )}
               
-              {/* Sign button - only show if content is valid and user hasn't signed yet */}
-              {macroBody && currentUserAccountId && !signatureEntity?.signatures?.some(sig => sig.accountId === currentUserAccountId) && (
-                <Button
-                  appearance="primary"
-                  onClick={handleSign}
-                  isDisabled={isSigning}
-                >
-                  {isSigning ? 'Signing...' : 'Sign Document'}
-                </Button>
+              {/* No signers configured message */}
+              {configuredSigners.length === 0 && 
+               (!signatureEntity?.signatures || signatureEntity.signatures.length === 0) && (
+                <Text>No signers configured. Anyone can sign this document.</Text>
               )}
+              
+              {/* Sign button - show if user can sign */}
+              {macroBody && currentUserAccountId && (() => {
+                const hasSigned = signatureEntity?.signatures?.some(sig => sig.accountId === currentUserAccountId);
+                const isPending = pendingSignatures.includes(currentUserAccountId);
+                const noPetitionMode = configuredSigners.length === 0;
+                
+                // Show button if user hasn't signed AND (is pending OR no signers configured)
+                const canSign = !hasSigned && (isPending || noPetitionMode);
+                
+                return canSign ? (
+                  <Button
+                    appearance="primary"
+                    onClick={handleSign}
+                    isDisabled={isSigning}
+                  >
+                    {isSigning ? 'Signing...' : 'Sign Document'}
+                  </Button>
+                ) : null;
+              })()}
             </Stack>
           )}
         </Stack>

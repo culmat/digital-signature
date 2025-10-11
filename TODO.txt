@@ -35,9 +35,11 @@ LIFECYCLE & CLEANUP:
 - implement admin ui that shows number of signatures that can be cleaned up with storage space estimation and possibility to trigger cleanup
 
 MISSING SIGNATURES TRACKING:
-- track and display missing signatures (users who haven't signed yet)
+✅ track and display missing signatures (users who haven't signed yet) - Phase 1: Named signers only
 - sync missing signatures list when macro config changes (add/remove users)
 - support petition mode where missing list shows "*" for any user
+- Phase 2: Add group resolution for pending calculation
+- Phase 3: Add page permission inheritance for pending calculation
 
 MIGRATION
 - define common format
