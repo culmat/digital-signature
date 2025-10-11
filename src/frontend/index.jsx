@@ -25,7 +25,6 @@ const App = () => {
   
   const panelTitle = config?.panelTitle || '';
   const macroBody = context?.extension?.macro?.body;
-  console.log('Macro body:', macroBody);
   
   // Check for dynamic content in the macro body
   const dynamicContentWarning = macroBody ? checkForDynamicContent(macroBody) : null;
