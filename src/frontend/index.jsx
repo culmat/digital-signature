@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss, User, Inline } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge } from '@forge/react';
 
 const Signatures = ({ signatures, preFix, formatDate }) => {
   return (
@@ -30,7 +30,7 @@ const SignatureUser = ({ accountId, date }) => {
       />
       <Text>
         <User accountId={accountId} />
-        {date ? <> – {date}</> : null}
+        {date ? <> – <Lozenge>{date}</Lozenge></> : null}
       </Text>
     </Inline>
   );
