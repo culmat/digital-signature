@@ -50,4 +50,6 @@ app:
               - deletedAt
 permissions:
   scopes:
+    - read:confluence-user
+    - read:confluence-content.all
     - storage:app

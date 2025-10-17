@@ -37,7 +37,7 @@ const SignatureUser = ({ accountId, date }) => {
 };
 import { invoke, view } from '@forge/bridge';
 import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
-import { computeHash, signDocument, getSignatures } from './utils/signatureClient';
+import { computeHash, signDocument, getSignatures, checkAuthorization } from './utils/signatureClient';
 
 // Default locale fallback for date formatting
 const DEFAULT_LOCALE = 'en-GB';
@@ -54,6 +54,9 @@ const App = () => {
   const [currentUserAccountId, setCurrentUserAccountId] = useState(null);
   // State for the user's locale
   const [userLocale, setUserLocale] = useState(DEFAULT_LOCALE);
+  // State for authorization check
+  const [authorizationStatus, setAuthorizationStatus] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
 
   const config = useConfig();
   const context = useProductContext();
@@ -157,16 +160,62 @@ const App = () => {
     loadSignatures();
   }, [macroBody, context?.extension?.content?.id, validationWarning]);
 
+  // Check authorization when signatures are loaded or content changes
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Only check if we have valid content and user is identified
+      if (!macroBody || validationWarning || !currentUserAccountId || !context?.extension?.content?.id) {
+        setAuthorizationStatus(null);
+        return;
+      }
+
+      try {
+        setIsCheckingAuth(true);
+
+        const pageId = context.extension.content.id;
+        const pageTitle = context.extension.content.title || '';
+
+        const result = await checkAuthorization(
+          invoke,
+          pageId,
+          pageTitle,
+          macroBody
+        );
+
+        if (result.success) {
+          setAuthorizationStatus({
+            allowed: result.allowed,
+            reason: result.reason
+          });
+        } else {
+          console.error('Failed to check authorization:', result.error);
+          setAuthorizationStatus(null);
+        }
+      } catch (error) {
+        console.error('Error checking authorization:', error);
+        setAuthorizationStatus(null);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [signatureEntity, macroBody, currentUserAccountId, context?.extension?.content?.id, validationWarning]);
+
   // Handler for signing the document
+  // Error state for any user action (e.g., signing)
+  const [actionError, setActionError] = useState(null);
+
   const handleSign = async () => {
     try {
       setIsSigning(true);
-      
+      setActionError(null);
+
       const pageId = context?.extension?.content?.id;
       const pageTitle = context?.extension?.content?.title || '';
-      
+
       if (!pageId || !macroBody) {
-        console.error('Missing required data for signing');
+        setActionError('Missing required data for signing');
         return;
       }
 
@@ -179,14 +228,27 @@ const App = () => {
       );
 
       if (result.success) {
-        // Update the signature entity with the new signature
         setSignatureEntity(result.signature);
+        setActionError(null);
         console.log(result.message);
+
+        // Refresh authorization status after signing
+        const pageId = context?.extension?.content?.id;
+        const pageTitle = context?.extension?.content?.title || '';
+        const authResult = await checkAuthorization(invoke, pageId, pageTitle, macroBody);
+        if (authResult.success) {
+          setAuthorizationStatus({
+            allowed: authResult.allowed,
+            reason: authResult.reason
+          });
+        }
       } else {
+        setActionError(result.error || 'Failed to sign');
         console.error('Failed to sign:', result.error);
       }
     } catch (error) {
-      console.error('Error signing document:', error);
+      setActionError(error.message || 'Error signing');
+      console.error('Error signing:', error);
     } finally {
       setIsSigning(false);
     }
@@ -289,31 +351,23 @@ const App = () => {
                 <Signatures signatures={pendingSignatures} preFix="Pending"/>
               )}
               
-              {/* No signers configured message */}
-              {configuredSigners.length === 0 && 
-               (!signatureEntity?.signatures || signatureEntity.signatures.length === 0) && (
-                <Text>No signers configured. Anyone can sign this document.</Text>
+              {/* Action error message */}
+              {actionError && (
+                <SectionMessage appearance="error" title="Error">
+                  <Text>{actionError}</Text>
+                </SectionMessage>
               )}
-              
-              {/* Sign button - show if user can sign */}
-              {macroBody && currentUserAccountId && (() => {
-                const hasSigned = signatureEntity?.signatures?.some(sig => sig.accountId === currentUserAccountId);
-                const isPending = pendingSignatures.includes(currentUserAccountId);
-                const noPetitionMode = configuredSigners.length === 0;
-                
-                // Show button if user hasn't signed AND (is pending OR no signers configured)
-                const canSign = !hasSigned && (isPending || noPetitionMode);
-                
-                return canSign ? (
-                  <Button
-                    appearance="primary"
-                    onClick={handleSign}
-                    isDisabled={isSigning}
-                  >
-                    {isSigning ? 'Signing...' : 'Sign Document'}
-                  </Button>
-                ) : null;
-              })()}
+
+              {/* Sign button - show only if authorized */}
+              {macroBody && currentUserAccountId && authorizationStatus?.allowed && (
+                <Button
+                  appearance="primary"
+                  onClick={handleSign}
+                  isDisabled={isSigning || isCheckingAuth}
+                >
+                  {isSigning ? 'Signing...' : 'Sign'}
+                </Button>
+              )}
             </Stack>
           )}
         </Stack>

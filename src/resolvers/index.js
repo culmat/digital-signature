@@ -1,5 +1,6 @@
 import Resolver from '@forge/resolver';
 import { putSignature, getSignature } from '../storage/signatureStore';
+import { canUserSign } from '../utils/signatureAuthorization';
 import { isValidHash } from '../utils/hash';
 
 const resolver = new Resolver();
@@ -28,57 +29,85 @@ const resolver = new Resolver();
  */
 resolver.define('sign', async (req) => {
   try {
-    // Extract user's account ID from Forge context
-    // The context.accountId is automatically provided by Forge for authenticated users
-    const accountId = req.context.accountId;
-
+  // Log the full Forge context for debugging
+  console.log('Forge context:', JSON.stringify(req.context, null, 2));
+  // Extract user's account ID from Forge context
+  const accountId = req.context.accountId;
     if (!accountId) {
       console.error('No accountId found in context');
       return {
         success: false,
-        error: 'User not authenticated'
+        status: 403,
+        message: 'User not authenticated',
       };
     }
 
-    // Extract payload
-    const { hash, pageId } = req.payload;
 
-    // Validate required fields
-    if (!hash || !pageId) {
-      console.error('Missing required fields:', { hash, pageId });
+    // Extract payload (no config from client)
+    const { hash, pageId } = req.payload;
+    const missingFields = [];
+    if (!hash) missingFields.push('hash');
+    if (!pageId) missingFields.push('pageId');
+    if (missingFields.length > 0) {
+      console.error('Missing required fields:', missingFields);
       return {
         success: false,
-        error: 'Missing required fields: hash and pageId are required'
+        status: 403,
+        message: `Missing required field(s): ${missingFields.join(', ')}`,
       };
     }
+
+    const config = req.context.extension.config;
+    
 
     // Validate hash format
     if (!isValidHash(hash)) {
       console.error('Invalid hash format:', hash);
       return {
         success: false,
-        error: 'Invalid hash format: must be 64-character hexadecimal string'
+        status: 403,
+        message: 'Invalid hash format: must be 64-character hexadecimal string',
       };
     }
 
-    console.log(`Sign request: user=${accountId}, page=${pageId}, hash=${hash}`);
+    // Retrieve current signature entity (if any)
+    const signatureEntity = await getSignature(hash) || { signatures: [] };
+
+    // Authorization check
+    let authResult;
+    try {
+      authResult = await canUserSign(accountId, pageId, config, signatureEntity);
+    } catch (e) {
+      console.error('Authorization error:', e);
+      return {
+        success: false,
+        status: 500,
+        message: 'Authorization check failed: ' + (e.message || e.toString()),
+      };
+    }
+
+    if (!authResult.allowed) {
+      // Denied: always 403
+      return {
+        success: false,
+        status: 403,
+        message: authResult.reason || 'Not authorized to sign',
+      };
+    }
 
     // Store signature
     const signature = await putSignature(hash, pageId, accountId);
-
-    console.log(`Signature stored successfully. Total signatures: ${signature.signatures.length}`);
-
     return {
       success: true,
       signature,
-      message: `Successfully signed. Total signatures: ${signature.signatures.length}`
+      message: `Successfully signed. Total signatures: ${signature.signatures.length}`,
     };
-
   } catch (error) {
     console.error('Error in sign resolver:', error);
     return {
       success: false,
-      error: error.message || 'An unexpected error occurred'
+      status: 500,
+      message: error.message || 'An unexpected error occurred',
     };
   }
 });
@@ -146,6 +175,74 @@ resolver.define('getSignatures', async (req) => {
     return {
       success: false,
       error: error.message || 'An unexpected error occurred'
+    };
+  }
+});
+
+/**
+ * Check authorization endpoint - Checks if the current user can sign.
+ *
+ * Expected payload:
+ * {
+ *   hash: string (SHA-256 hex, 64 chars),
+ *   pageId: string
+ * }
+ *
+ * Returns:
+ * {
+ *   success: boolean,
+ *   allowed: boolean,
+ *   reason: string,
+ *   error?: string
+ * }
+ */
+resolver.define('checkAuthorization', async (req) => {
+  try {
+    // Extract user's account ID from Forge context
+    const accountId = req.context.accountId;
+    if (!accountId) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+      };
+    }
+
+    // Extract payload
+    const { hash, pageId } = req.payload;
+    if (!hash || !pageId) {
+      return {
+        success: false,
+        error: 'Missing required fields: hash and pageId are required',
+      };
+    }
+
+    // Validate hash format
+    if (!isValidHash(hash)) {
+      return {
+        success: false,
+        error: 'Invalid hash format: must be 64-character hexadecimal string',
+      };
+    }
+
+    const config = req.context.extension.config;
+
+    // Retrieve current signature entity (if any)
+    const signatureEntity = await getSignature(hash) || { signatures: [] };
+
+    // Authorization check
+    const authResult = await canUserSign(accountId, pageId, config, signatureEntity);
+
+    return {
+      success: true,
+      allowed: authResult.allowed,
+      reason: authResult.reason,
+    };
+
+  } catch (error) {
+    console.error('Error in checkAuthorization resolver:', error);
+    return {
+      success: false,
+      error: error.message || 'An unexpected error occurred',
     };
   }
 });

@@ -57,12 +57,20 @@ export async function signDocument(invoke, pageId, title, body) {
         // Send only hash and pageId to server
         const result = await invoke('sign', { hash, pageId });
 
+        // If backend returns success: false, surface the message or error
+        if (!result.success) {
+            return {
+                success: false,
+                error: result.message || result.error || 'Failed to sign',
+                status: result.status
+            };
+        }
         return result;
     } catch (error) {
-        console.error('Error signing document:', error);
+        console.error('Error signing:', error);
         return {
             success: false,
-            error: error.message || 'Failed to sign document'
+            error: error.message || 'Failed to sign'
         };
     }
 }
@@ -106,11 +114,47 @@ export async function getSignatures(invoke, pageId, title, body) {
 }
 
 /**
+ * Checks if the current user is authorized to sign the document.
+ *
+ * @param {object} invoke - Forge bridge invoke function
+ * @param {string} pageId - Confluence page ID
+ * @param {string} title - Page title
+ * @param {object} body - ADF document body
+ * @returns {Promise<{success: boolean, allowed?: boolean, reason?: string, error?: string}>}
+ *
+ * @example
+ * import { invoke } from '@forge/bridge';
+ * import { checkAuthorization } from './utils/signatureClient';
+ *
+ * const result = await checkAuthorization(invoke, pageId, title, adfBody);
+ * if (result.success && result.allowed) {
+ *   console.log('User can sign:', result.reason);
+ * }
+ */
+export async function checkAuthorization(invoke, pageId, title, body) {
+    try {
+        // Compute hash client-side
+        const hash = await computeHash(pageId, title, JSON.stringify(body));
+
+        // Send hash and pageId to server
+        const result = await invoke('checkAuthorization', { hash, pageId });
+
+        return result;
+    } catch (error) {
+        console.error('Error checking authorization:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to check authorization'
+        };
+    }
+}
+
+/**
  * Validates hash format.
- * 
+ *
  * @param {string} hash - Hash to validate
  * @returns {boolean} True if valid SHA-256 hex string (64 characters)
- * 
+ *
  * @example
  * isValidHash('a1b2c3d4...') // true (if 64 chars)
  * isValidHash('invalid')      // false
