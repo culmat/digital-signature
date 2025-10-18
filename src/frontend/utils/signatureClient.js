@@ -1,32 +1,10 @@
 /**
  * Client-side utilities for digital signature macro.
- * 
- * This module provides hash computation and signature management
- * for the React frontend components.
+ *
+ * This module provides signature management for the React frontend components.
  */
 
-/**
- * Computes SHA-256 hash of content using Web Crypto API.
- * 
- * The hash is computed as: SHA-256(pageId:title:body)
- * 
- * @param {string} pageId - Confluence page ID
- * @param {string} title - Page title
- * @param {string} body - Macro body content (stringified ADF)
- * @returns {Promise<string>} SHA-256 hash in hexadecimal format (64 chars)
- * 
- * @example
- * const hash = await computeHash('123456789', 'Contract', '{"type":"doc"}');
- * // Returns: "a1b2c3d4e5f6..."
- */
-export async function computeHash(pageId, title, body) {
-    const content = `${pageId}:${title}:${body}`;
-    const encoder = new TextEncoder();
-    const data = encoder.encode(content);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+import { computeHash } from '../../utils/hash.js';
 
 /**
  * Signs the current document content.
@@ -149,16 +127,3 @@ export async function checkAuthorization(invoke, pageId, title, body) {
     }
 }
 
-/**
- * Validates hash format.
- *
- * @param {string} hash - Hash to validate
- * @returns {boolean} True if valid SHA-256 hex string (64 characters)
- *
- * @example
- * isValidHash('a1b2c3d4...') // true (if 64 chars)
- * isValidHash('invalid')      // false
- */
-export function isValidHash(hash) {
-    return typeof hash === 'string' && /^[a-f0-9]{64}$/i.test(hash);
-}

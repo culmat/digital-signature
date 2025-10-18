@@ -1,38 +1,22 @@
 /**
- * Shared hash computation utilities for digital signatures.
- * 
- * This module provides hash computation functions that work in both
- * Node.js (server-side resolvers) and browser (client-side frontend).
- * 
+ * Hash utilities for digital signatures.
+ *
+ * This module provides hash computation and validation functions
+ * for the client-side frontend.
+ *
  * The hash is computed as: SHA-256(pageId:title:body)
  */
 
 /**
- * Server-side hash computation using Node.js crypto module.
- * Used in resolvers for validation and testing.
- * 
- * @param {string} pageId - Confluence page ID
- * @param {string} title - Page title
- * @param {string} body - Macro body content (stringified ADF)
- * @returns {string} SHA-256 hash in hexadecimal format
- */
-export function computeHashServer(pageId, title, body) {
-    // Dynamic import to avoid issues in browser environments
-    const crypto = require('crypto');
-    const content = `${pageId}:${title}:${body}`;
-    return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
-}
-
-/**
  * Client-side hash computation using Web Crypto API.
  * Use this in React components and frontend code.
- * 
+ *
  * @param {string} pageId - Confluence page ID
  * @param {string} title - Page title
  * @param {string} body - Macro body content (stringified ADF)
  * @returns {Promise<string>} SHA-256 hash in hexadecimal format
  */
-export async function computeHashClient(pageId, title, body) {
+export async function computeHash(pageId, title, body) {
     const content = `${pageId}:${title}:${body}`;
     const encoder = new TextEncoder();
     const data = encoder.encode(content);

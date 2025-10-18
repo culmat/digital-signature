@@ -37,7 +37,7 @@ const SignatureUser = ({ accountId, date }) => {
 };
 import { invoke, view } from '@forge/bridge';
 import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
-import { computeHash, signDocument, getSignatures, checkAuthorization } from './utils/signatureClient';
+import { signDocument, getSignatures, checkAuthorization } from './utils/signatureClient';
 
 // Default locale fallback for date formatting
 const DEFAULT_LOCALE = 'en-GB';
