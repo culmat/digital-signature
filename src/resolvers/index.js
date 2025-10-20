@@ -2,8 +2,27 @@ import Resolver from '@forge/resolver';
 import { putSignature, getSignature } from '../storage/signatureStore';
 import { canUserSign } from '../utils/signatureAuthorization';
 import { isValidHash } from '../utils/hash';
+import { validationError } from '../utils/responseHelper';
 
 const resolver = new Resolver();
+
+/**
+ * Validates hash input format.
+ *
+ * @param {string} hash - The hash to validate
+ * @returns {object|null} - Returns validation error response if invalid, null if valid
+ */
+function validateHashInput(hash) {
+  if (!hash) {
+    return validationError('Missing required field: hash');
+  }
+  if (!isValidHash(hash)) {
+    return validationError(
+      'Invalid hash format: must be 64-character hexadecimal string'
+    );
+  }
+  return null; // no error
+}
 
 /**
  * Sign endpoint - Called when user clicks the sign button in the macro.
@@ -58,16 +77,12 @@ resolver.define('sign', async (req) => {
     }
 
     const config = req.context.extension.config;
-    
 
     // Validate hash format
-    if (!isValidHash(hash)) {
-      console.error('Invalid hash format:', hash);
-      return {
-        success: false,
-        status: 403,
-        message: 'Invalid hash format: must be 64-character hexadecimal string',
-      };
+    const hashValidation = validateHashInput(hash);
+    if (hashValidation) {
+      console.error('Invalid hash:', hash);
+      return hashValidation;
     }
 
     // Retrieve current signature entity (if any)
@@ -132,19 +147,10 @@ resolver.define('getSignatures', async (req) => {
   try {
     const { hash } = req.payload;
 
-    if (!hash) {
-      return {
-        success: false,
-        error: 'Missing required field: hash is required'
-      };
-    }
-
     // Validate hash format
-    if (!isValidHash(hash)) {
-      return {
-        success: false,
-        error: 'Invalid hash format: must be 64-character hexadecimal string'
-      };
+    const hashValidation = validateHashInput(hash);
+    if (hashValidation) {
+      return hashValidation;
     }
 
     console.log(`Get signatures request: hash=${hash}`);
@@ -209,19 +215,14 @@ resolver.define('checkAuthorization', async (req) => {
 
     // Extract payload
     const { hash, pageId } = req.payload;
-    if (!hash || !pageId) {
-      return {
-        success: false,
-        error: 'Missing required fields: hash and pageId are required',
-      };
+    if (!pageId) {
+      return validationError('Missing required field: pageId');
     }
 
     // Validate hash format
-    if (!isValidHash(hash)) {
-      return {
-        success: false,
-        error: 'Invalid hash format: must be 64-character hexadecimal string',
-      };
+    const hashValidation = validateHashInput(hash);
+    if (hashValidation) {
+      return hashValidation;
     }
 
     const config = req.context.extension.config;
