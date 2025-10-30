@@ -138,6 +138,26 @@ Use the `logs` command to get app logs to troubleshoot an error in a deployed ap
 
 * **Explicit Intent:** Code must be self-explanatory; minimize reliance on comments.
 * **Minimal Comments:** Only explain *why*, never *how*.
+* **LongNamesAreMuchBetterThatComment:** prefer a parameter named commaSeparatedKeyWordsToExpand over paramter expand with additional comment
+* **No File-Level Comments:** Never add top-level file comments that describe what the file does. The filename and code structure should make this clear.
+  * Bad: `/** API client for Confluence */` at top of `confluenceApi.js`
+  * Bad: `/** Test configuration loader */` at top of `testConfig.js`
+  * Files should start directly with imports/code.
+* **No Redundant Comments:** Avoid comments that merely repeat what the code already says clearly.
+  * Bad: `// Get page by ID` for `async getPage(pageId)`
+  * Bad: `@param {string} pageId - Page ID to retrieve`
+  * Bad: `.slice(-6); // Last 6 digits` (obvious from the code)
+  * Bad: `// Basic auth header` above variable named `authHeader`
+  * Bad: `// No cleanup needed` (if nothing follows, just omit)
+  * Bad: `// Export singleton instance` above `module.exports = new Class()`
+  * Bad: `// Constructor` above `constructor()`
+  * Bad: `@param {string} expand - Comma-separated fields` (use longer parameter name instead)
+  * Good: `commaSeparatedFieldsToExpand` instead of `expand` with comment
+  * Good: `@param {string} operation - 'read' or 'update'` (when listing valid options)
+  * Only document what adds value beyond the code itself.
+* **Long Names Over Comments:** Prefer descriptive parameter names over short names with explanatory comments.
+  * Bad: `function get(expand) // comma-separated fields`
+  * Good: `function get(commaSeparatedFieldsToExpand)`
 * **No Dead Code:** Remove unused or redundant code.
 
 ---
