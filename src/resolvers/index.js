@@ -2,7 +2,7 @@ import Resolver from '@forge/resolver';
 import { putSignature, getSignature } from '../storage/signatureStore';
 import { canUserSign } from '../utils/signatureAuthorization';
 import { isValidHash } from '../utils/hash';
-import { validationError } from '../utils/responseHelper';
+import { validationError, successResponse, errorResponse } from '../utils/responseHelper';
 
 const resolver = new Resolver();
 
@@ -54,11 +54,7 @@ resolver.define('sign', async (req) => {
   const accountId = req.context.accountId;
     if (!accountId) {
       console.error('No accountId found in context');
-      return {
-        success: false,
-        status: 403,
-        message: 'User not authenticated',
-      };
+      return errorResponse('User not authenticated', 403);
     }
 
 
@@ -69,11 +65,7 @@ resolver.define('sign', async (req) => {
     if (!pageId) missingFields.push('pageId');
     if (missingFields.length > 0) {
       console.error('Missing required fields:', missingFields);
-      return {
-        success: false,
-        status: 403,
-        message: `Missing required field(s): ${missingFields.join(', ')}`,
-      };
+      return validationError(`Missing required field(s): ${missingFields.join(', ')}`);
     }
 
     const config = req.context.extension.config;
@@ -94,36 +86,22 @@ resolver.define('sign', async (req) => {
       authResult = await canUserSign(accountId, pageId, config, signatureEntity);
     } catch (e) {
       console.error('Authorization error:', e);
-      return {
-        success: false,
-        status: 500,
-        message: 'Authorization check failed: ' + (e.message || e.toString()),
-      };
+      return errorResponse('Authorization check failed: ' + (e.message || e.toString()), 500);
     }
 
     if (!authResult.allowed) {
-      // Denied: always 403
-      return {
-        success: false,
-        status: 403,
-        message: authResult.reason || 'Not authorized to sign',
-      };
+      return errorResponse(authResult.reason || 'Not authorized to sign', 403);
     }
 
     // Store signature
     const signature = await putSignature(hash, pageId, accountId);
-    return {
-      success: true,
+    return successResponse({
       signature,
       message: `Successfully signed. Total signatures: ${signature.signatures.length}`,
-    };
+    });
   } catch (error) {
     console.error('Error in sign resolver:', error);
-    return {
-      success: false,
-      status: 500,
-      message: error.message || 'An unexpected error occurred',
-    };
+    return errorResponse(error.message || 'An unexpected error occurred', 500);
   }
 });
 
@@ -160,28 +138,23 @@ resolver.define('getSignatures', async (req) => {
 
     if (!signature) {
       console.log('No signatures found for this content');
-      return {
-        success: true,
+      return successResponse({
         signature: null,
         hash,
         message: 'No signatures found for this content'
-      };
+      });
     }
 
     console.log(`Found ${signature.signatures.length} signature(s)`);
 
-    return {
-      success: true,
+    return successResponse({
       signature,
       hash
-    };
+    });
 
   } catch (error) {
     console.error('Error in getSignatures resolver:', error);
-    return {
-      success: false,
-      error: error.message || 'An unexpected error occurred'
-    };
+    return errorResponse(error.message || 'An unexpected error occurred');
   }
 });
 
@@ -207,10 +180,7 @@ resolver.define('checkAuthorization', async (req) => {
     // Extract user's account ID from Forge context
     const accountId = req.context.accountId;
     if (!accountId) {
-      return {
-        success: false,
-        error: 'User not authenticated',
-      };
+      return errorResponse('User not authenticated', 403);
     }
 
     // Extract payload
@@ -233,18 +203,14 @@ resolver.define('checkAuthorization', async (req) => {
     // Authorization check
     const authResult = await canUserSign(accountId, pageId, config, signatureEntity);
 
-    return {
-      success: true,
+    return successResponse({
       allowed: authResult.allowed,
       reason: authResult.reason,
-    };
+    });
 
   } catch (error) {
     console.error('Error in checkAuthorization resolver:', error);
-    return {
-      success: false,
-      error: error.message || 'An unexpected error occurred',
-    };
+    return errorResponse(error.message || 'An unexpected error occurred');
   }
 });
 

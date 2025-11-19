@@ -109,21 +109,21 @@ With utilities in place, refactor the backend resolvers.
 
 ---
 
-#### ⬜ Task 4: Standardize Resolver Response Structures (HIGH)
+#### ✅ Task 4: Standardize Resolver Response Structures (HIGH)
 **Priority**: Do after Task 2 & 3
 **Estimated Effort**: 45 minutes
 **Files affected**:
 - [src/resolvers/index.js](src/resolvers/index.js) (all 3 resolvers)
 - [src/frontend/utils/signatureClient.js](src/frontend/utils/signatureClient.js) (client code)
 
-**Actions**:
-1. Update all resolver functions to use `successResponse()` and `errorResponse()`
-2. Standardize field naming:
+**Actions**: ✅ COMPLETED
+1. ✅ Update all resolver functions to use `successResponse()` and `errorResponse()`
+2. ✅ Standardize field naming:
    - Use `error` (not `message`) for error descriptions
    - Use `status` for HTTP status codes
    - Use consistent data field names
-3. Update client code to handle new response structure
-4. Ensure error paths return consistent shapes
+3. ⚠️ Update client code to handle new response structure (may need frontend changes)
+4. ✅ Ensure error paths return consistent shapes
 
 **Before/After Example**:
 ```javascript
