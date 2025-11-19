@@ -12,34 +12,35 @@
 
 import api, { route } from "@forge/api";
 
-// Helper: Get user group IDs for a given accountId
-async function getUserGroups(accountId) {
+async function fetchConfluenceAPI(routePath, errorContext) {
   try {
-    const res = await api.asUser().requestConfluence(route`/wiki/rest/api/user/memberof?accountId=${accountId}`);
-    if (!res.ok) throw new Error(`Failed to fetch user groups: ${res.status}`);
-    const data = await res.json();
-    return (data || []).map(g => g.id);
+    const res = await api.asUser().requestConfluence(routePath);
+    if (!res.ok) {
+      throw new Error(`${errorContext}: ${res.status}`);
+    }
+    return await res.json();
   } catch (e) {
-    console.error("Group API error", e);
-    throw new Error("Failed to resolve user groups");
+    console.error(`${errorContext} - API error`, e);
+    throw new Error(errorContext);
   }
 }
 
-// Helper: Check if user has VIEW or EDIT permission on a page
+async function getUserGroups(accountId) {
+  const data = await fetchConfluenceAPI(
+    route`/wiki/rest/api/user/memberof?accountId=${accountId}`,
+    "Failed to resolve user groups"
+  );
+  return (data || []).map(g => g.id);
+}
+
 async function checkPagePermission(pageId, accountId, operation) {
-  try {
-    const op = operation === "VIEW" ? "read" : "update";
-    const res = await api.asUser().requestConfluence(route`/wiki/rest/api/content/${pageId}/restriction/byOperation/${op}`);
-    if (!res.ok) throw new Error(`Failed to fetch page restrictions: ${res.status}`);
-    const data = await res.json();
-    // If no restrictions, fallback to true (open page)
-    if (!data || !data.restrictions || !data.restrictions.user) return true;
-    // Check if user is in the allowed list
-    return data.restrictions.user.results.some(u => u.accountId === accountId);
-  } catch (e) {
-    console.error("Permission API error", e);
-    throw new Error("Failed to check page permissions");
-  }
+  const op = operation === "VIEW" ? "read" : "update";
+  const data = await fetchConfluenceAPI(
+    route`/wiki/rest/api/content/${pageId}/restriction/byOperation/${op}`,
+    "Failed to check page permissions"
+  );
+  if (!data || !data.restrictions || !data.restrictions.user) return true;
+  return data.restrictions.user.results.some(u => u.accountId === accountId);
 }
 
 // Main authorization function

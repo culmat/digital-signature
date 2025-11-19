@@ -164,32 +164,18 @@ return errorResponse('Error', 403);
 
 ### Phase 3: Backend - Authorization Helpers (Optional)
 
-#### ⬜ Task 6: Create API Error Wrapper (LOW)
+#### ✅ Task 6: Create API Error Wrapper (LOW)
 **Priority**: Nice to have - do after resolver refactoring
 **Estimated Effort**: 25 minutes
 **Files affected**:
 - [src/utils/signatureAuthorization.js:16-26](src/utils/signatureAuthorization.js#L16-L26)
 - [src/utils/signatureAuthorization.js:29-43](src/utils/signatureAuthorization.js#L29-L43)
 
-**Actions**:
-1. Create API request wrapper in `src/utils/signatureAuthorization.js`:
-   ```javascript
-   async function fetchConfluenceAPI(routePath, errorContext) {
-     try {
-       const res = await api.asUser().requestConfluence(routePath);
-       if (!res.ok) {
-         throw new Error(`${errorContext}: ${res.status}`);
-       }
-       return await res.json();
-     } catch (e) {
-       console.error(`${errorContext} - API error`, e);
-       throw new Error(errorContext);
-     }
-   }
-   ```
-
-2. Refactor `getUserGroups()` and `checkPagePermission()` to use wrapper
-3. Reduce duplicate try-catch blocks
+**Actions**: ✅ COMPLETED
+1. ✅ Created `fetchConfluenceAPI()` wrapper function
+2. ✅ Refactored `getUserGroups()` to use wrapper (reduced from 10 lines to 6)
+3. ✅ Refactored `checkPagePermission()` to use wrapper (reduced from 16 lines to 9)
+4. ✅ Eliminated duplicate try-catch blocks
 
 **Benefits**:
 - Centralized API error handling
