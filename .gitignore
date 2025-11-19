@@ -51,3 +51,4 @@ Thumbs.db
 
 /.forge/
 .vscode
+.env
