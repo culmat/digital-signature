@@ -21,7 +21,26 @@ function validateHashInput(hash) {
       'Invalid hash format: must be 64-character hexadecimal string'
     );
   }
-  return null; // no error
+  return null;
+}
+
+/**
+ * Validates that required fields are present.
+ *
+ * @param {object} fields - Object with field names as keys and values to check
+ * @returns {object|null} - Returns validation error response if any fields are missing, null if all present
+ */
+function validateRequiredFields(fields) {
+  const missing = [];
+  for (const [name, value] of Object.entries(fields)) {
+    if (!value) missing.push(name);
+  }
+  if (missing.length > 0) {
+    return validationError(
+      `Missing required field(s): ${missing.join(', ')}`
+    );
+  }
+  return null;
 }
 
 /**
@@ -60,12 +79,11 @@ resolver.define('sign', async (req) => {
 
     // Extract payload (no config from client)
     const { hash, pageId } = req.payload;
-    const missingFields = [];
-    if (!hash) missingFields.push('hash');
-    if (!pageId) missingFields.push('pageId');
-    if (missingFields.length > 0) {
-      console.error('Missing required fields:', missingFields);
-      return validationError(`Missing required field(s): ${missingFields.join(', ')}`);
+
+    const fieldsValidation = validateRequiredFields({ hash, pageId });
+    if (fieldsValidation) {
+      console.error('Missing required fields');
+      return fieldsValidation;
     }
 
     const config = req.context.extension.config;
@@ -185,11 +203,13 @@ resolver.define('checkAuthorization', async (req) => {
 
     // Extract payload
     const { hash, pageId } = req.payload;
-    if (!pageId) {
-      return validationError('Missing required field: pageId');
+
+    const fieldsValidation = validateRequiredFields({ hash, pageId });
+    if (fieldsValidation) {
+      return fieldsValidation;
     }
 
-    // Validate hash format
+    // Validate hash format (already checked in validateRequiredFields, but validates format)
     const hashValidation = validateHashInput(hash);
     if (hashValidation) {
       return hashValidation;

@@ -142,7 +142,7 @@ return errorResponse('Error', 403);
 
 ---
 
-#### ⬜ Task 5: Standardize Field Validation Patterns (MEDIUM)
+#### ✅ Task 5: Standardize Field Validation Patterns (MEDIUM)
 **Priority**: Do after Task 3
 **Estimated Effort**: 30 minutes
 **Files affected**:
@@ -150,25 +150,10 @@ return errorResponse('Error', 403);
 - [src/resolvers/index.js:135-140](src/resolvers/index.js#L135-L140)
 - [src/resolvers/index.js:212-217](src/resolvers/index.js#L212-L217)
 
-**Actions**:
-1. Create a `validateRequiredFields()` helper:
-   ```javascript
-   function validateRequiredFields(fields) {
-     const missing = [];
-     for (const [name, value] of Object.entries(fields)) {
-       if (!value) missing.push(name);
-     }
-     if (missing.length > 0) {
-       return validationError(
-         `Missing required field(s): ${missing.join(', ')}`
-       );
-     }
-     return null;
-   }
-   ```
-
-2. Replace all 3 different validation patterns with this helper
-3. Use consistent call pattern: `validateRequiredFields({ hash, pageId })`
+**Actions**: ✅ COMPLETED
+1. ✅ Create a `validateRequiredFields()` helper function
+2. ✅ Replace all 3 different validation patterns with this helper
+3. ✅ Use consistent call pattern: `validateRequiredFields({ hash, pageId })`
 
 **Benefits**:
 - Single validation approach across codebase
