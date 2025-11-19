@@ -79,7 +79,7 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     let userGroups;
     try {
       userGroups = await getUserGroups(accountId);
-    } catch (e) {
+    } catch {
       return { allowed: false, reason: "API failure (group check)" };
     }
     for (const groupId of config.signerGroups) {
@@ -94,7 +94,7 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     let hasView;
     try {
       hasView = await checkPagePermission(pageId, accountId, "VIEW");
-    } catch (e) {
+    } catch {
       return { allowed: false, reason: "API failure (permission check)" };
     }
     if (hasView) {
@@ -105,7 +105,7 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     let hasEdit;
     try {
       hasEdit = await checkPagePermission(pageId, accountId, "EDIT");
-    } catch (e) {
+    } catch {
       return { allowed: false, reason: "API failure (permission check)" };
     }
     if (hasEdit) {

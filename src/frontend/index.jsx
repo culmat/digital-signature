@@ -107,7 +107,7 @@ const App = () => {
 
   const config = useConfig();
   const context = useProductContext();
-  const { pageId, pageTitle, macroBody, spaceKey } = useContentContext(context);
+  const { pageId, pageTitle, macroBody } = useContentContext(context);
   
   const panelTitle = config?.panelTitle || '';
   const configuredSigners = config?.signers || [];

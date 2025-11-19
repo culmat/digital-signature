@@ -1,8 +1,7 @@
-import { putSignature } from '../storage/signatureStore';
+import { putSignature, getSignature } from '../storage/signatureStore';
 import { canUserSign } from '../utils/signatureAuthorization';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 import { validateHashInput, validateRequiredFields } from './validation';
-import { getSignature } from '../storage/signatureStore';
 
 export async function signResolver(req) {
   try {
