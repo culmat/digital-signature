@@ -51,3 +51,14 @@ Thumbs.db
 
 /.forge/
 .vscode
+
+# Test environment variables
+.env
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Playwright authentication session files (contain sensitive tokens)
+tests/e2e/.auth/

@@ -5,11 +5,22 @@
   "license": "AGPLv3",
   "private": true,
   "scripts": {
-    "lint": "eslint src/**/*"
+    "lint": "eslint src/**/*",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "cheerio": "^1.0.0",
+    "dotenv": "^17.2.3",
     "eslint": "^9.37.0",
-    "eslint-plugin-react-hooks": "^5.0.0"
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "imap": "^0.8.19",
+    "jest": "^30.2.0",
+    "mailparser": "^3.7.5",
+    "node-fetch": "^2.7.0"
   },
   "dependencies": {
     "@forge/bridge": "5.5.0",
