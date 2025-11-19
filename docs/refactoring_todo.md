@@ -186,27 +186,17 @@ return errorResponse('Error', 403);
 
 ### Phase 4: Frontend - Component Refactoring
 
-#### ⬜ Task 7: Extract Context Access Hook (MEDIUM)
+#### ✅ Task 7: Extract Context Access Hook (MEDIUM)
 **Priority**: Do before state refactoring
 **Estimated Effort**: 20 minutes
 **Files affected**:
 - [src/frontend/index.jsx](src/frontend/index.jsx)
 
-**Actions**:
-1. Create custom hook in `src/frontend/index.jsx`:
-   ```javascript
-   function useContentContext(context) {
-     return useMemo(() => ({
-       pageId: context?.extension?.content?.id,
-       pageTitle: context?.extension?.content?.title || '',
-       macroBody: context?.extension?.macro?.body,
-       spaceKey: context?.extension?.space?.key,
-     }), [context]);
-   }
-   ```
-
-2. Replace repeated context access patterns throughout component
-3. Use destructuring: `const { pageId, pageTitle, macroBody } = useContentContext(context);`
+**Actions**: ✅ COMPLETED
+1. ✅ Created `useContentContext()` custom hook with memoization
+2. ✅ Replaced 7+ repeated context access patterns throughout component
+3. ✅ Using destructuring: `const { pageId, pageTitle, macroBody, spaceKey } = useContentContext(context);`
+4. ✅ Removed duplicate extractions in `loadSignatures` useEffect and `handleSign` function
 
 **Benefits**:
 - Reduces repetitive null-checking code

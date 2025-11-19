@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge } from '@forge/react';
 
 const Signatures = ({ signatures, preFix, formatDate }) => {
@@ -39,8 +39,16 @@ import { invoke, view } from '@forge/bridge';
 import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
 import { signDocument, getSignatures, checkAuthorization } from './utils/signatureClient';
 
-// Default locale fallback for date formatting
 const DEFAULT_LOCALE = 'en-GB';
+
+function useContentContext(context) {
+  return useMemo(() => ({
+    pageId: context?.extension?.content?.id,
+    pageTitle: context?.extension?.content?.title || '',
+    macroBody: context?.extension?.macro?.body,
+    spaceKey: context?.extension?.space?.key,
+  }), [context]);
+}
 
 const App = () => {
   // State for signature data fetched from storage
@@ -60,10 +68,10 @@ const App = () => {
 
   const config = useConfig();
   const context = useProductContext();
+  const { pageId, pageTitle, macroBody, spaceKey } = useContentContext(context);
   
   const panelTitle = config?.panelTitle || '';
   const configuredSigners = config?.signers || [];
-  const macroBody = context?.extension?.macro?.body;
   
   // Check for dynamic content in the macro body
   const dynamicContentWarning = macroBody ? checkForDynamicContent(macroBody) : null;
@@ -126,10 +134,6 @@ const App = () => {
       try {
         setIsLoadingSignatures(true);
         
-        // Get page context for hash computation
-        const pageId = context?.extension?.content?.id;
-        const pageTitle = context?.extension?.content?.title || '';
-        
         if (!pageId) {
           console.error('No page ID found in context');
           setIsLoadingSignatures(false);
@@ -158,13 +162,13 @@ const App = () => {
     };
 
     loadSignatures();
-  }, [macroBody, context?.extension?.content?.id, validationWarning]);
+  }, [macroBody, pageId, pageTitle, validationWarning]);
 
   // Check authorization when signatures are loaded or content changes
   useEffect(() => {
     const checkAuth = async () => {
       // Only check if we have valid content and user is identified
-      if (!macroBody || validationWarning || !currentUserAccountId || !context?.extension?.content?.id) {
+      if (!macroBody || validationWarning || !currentUserAccountId || !pageId) {
         setAuthorizationStatus(null);
         return;
       }
@@ -200,7 +204,7 @@ const App = () => {
     };
 
     checkAuth();
-  }, [signatureEntity, macroBody, currentUserAccountId, context?.extension?.content?.id, validationWarning]);
+  }, [signatureEntity, macroBody, pageTitle, currentUserAccountId, pageId, validationWarning]);
 
   // Handler for signing the document
   // Error state for any user action (e.g., signing)
@@ -210,9 +214,6 @@ const App = () => {
     try {
       setIsSigning(true);
       setActionError(null);
-
-      const pageId = context?.extension?.content?.id;
-      const pageTitle = context?.extension?.content?.title || '';
 
       if (!pageId || !macroBody) {
         setActionError('Missing required data for signing');
@@ -233,8 +234,6 @@ const App = () => {
         console.log(result.message);
 
         // Refresh authorization status after signing
-        const pageId = context?.extension?.content?.id;
-        const pageTitle = context?.extension?.content?.title || '';
         const authResult = await checkAuthorization(invoke, pageId, pageTitle, macroBody);
         if (authResult.success) {
           setAuthorizationStatus({
