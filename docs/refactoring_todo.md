@@ -233,45 +233,18 @@ return errorResponse('Error', 403);
 
 ### Phase 5: Frontend - Tree Traversal (Optional)
 
-#### ⬜ Task 9: Abstract ADF Tree Traversal (LOW)
+#### ✅ Task 9: Abstract ADF Tree Traversal (LOW)
 **Priority**: Nice to have - independent task
 **Estimated Effort**: 40 minutes
 **Files affected**:
 - [src/frontend/utils/adfValidator.js:12-32](src/frontend/utils/adfValidator.js#L12-L32)
 - [src/frontend/utils/adfValidator.js:126-223](src/frontend/utils/adfValidator.js#L126-L223)
 
-**Actions**:
-1. Create generic tree traversal utility:
-   ```javascript
-   function traverseADF(node, visitor, options = {}) {
-     const {
-       visitMarks = false,
-       earlyReturn = false // stop on first truthy result
-     } = options;
-
-     const result = visitor(node);
-     if (earlyReturn && result) return result;
-
-     if (Array.isArray(node.content)) {
-       for (const child of node.content) {
-         const childResult = traverseADF(child, visitor, options);
-         if (earlyReturn && childResult) return childResult;
-       }
-     }
-
-     if (visitMarks && Array.isArray(node.marks)) {
-       for (const mark of node.marks) {
-         const markResult = traverseADF(mark, visitor, options);
-         if (earlyReturn && markResult) return markResult;
-       }
-     }
-
-     return result;
-   }
-   ```
-
-2. Refactor `extractTextContent()` to use traversal utility
-3. Refactor `checkForDynamicContent()` to use traversal utility with `earlyReturn: true`
+**Actions**: ✅ COMPLETED
+1. ✅ Created generic `traverseADF()` utility function with visitor pattern
+2. ✅ Refactored `extractTextContent()` to use traversal utility (reduced from 17 lines to 10)
+3. ✅ Refactored `checkForDynamicContent()` to use traversal utility with `earlyReturn: true` (reduced from 95 lines to 68)
+4. ✅ Eliminated all duplicate recursive tree walking logic
 
 **Benefits**:
 - Reusable for future ADF processing needs

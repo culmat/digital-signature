@@ -1,14 +1,29 @@
-/**
- * Utilities for validating ADF (Atlassian Document Format) documents
- * to ensure they contain only static content suitable for digital signatures.
- */
+function traverseADF(node, visitor, options = {}) {
+    const {
+        visitMarks = false,
+        earlyReturn = false
+    } = options;
 
-/**
- * Recursively extracts all text content from an ADF document
- * 
- * @param {Object} node - The ADF node to extract text from
- * @returns {string} All text content concatenated together
- */
+    const result = visitor(node);
+    if (earlyReturn && result) return result;
+
+    if (Array.isArray(node.content)) {
+        for (const child of node.content) {
+            const childResult = traverseADF(child, visitor, options);
+            if (earlyReturn && childResult) return childResult;
+        }
+    }
+
+    if (visitMarks && Array.isArray(node.marks)) {
+        for (const mark of node.marks) {
+            const markResult = traverseADF(mark, visitor, options);
+            if (earlyReturn && markResult) return markResult;
+        }
+    }
+
+    return result;
+}
+
 const extractTextContent = (node) => {
     if (!node || typeof node !== 'object') {
         return '';
@@ -16,17 +31,11 @@ const extractTextContent = (node) => {
 
     let textContent = '';
 
-    // If this is a text node, add its text
-    if (node.type === 'text' && node.text) {
-        textContent += node.text;
-    }
-
-    // Recursively extract from content array
-    if (Array.isArray(node.content)) {
-        for (const childNode of node.content) {
-            textContent += extractTextContent(childNode);
+    traverseADF(node, (currentNode) => {
+        if (currentNode.type === 'text' && currentNode.text) {
+            textContent += currentNode.text;
         }
-    }
+    });
 
     return textContent;
 };
@@ -128,96 +137,69 @@ export const checkForDynamicContent = (node) => {
         return null;
     }
 
-    // Check node type for dynamic content
-    switch (node.type) {
-        case 'media':
-        case 'mediaInline':
-            // Media files can be replaced or deleted
-            return {
-                type: 'media',
-                message: 'Document contains media files (images/attachments) that could be modified or deleted after signing.',
-                contentType: 'Media File',
-                contentDetails: extractContentDetails(node),
-                node: node
-            };
-
-        case 'mediaGroup':
-        case 'mediaSingle':
-            // Media groups and singles contain media nodes
-            return {
-                type: 'media',
-                message: 'Document contains media files (images/attachments) that could be modified or deleted after signing.',
-                contentType: 'Media File',
-                contentDetails: extractContentDetails(node),
-                node: node
-            };
-
-        case 'inlineCard':
-        case 'blockCard':
-            // Cards can have dynamic content from URLs or datasources
-            if (node.attrs?.datasource) {
+    return traverseADF(node, (currentNode) => {
+        switch (currentNode.type) {
+            case 'media':
+            case 'mediaInline':
                 return {
-                    type: 'datasource',
-                    message: 'Document contains dynamic datasource queries that could change after signing.',
-                    contentType: 'Datasource Query',
-                    contentDetails: extractContentDetails(node),
-                    node: node
+                    type: 'media',
+                    message: 'Document contains media files (images/attachments) that could be modified or deleted after signing.',
+                    contentType: 'Media File',
+                    contentDetails: extractContentDetails(currentNode),
+                    node: currentNode
                 };
-            }
-            return {
-                type: 'card',
-                message: 'Document contains smart links that could display different content after signing.',
-                contentType: 'Smart Link',
-                contentDetails: extractContentDetails(node),
-                node: node
-            };
 
-        case 'embedCard':
-            // Embedded content can change
-            return {
-                type: 'embed',
-                message: 'Document contains embedded content that could change after signing.',
-                contentType: 'Embedded Content',
-                contentDetails: extractContentDetails(node),
-                node: node
-            };
+            case 'mediaGroup':
+            case 'mediaSingle':
+                return {
+                    type: 'media',
+                    message: 'Document contains media files (images/attachments) that could be modified or deleted after signing.',
+                    contentType: 'Media File',
+                    contentDetails: extractContentDetails(currentNode),
+                    node: currentNode
+                };
 
-        case 'extension':
-        case 'inlineExtension':
-        case 'bodiedExtension':
-            // Extensions/macros can have dynamic output
-            return {
-                type: 'extension',
-                message: 'Document contains macros or extensions that could display dynamic content after signing.',
-                contentType: 'Macro/Extension',
-                contentDetails: extractContentDetails(node),
-                node: node
-            };
+            case 'inlineCard':
+            case 'blockCard':
+                if (currentNode.attrs?.datasource) {
+                    return {
+                        type: 'datasource',
+                        message: 'Document contains dynamic datasource queries that could change after signing.',
+                        contentType: 'Datasource Query',
+                        contentDetails: extractContentDetails(currentNode),
+                        node: currentNode
+                    };
+                }
+                return {
+                    type: 'card',
+                    message: 'Document contains smart links that could display different content after signing.',
+                    contentType: 'Smart Link',
+                    contentDetails: extractContentDetails(currentNode),
+                    node: currentNode
+                };
 
-        default:
-            // Not a dynamic node type, continue checking
-            break;
-    }
+            case 'embedCard':
+                return {
+                    type: 'embed',
+                    message: 'Document contains embedded content that could change after signing.',
+                    contentType: 'Embedded Content',
+                    contentDetails: extractContentDetails(currentNode),
+                    node: currentNode
+                };
 
-    // Recursively check content array
-    if (Array.isArray(node.content)) {
-        for (const childNode of node.content) {
-            const result = checkForDynamicContent(childNode);
-            if (result) {
-                return result;
-            }
+            case 'extension':
+            case 'inlineExtension':
+            case 'bodiedExtension':
+                return {
+                    type: 'extension',
+                    message: 'Document contains macros or extensions that could display dynamic content after signing.',
+                    contentType: 'Macro/Extension',
+                    contentDetails: extractContentDetails(currentNode),
+                    node: currentNode
+                };
+
+            default:
+                return null;
         }
-    }
-
-    // Recursively check marks (though marks typically don't contain dynamic content)
-    if (Array.isArray(node.marks)) {
-        for (const mark of node.marks) {
-            const result = checkForDynamicContent(mark);
-            if (result) {
-                return result;
-            }
-        }
-    }
-
-    return null;
+    }, { visitMarks: true, earlyReturn: true });
 };
