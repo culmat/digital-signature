@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useReducer } from 'react';
 import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge } from '@forge/react';
 
 const Signatures = ({ signatures, preFix, formatDate }) => {
@@ -41,30 +41,69 @@ import { signDocument, getSignatures, checkAuthorization } from './utils/signatu
 
 const DEFAULT_LOCALE = 'en-GB';
 
+function signatureReducer(state, action) {
+  switch (action.type) {
+    case 'SET_ENTITY':
+      return { ...state, entity: action.payload, isLoading: false };
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    case 'SET_HASH':
+      return { ...state, contentHash: action.payload };
+    case 'UPDATE_AFTER_SIGN':
+      return { ...state, entity: action.payload, isLoading: false };
+    default:
+      return state;
+  }
+}
+
+function authReducer(state, action) {
+  switch (action.type) {
+    case 'SET_CHECKING':
+      return { ...state, isChecking: action.payload };
+    case 'SET_STATUS':
+      return { ...state, status: action.payload, isChecking: false };
+    case 'CLEAR_STATUS':
+      return { ...state, status: null, isChecking: false };
+    default:
+      return state;
+  }
+}
+
 function useContentContext(context) {
+  const pageId = context?.extension?.content?.id;
+  const pageTitle = context?.extension?.content?.title;
+  const macroBody = context?.extension?.macro?.body;
+  const spaceKey = context?.extension?.space?.key;
+  
   return useMemo(() => ({
-    pageId: context?.extension?.content?.id,
-    pageTitle: context?.extension?.content?.title || '',
-    macroBody: context?.extension?.macro?.body,
-    spaceKey: context?.extension?.space?.key,
-  }), [context]);
+    pageId,
+    pageTitle: pageTitle || '',
+    macroBody,
+    spaceKey,
+  }), [pageId, pageTitle, macroBody, spaceKey]);
 }
 
 const App = () => {
-  // State for signature data fetched from storage
-  const [signatureEntity, setSignatureEntity] = useState(null);
-  // State for loading indicators
-  const [isLoadingSignatures, setIsLoadingSignatures] = useState(true);
-  const [isSigning, setIsSigning] = useState(false);
-  // State for the current content hash
-  const [contentHash, setContentHash] = useState(null);
-  // State for the current user's accountId
-  const [currentUserAccountId, setCurrentUserAccountId] = useState(null);
-  // State for the user's locale
-  const [userLocale, setUserLocale] = useState(DEFAULT_LOCALE);
-  // State for authorization check
-  const [authorizationStatus, setAuthorizationStatus] = useState(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [signatureState, dispatchSignature] = useReducer(signatureReducer, {
+    entity: null,
+    isLoading: true,
+    contentHash: null,
+  });
+
+  const [authState, dispatchAuth] = useReducer(authReducer, {
+    status: null,
+    isChecking: false,
+  });
+
+  const [userState, setUserState] = useState({
+    accountId: null,
+    locale: DEFAULT_LOCALE,
+  });
+
+  const [uiState, setUIState] = useState({
+    isSigning: false,
+    actionError: null,
+  });
 
   const config = useConfig();
   const context = useProductContext();
@@ -113,8 +152,10 @@ const App = () => {
     async function fetchUser() {
       try {
         const context = await view.getContext();
-        setCurrentUserAccountId(context.accountId);
-        setUserLocale(context.locale || DEFAULT_LOCALE); // Store user's locale with fallback
+        setUserState({
+          accountId: context.accountId,
+          locale: context.locale || DEFAULT_LOCALE,
+        });
       } catch (error) {
         console.error('Error loading current user:', error);
       }
@@ -127,16 +168,16 @@ const App = () => {
     const loadSignatures = async () => {
       // Only load if we have valid content (passed validation)
       if (!macroBody || validationWarning) {
-        setIsLoadingSignatures(false);
+        dispatchSignature({ type: 'SET_LOADING', payload: false });
         return;
       }
 
       try {
-        setIsLoadingSignatures(true);
+        dispatchSignature({ type: 'SET_LOADING', payload: true });
         
         if (!pageId) {
           console.error('No page ID found in context');
-          setIsLoadingSignatures(false);
+          dispatchSignature({ type: 'SET_LOADING', payload: false });
           return;
         }
 
@@ -149,35 +190,30 @@ const App = () => {
         );
 
         if (result.success) {
-          setSignatureEntity(result.signature);
-          setContentHash(result.hash);
+          dispatchSignature({ type: 'SET_ENTITY', payload: result.signature });
+          dispatchSignature({ type: 'SET_HASH', payload: result.hash });
         } else {
           console.error('Failed to load signatures:', result.error);
         }
       } catch (error) {
         console.error('Error loading signatures:', error);
       } finally {
-        setIsLoadingSignatures(false);
+        dispatchSignature({ type: 'SET_LOADING', payload: false });
       }
     };
 
     loadSignatures();
   }, [macroBody, pageId, pageTitle, validationWarning]);
 
-  // Check authorization when signatures are loaded or content changes
   useEffect(() => {
     const checkAuth = async () => {
-      // Only check if we have valid content and user is identified
-      if (!macroBody || validationWarning || !currentUserAccountId || !pageId) {
-        setAuthorizationStatus(null);
+      if (!macroBody || validationWarning || !userState.accountId || !pageId) {
+        dispatchAuth({ type: 'CLEAR_STATUS' });
         return;
       }
 
       try {
-        setIsCheckingAuth(true);
-
-        const pageId = context.extension.content.id;
-        const pageTitle = context.extension.content.title || '';
+        dispatchAuth({ type: 'SET_CHECKING', payload: true });
 
         const result = await checkAuthorization(
           invoke,
@@ -187,36 +223,32 @@ const App = () => {
         );
 
         if (result.success) {
-          setAuthorizationStatus({
-            allowed: result.allowed,
-            reason: result.reason
+          dispatchAuth({ 
+            type: 'SET_STATUS', 
+            payload: {
+              allowed: result.allowed,
+              reason: result.reason
+            }
           });
         } else {
           console.error('Failed to check authorization:', result.error);
-          setAuthorizationStatus(null);
+          dispatchAuth({ type: 'CLEAR_STATUS' });
         }
       } catch (error) {
         console.error('Error checking authorization:', error);
-        setAuthorizationStatus(null);
-      } finally {
-        setIsCheckingAuth(false);
+        dispatchAuth({ type: 'CLEAR_STATUS' });
       }
     };
 
     checkAuth();
-  }, [signatureEntity, macroBody, pageTitle, currentUserAccountId, pageId, validationWarning]);
-
-  // Handler for signing the document
-  // Error state for any user action (e.g., signing)
-  const [actionError, setActionError] = useState(null);
+  }, [signatureState.entity, macroBody, pageTitle, userState.accountId, pageId, validationWarning]);
 
   const handleSign = async () => {
     try {
-      setIsSigning(true);
-      setActionError(null);
+      setUIState(prev => ({ ...prev, isSigning: true, actionError: null }));
 
       if (!pageId || !macroBody) {
-        setActionError('Missing required data for signing');
+        setUIState(prev => ({ ...prev, isSigning: false, actionError: 'Missing required data for signing' }));
         return;
       }
 
@@ -229,34 +261,33 @@ const App = () => {
       );
 
       if (result.success) {
-        setSignatureEntity(result.signature);
-        setActionError(null);
+        dispatchSignature({ type: 'UPDATE_AFTER_SIGN', payload: result.signature });
         console.log(result.message);
 
-        // Refresh authorization status after signing
         const authResult = await checkAuthorization(invoke, pageId, pageTitle, macroBody);
         if (authResult.success) {
-          setAuthorizationStatus({
-            allowed: authResult.allowed,
-            reason: authResult.reason
+          dispatchAuth({ 
+            type: 'SET_STATUS', 
+            payload: {
+              allowed: authResult.allowed,
+              reason: authResult.reason
+            }
           });
         }
+        setUIState(prev => ({ ...prev, isSigning: false, actionError: null }));
       } else {
-        setActionError(result.error || 'Failed to sign');
+        setUIState(prev => ({ ...prev, isSigning: false, actionError: result.error || 'Failed to sign' }));
         console.error('Failed to sign:', result.error);
       }
     } catch (error) {
-      setActionError(error.message || 'Error signing');
+      setUIState(prev => ({ ...prev, isSigning: false, actionError: error.message || 'Error signing' }));
       console.error('Error signing:', error);
-    } finally {
-      setIsSigning(false);
     }
   };
 
-  // Helper function to format date using user's locale
   const formatDate = (timestamp) => {
     const date = new Date(timestamp * 1000);
-    const formatter = new Intl.DateTimeFormat(userLocale, {
+    const formatter = new Intl.DateTimeFormat(userState.locale, {
       dateStyle: 'medium',
       timeStyle: 'short',
     });
@@ -270,9 +301,8 @@ const App = () => {
       return [];
     }
 
-    // Get list of users who have already signed
     const signedAccountIds = new Set(
-      (signatureEntity?.signatures || []).map(sig => sig.accountId)
+      (signatureState.entity?.signatures || []).map(sig => sig.accountId)
     );
 
     // Pending = configured signers minus those who already signed
@@ -336,13 +366,13 @@ const App = () => {
           )}
           
           {/* Signature section */}
-          {isLoadingSignatures ? (
+          {signatureState.isLoading ? (
             <Spinner />
           ) : (
             <Stack space="space.200">
               {/* Signed signatures section */}
-              {signatureEntity?.signatures && signatureEntity.signatures.length > 0 && (
-                <Signatures signatures={signatureEntity.signatures} preFix="Signed" formatDate={formatDate} />
+              {signatureState.entity?.signatures && signatureState.entity.signatures.length > 0 && (
+                <Signatures signatures={signatureState.entity.signatures} preFix="Signed" formatDate={formatDate} />
               )}
 
               {/* Pending signatures section */}
@@ -350,21 +380,20 @@ const App = () => {
                 <Signatures signatures={pendingSignatures} preFix="Pending"/>
               )}
               
-              {/* Action error message */}
-              {actionError && (
+              {uiState.actionError && (
                 <SectionMessage appearance="error" title="Error">
-                  <Text>{actionError}</Text>
+                  <Text>{uiState.actionError}</Text>
                 </SectionMessage>
               )}
 
               {/* Sign button - show only if authorized */}
-              {macroBody && currentUserAccountId && authorizationStatus?.allowed && (
+              {macroBody && userState.accountId && authState.status?.allowed && (
                 <Button
-                  appearance="primary"
                   onClick={handleSign}
-                  isDisabled={isSigning || isCheckingAuth}
-                >
-                  {isSigning ? 'Signing...' : 'Sign'}
+                  isDisabled={uiState.isSigning || authState.isChecking}
+                  appearance="primary"
+                  >
+                  {uiState.isSigning ? 'Signing...' : 'Sign'}
                 </Button>
               )}
             </Stack>
