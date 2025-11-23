@@ -34,6 +34,17 @@ LIFECYCLE & CLEANUP:
 - implement event listener for page deletion
 - implement admin ui that shows number of signatures that can be cleaned up with storage space estimation and possibility to trigger cleanup
 
+ADMIN UI & BACKUP/RESTORE:
+✅  specification completed: docs/backup-restore-spec.md
+- implement confluence:globalSettings module in manifest.yml
+- create admin UI: src/frontend/admin.jsx (storage statistics, backup/restore controls)
+- implement admin authorization check: src/utils/adminAuth.js
+- implement backup manager: src/storage/backupManager.js (JSONL.gz export/import with streaming)
+- implement admin data resolver: src/resolvers/adminDataResolver.js (GET/PUT /admin/data)
+- add route to src/resolvers/index.js
+- test with large datasets (1000+ entities)
+- integrate cleanup UI into admin page
+
 MISSING SIGNATURES TRACKING:
 ✅ track and display missing signatures (users who haven't signed yet) - Phase 1: Named signers only
 - sync missing signatures list when macro config changes (add/remove users)
@@ -41,7 +52,8 @@ MISSING SIGNATURES TRACKING:
 - Phase 2: Add group resolution for pending calculation
 - Phase 3: Add page permission inheritance for pending calculation
 
-MIGRATION
-- define common format
+MIGRATION (see backup/restore spec for foundation)
+- write separate migration specification (builds on docs/backup-restore-spec.md)
+- define common format (use JSONL.gz as specified in backup-restore-spec.md)
 - implement export from legacy macro
-- implement import into forge macro
+- implement import into forge macro (using PUT /admin/data endpoint)
