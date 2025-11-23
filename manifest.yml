@@ -15,6 +15,9 @@ modules:
   function:
     - key: resolver
       handler: index.handler
+  sql:
+    - key: db
+      engine: mysql
 resources:
   - key: main
     path: src/frontend/index.jsx
@@ -26,28 +29,6 @@ app:
     memoryMB: 256
     architecture: arm64
   id: ari:cloud:ecosystem::app/bab5617e-dc42-4ca8-ad38-947c826fe58c
-  storage:
-    entities:
-      - name: signature
-        attributes:
-          hash:
-            type: string
-          pageId:
-            type: string
-          signatures:
-            type: any
-          createdAt:
-            type: integer
-          lastModified:
-            type: integer
-          deletedAt:
-            type: integer
-        indexes:
-          - hash
-          - pageId
-          - name: by-deletion-time
-            range:
-              - deletedAt
 permissions:
   scopes:
     - read:confluence-user

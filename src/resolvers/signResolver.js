@@ -3,6 +3,24 @@ import { canUserSign } from '../utils/signatureAuthorization';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 import { validateHashInput, validateRequiredFields } from './validation';
 
+/**
+ * Serializes a signature entity for transmission to frontend.
+ * Converts Date objects to ISO strings.
+ */
+function serializeEntity(entity) {
+  if (!entity) return null;
+  return {
+    ...entity,
+    signatures: entity.signatures.map(sig => ({
+      accountId: sig.accountId,
+      signedAt: sig.signedAt instanceof Date ? sig.signedAt.toISOString() : sig.signedAt
+    })),
+    createdAt: entity.createdAt instanceof Date ? entity.createdAt.toISOString() : entity.createdAt,
+    deletedAt: entity.deletedAt instanceof Date ? entity.deletedAt.toISOString() : entity.deletedAt,
+    lastModified: entity.lastModified instanceof Date ? entity.lastModified.toISOString() : entity.lastModified
+  };
+}
+
 export async function signResolver(req) {
   try {
     console.log('Forge context:', JSON.stringify(req.context, null, 2));
@@ -45,7 +63,7 @@ export async function signResolver(req) {
 
     const signature = await putSignature(hash, pageId, accountId);
     return successResponse({
-      signature,
+      signature: serializeEntity(signature),
       message: `Successfully signed. Total signatures: ${signature.signatures.length}`,
     });
   } catch (error) {

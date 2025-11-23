@@ -286,7 +286,19 @@ const App = () => {
   };
 
   const formatDate = (timestamp) => {
-    const date = new Date(timestamp * 1000);
+    // Handle Date objects, ISO strings, or Unix timestamps
+    let date;
+    if (timestamp instanceof Date) {
+      date = timestamp;
+    } else if (typeof timestamp === 'string') {
+      date = new Date(timestamp);
+    } else if (typeof timestamp === 'number') {
+      // Assume Unix timestamp in seconds, convert to milliseconds
+      date = new Date(timestamp * 1000);
+    } else {
+      return 'Invalid date';
+    }
+
     const formatter = new Intl.DateTimeFormat(userState.locale, {
       dateStyle: 'medium',
       timeStyle: 'short',

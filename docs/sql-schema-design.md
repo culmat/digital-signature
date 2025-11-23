@@ -2,24 +2,22 @@
 
 ## Overview
 
-This document defines the normalized SQL schema for the digital signature application, designed for Forge SQL (TiDB/MySQL-compatible). This is a **breaking change** that completely replaces the existing Key-Value Store (KVS) implementation.
+This document defines the normalized SQL schema for the digital signature application, designed for Forge SQL (TiDB/MySQL-compatible).
 
 ## Context
 
-- **Previous Storage**: Forge Custom Entities (KVS) - see [signatureStore.js](../src/storage/signatureStore.js)
-- **New Storage**: Forge SQL (TiDB-based, MySQL-compatible)
-- **Migration Type**: Breaking change - no backwards compatibility
-- **Target Platform**: Forge SQL (TiDB-based, MySQL-compatible)
-- **Migration Path**: See [sql-migration-guide.md](./sql-migration-guide.md)
+- **Storage Platform**: Forge SQL (TiDB-based, MySQL-compatible)
+- **Schema Management**: See [sql-migration-guide.md](./sql-migration-guide.md)
+- **Implementation**: See [sql-data-access-layer.md](./sql-data-access-layer.md)
 
 ## Design Principles
 
 1. **Normalized Relational Design**: Separate tables for contracts and signatures
-2. **SQL Best Practices**: Proper data types (TIMESTAMP for dates, BIGINT for IDs)
-3. **Forge SQL Optimizations**: Uses AUTO_RANDOM for distributed performance
-4. **No Foreign Key Constraints**: Not supported in Forge SQL - manual referential integrity
-5. **Database-Level Integrity**: UNIQUE constraints, NOT NULL, proper indexes
-6. **Modern SQL Standards**: TIMESTAMP with fractional seconds, proper date functions
+2. **SQL Best Practices**: Proper data types (TIMESTAMP for dates, BIGINT for IDs, natural keys)
+3. **No Foreign Key Constraints**: Not supported in Forge SQL - manual referential integrity
+4. **Database-Level Integrity**: Compound primary keys, UNIQUE constraints, NOT NULL, proper indexes
+5. **Modern SQL Standards**: TIMESTAMP with fractional seconds, proper date functions
+6. **Derived Values**: Last modified time calculated from signatures (no denormalization)
 
 ---
 
@@ -719,6 +717,7 @@ await sql.execute(
 ### Internal Documentation
 - [sql-migration-guide.md](./sql-migration-guide.md) - Migration implementation
 - [sql-data-access-layer.md](./sql-data-access-layer.md) - Repository pattern
+- [signatureStore.js](../src/storage/signatureStore.js) - Storage implementation
 - [backup-restore-spec.md](./backup-restore-spec.md) - Data export/import
 
 ### External Documentation
@@ -736,7 +735,6 @@ await sql.execute(
 -- Digital Signature Application - SQL Schema
 -- Version: 1.0.0
 -- Platform: Forge SQL (TiDB/MySQL-compatible)
--- Breaking change: Complete replacement of KVS storage
 
 -- Table: contract
 CREATE TABLE IF NOT EXISTS contract (
@@ -766,7 +764,6 @@ CREATE INDEX idx_signedAt ON signature(signedAt);
 
 ---
 
-**Document Version:** 2.1.0
+**Document Version:** 3.0.0
 **Last Updated:** 2025-11-23
 **Author:** Digital Signature Development Team
-**Change Type:** Breaking Change - Complete KVS Replacement with Natural Keys

@@ -2,6 +2,18 @@ import { getSignature } from '../storage/signatureStore';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 import { validateHashInput } from './validation';
 
+/**
+ * Serializes signature data for transmission to frontend.
+ * Converts Date objects to ISO strings.
+ */
+function serializeSignatures(signatures) {
+  if (!signatures) return [];
+  return signatures.map(sig => ({
+    accountId: sig.accountId,
+    signedAt: sig.signedAt instanceof Date ? sig.signedAt.toISOString() : sig.signedAt
+  }));
+}
+
 export async function getSignaturesResolver(req) {
   try {
     const { hash } = req.payload;
@@ -16,13 +28,20 @@ export async function getSignaturesResolver(req) {
 
     if (!signature) {
       return successResponse({
-        signatures: [],
+        signature: null,
         message: 'No signatures found for this content',
       });
     }
 
     return successResponse({
-      signatures: signature.signatures || [],
+      signature: {
+        ...signature,
+        signatures: serializeSignatures(signature.signatures || []),
+        createdAt: signature.createdAt instanceof Date ? signature.createdAt.toISOString() : signature.createdAt,
+        deletedAt: signature.deletedAt instanceof Date ? signature.deletedAt.toISOString() : signature.deletedAt,
+        lastModified: signature.lastModified instanceof Date ? signature.lastModified.toISOString() : signature.lastModified
+      },
+      hash,
       message: `Found ${(signature.signatures || []).length} signatures`,
     });
   } catch (error) {

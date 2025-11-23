@@ -1,214 +1,229 @@
 /**
- * Persistence layer for digital signatures using Forge Custom Entities.
- * 
+ * Persistence layer for digital signatures using Forge SQL.
+ *
  * This module provides CRUD operations for signature entities with lifecycle management.
- * Signatures are stored with content integrity hashes and deletion timestamps for cleanup.
+ * Signatures are stored in a normalized SQL schema with content integrity hashes.
+ *
+ * See: docs/sql-schema-design.md
  */
 
-import { kvs, WhereConditions } from '@forge/kvs';
-
-// Entity name as defined in manifest.yml
-const ENTITY_NAME = 'signature';
-
-// Index names as defined in manifest.yml
-// Note: 'hash' index exists in manifest but is not used in queries since
-// hash is used as the entity key, allowing direct .get(hash) lookups
-const INDEX_PAGE_ID = 'pageId';
-const INDEX_BY_DELETION_TIME = 'by-deletion-time';
+import sql, { errorCodes, ForgeSQLAPIError } from '@forge/sql';
 
 /**
- * Signature entity structure
+ * Signature entity structure (returned by getSignature)
  * @typedef {Object} SignatureEntity
  * @property {string} hash - SHA-256 of pageId:title:body
- * @property {string} pageId - Confluence page ID (stable across moves)
- * @property {Array<{accountId: string, signedAt: number}>} signatures - Array of signatures
- * @property {number} createdAt - Unix timestamp (seconds) when first signature was added
- * @property {number} lastModified - Unix timestamp (seconds) when last signature was added
- * @property {number} deletedAt - Unix timestamp (seconds) when page was deleted (0 if not deleted)
- */
-
-/**
- * Individual signature within a signature entity
- * @typedef {Object} Signature
- * @property {string} accountId - Atlassian account ID (stable, unique identifier)
- * @property {number} signedAt - Unix timestamp (seconds) when user signed
+ * @property {string} pageId - Confluence page ID
+ * @property {Array<{accountId: string, signedAt: Date}>} signatures - Array of signatures
+ * @property {Date} createdAt - When contract was created
+ * @property {Date|null} deletedAt - When page was deleted (null if active)
+ * @property {Date} lastModified - Derived from MAX(signedAt) or createdAt
  */
 
 /**
  * Creates or updates a signature entity.
- * 
- * If the entity already exists (same hash), it updates the signatures array.
- * If it's a new entity, it initializes all fields.
- * 
+ *
+ * If the contract doesn't exist, it creates it. Then adds the signature.
+ * If the user already signed, throws an error (UNIQUE constraint violation).
+ *
  * @param {string} hash - Content hash (SHA-256 of pageId:title:body)
  * @param {string} pageId - Confluence page ID
  * @param {string} accountId - Atlassian account ID of the signer
  * @returns {Promise<SignatureEntity>} The created or updated signature entity
+ * @throws {Error} If user has already signed this contract
  */
 export async function putSignature(hash, pageId, accountId) {
-    if (!hash || !pageId || !accountId) {
-        throw new Error('hash, pageId, and accountId are required');
+  if (!hash || !pageId || !accountId) {
+    throw new Error('hash, pageId, and accountId are required');
+  }
+
+  try {
+    // Step 1: Insert contract if not exists
+    await sql.prepare(`
+      INSERT IGNORE INTO contract (hash, pageId, createdAt, deletedAt)
+      VALUES (?, ?, NOW(6), NULL)
+    `).bindParams(hash, pageId).execute();
+
+    // Step 2: Insert signature (will fail if duplicate due to PRIMARY KEY)
+    await sql.prepare(`
+      INSERT INTO signature (contractHash, accountId, signedAt)
+      VALUES (?, ?, NOW(6))
+    `).bindParams(hash, accountId).execute();
+
+    // Step 3: Fetch and return updated entity
+    return await getSignature(hash);
+  } catch (error) {
+    console.error(`Error putting signature for hash ${hash}:`, error);
+
+    // Check for duplicate signature error
+    if (error instanceof ForgeSQLAPIError && error.code === errorCodes.SQL_EXECUTION_ERROR) {
+      if (error.message && error.message.includes('Duplicate entry')) {
+        throw new Error(`User ${accountId} has already signed this contract`);
+      }
     }
 
-    const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
-
-    // Try to get existing signature entity
-    const existing = await kvs.entity(ENTITY_NAME).get(hash);
-
-    if (existing) {
-        // Update existing entity
-        // Check if user already signed
-        const alreadySigned = existing.signatures.some(sig => sig.accountId === accountId);
-
-        if (alreadySigned) {
-            // User already signed, return existing entity unchanged
-            return existing;
-        }
-
-        // Add new signature
-        const updated = {
-            ...existing,
-            signatures: [
-                ...existing.signatures,
-                {
-                    accountId,
-                    signedAt: now
-                }
-            ],
-            lastModified: now
-        };
-
-        await kvs.entity(ENTITY_NAME).set(hash, updated);
-        return updated;
-    } else {
-        // Create new entity
-        const newEntity = {
-            hash,
-            pageId,
-            signatures: [
-                {
-                    accountId,
-                    signedAt: now
-                }
-            ],
-            createdAt: now,
-            lastModified: now,
-            deletedAt: 0 // Not deleted
-        };
-
-        await kvs.entity(ENTITY_NAME).set(hash, newEntity);
-        return newEntity;
-    }
+    throw new Error(`Failed to put signature: ${error.message}`);
+  }
 }
 
 /**
  * Retrieves a signature entity by its content hash.
- * 
+ *
  * @param {string} hash - Content hash (SHA-256 of pageId:title:body)
  * @returns {Promise<SignatureEntity|undefined>} The signature entity or undefined if not found
  */
 export async function getSignature(hash) {
-    if (!hash) {
-        throw new Error('hash is required');
+  if (!hash) {
+    throw new Error('hash is required');
+  }
+
+  try {
+    const result = await sql.prepare(`
+      SELECT
+        c.hash,
+        c.pageId,
+        c.createdAt,
+        c.deletedAt,
+        s.accountId,
+        s.signedAt
+      FROM contract c
+      LEFT JOIN signature s ON c.hash = s.contractHash
+      WHERE c.hash = ?
+      ORDER BY s.signedAt ASC
+    `).bindParams(hash).execute();
+
+    // Extract rows from result
+    const rows = result?.rows || result;
+
+    // Handle empty result set
+    if (!rows || !Array.isArray(rows) || rows.length === 0) {
+      return undefined; // Contract not found
     }
 
-    return await kvs.entity(ENTITY_NAME).get(hash);
+    // Transform SQL rows to SignatureEntity
+    return transformRowsToEntity(rows);
+  } catch (error) {
+    console.error(`Error fetching signature for hash ${hash}:`, error);
+    throw new Error(`Failed to fetch signature: ${error.message}`);
+  }
 }
 
 /**
- * Marks all signatures for a given page as deleted.
- * 
+ * Marks all signatures for a given page as deleted (soft delete).
+ *
  * This is called when a Confluence page is deleted. It updates the deletedAt
- * timestamp for all signature entities associated with the page.
- * 
+ * timestamp for all contracts associated with the page.
+ *
  * @param {string} pageId - Confluence page ID
- * @returns {Promise<number>} Number of signature entities marked as deleted
+ * @returns {Promise<number>} Number of contracts marked as deleted
  */
 export async function setDeleted(pageId) {
-    if (!pageId) {
-        throw new Error('pageId is required');
-    }
+  if (!pageId) {
+    throw new Error('pageId is required');
+  }
 
-    const deletionTime = Math.floor(Date.now() / 1000);
-    let count = 0;
-    let cursor;
+  try {
+    const result = await sql.prepare(`
+      UPDATE contract
+      SET deletedAt = NOW(6)
+      WHERE pageId = ? AND deletedAt IS NULL
+    `).bindParams(pageId).execute();
 
-    // Query all signatures for this page
-    do {
-        const query = kvs
-            .entity(ENTITY_NAME)
-            .query()
-            .index(INDEX_PAGE_ID)
-            .where(WhereConditions.equalTo(pageId))
-            .limit(100);
+    const affectedRows = result.affectedRows || 0;
+    console.log(`Marked ${affectedRows} contracts as deleted for pageId ${pageId}`);
 
-        if (cursor) {
-            query.cursor(cursor);
-        }
-
-        const results = await query.getMany();
-
-        // Mark each signature as deleted
-        for (const result of results.results) {
-            const signature = result.value;
-
-            // Only update if not already deleted
-            if (signature.deletedAt === 0) {
-                await kvs.entity(ENTITY_NAME).set(result.key, {
-                    ...signature,
-                    deletedAt: deletionTime
-                });
-                count++;
-            }
-        }
-
-        cursor = results.nextCursor;
-    } while (cursor);
-
-    return count;
+    return affectedRows;
+  } catch (error) {
+    console.error(`Error setting deleted for pageId ${pageId}:`, error);
+    throw new Error(`Failed to mark signatures as deleted: ${error.message}`);
+  }
 }
 
 /**
- * Deletes signature entities that were deleted before the cutoff time.
- * 
+ * Deletes contracts and signatures that were deleted before the cutoff time (hard delete).
+ *
  * This implements the retention policy by permanently removing signatures
  * for pages that have been deleted for longer than the retention period.
- * 
+ *
  * @param {number} retentionDays - Number of days to retain deleted signatures
- * @returns {Promise<number>} Number of signature entities permanently deleted
+ * @returns {Promise<number>} Number of contracts permanently deleted
  */
 export async function cleanup(retentionDays) {
-    if (typeof retentionDays !== 'number' || retentionDays < 0) {
-        throw new Error('retentionDays must be a non-negative number');
-    }
+  if (typeof retentionDays !== 'number' || retentionDays < 0) {
+    throw new Error('retentionDays must be a non-negative number');
+  }
 
-    const cutoffTime = Math.floor((Date.now() - retentionDays * 24 * 60 * 60 * 1000) / 1000);
-    let count = 0;
-    let cursor;
+  try {
+    // Step 1: Delete signatures first (manual cascade)
+    const signatureResult = await sql.prepare(`
+      DELETE s FROM signature s
+      INNER JOIN contract c ON s.contractHash = c.hash
+      WHERE c.deletedAt IS NOT NULL
+        AND c.deletedAt < DATE_SUB(NOW(6), INTERVAL ? DAY)
+    `).bindParams(retentionDays).execute();
 
-    // Query all signatures deleted before cutoff
-    do {
-        const query = kvs
-            .entity(ENTITY_NAME)
-            .query()
-            .index(INDEX_BY_DELETION_TIME)
-            .where(WhereConditions.between(1, cutoffTime))
-            .limit(100);
+    const signaturesDeleted = signatureResult.affectedRows || 0;
+    console.log(`Deleted ${signaturesDeleted} signatures during cleanup`);
 
-        if (cursor) {
-            query.cursor(cursor);
-        }
+    // Step 2: Delete contracts
+    const contractResult = await sql.prepare(`
+      DELETE FROM contract
+      WHERE deletedAt IS NOT NULL
+        AND deletedAt < DATE_SUB(NOW(6), INTERVAL ? DAY)
+    `).bindParams(retentionDays).execute();
 
-        const results = await query.getMany();
+    const contractsDeleted = contractResult.affectedRows || 0;
+    console.log(`Deleted ${contractsDeleted} contracts during cleanup`);
 
-        // Permanently delete each expired signature
-        for (const result of results.results) {
-            await kvs.entity(ENTITY_NAME).delete(result.key);
-            count++;
-        }
+    return contractsDeleted;
+  } catch (error) {
+    console.error(`Error during cleanup with retention ${retentionDays} days:`, error);
+    throw new Error(`Failed to cleanup signatures: ${error.message}`);
+  }
+}
 
-        cursor = results.nextCursor;
-    } while (cursor);
+/**
+ * Transforms SQL query results into a SignatureEntity
+ *
+ * @param {Array<Object>} rows - SQL query results from contract LEFT JOIN signature
+ * @returns {SignatureEntity} Transformed entity
+ * @private
+ */
+function transformRowsToEntity(rows) {
+  if (!rows || rows.length === 0) {
+    return undefined;
+  }
 
-    return count;
+  // First row contains contract data
+  const firstRow = rows[0];
+
+  // Helper to convert SQL timestamp string to Date object
+  const parseTimestamp = (timestamp) => {
+    if (!timestamp) return null;
+    if (timestamp instanceof Date) return timestamp;
+    return new Date(timestamp);
+  };
+
+  // Build signatures array (filter out null accountIds from LEFT JOIN)
+  const signatures = rows
+    .filter(row => row.accountId !== null)
+    .map(row => ({
+      accountId: row.accountId,
+      signedAt: parseTimestamp(row.signedAt)
+    }));
+
+  // Calculate lastModified: most recent signature or createdAt if no signatures
+  const lastModified = signatures.length > 0
+    ? signatures[signatures.length - 1].signedAt // Last in array (ordered by signedAt ASC)
+    : parseTimestamp(firstRow.createdAt);
+
+  // Return entity in expected format
+  return {
+    hash: firstRow.hash,
+    pageId: String(firstRow.pageId), // Convert BIGINT to string for consistency
+    signatures: signatures,
+    createdAt: parseTimestamp(firstRow.createdAt),
+    deletedAt: parseTimestamp(firstRow.deletedAt),
+    lastModified: lastModified // Derived value
+  };
 }
