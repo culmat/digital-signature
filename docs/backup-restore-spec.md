@@ -15,9 +15,9 @@ This document defines the admin backup and restore functionality for the Digital
 
 ### Use Cases
 
+1. **Migration Foundation**: Export data from one instance for import to another
+2. **Testing**: Import test fixtures
 1. **Disaster Recovery**: Regular backups to restore data after incidents
-2. **Migration Foundation**: Export data from one instance for import to another
-3. **Pre-upgrade Safety**: Backup before major app or Confluence upgrades
 
 ---
 
