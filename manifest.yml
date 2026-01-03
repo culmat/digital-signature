@@ -12,6 +12,13 @@ modules:
         viewportSize: max
         render: native
         title: Digital Signature
+  confluence:globalSettings:
+    - key: digital-signature-admin-settings
+      title: Digital Signature Admin
+      resource: admin-ui
+      render: native
+      resolver:
+        function: resolver
   function:
     - key: resolver
       handler: index.handler
@@ -23,6 +30,8 @@ resources:
     path: src/frontend/index.jsx
   - key: macro-config
     path: src/frontend/config.jsx
+  - key: admin-ui
+    path: src/frontend/admin.jsx
 app:
   runtime:
     name: nodejs22.x

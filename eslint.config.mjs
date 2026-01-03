@@ -15,7 +15,8 @@ export default [
       globals: {
         console: 'readonly',
         crypto: 'readonly',
-        TextEncoder: 'readonly'
+        TextEncoder: 'readonly',
+        Buffer: 'readonly'
       }
     },
     plugins: {
