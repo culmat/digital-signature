@@ -118,7 +118,7 @@ export async function importData(base64GzippedSqlDump) {
           continue;
         }
 
-        const result = await sql.unsafe(statement);
+        const result = await sql.executeRaw(statement);
 
         if (statement.includes('INSERT INTO contract')) {
           summary.contractsInserted += result.insertId ? 1 : 0;
