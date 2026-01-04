@@ -25,6 +25,11 @@ const Admin = () => {
   const [isBackupInProgress, setIsBackupInProgress] = useState(false);
   const [backupData, setBackupData] = useState('');
 
+  const [restoreStatus, setRestoreStatus] = useState('');
+  const [isRestoreInProgress, setIsRestoreInProgress] = useState(false);
+  const [restoreResult, setRestoreResult] = useState(null);
+  const [restoreData, setRestoreData] = useState('');
+
   useEffect(() => {
     loadStatistics();
   }, []);
@@ -110,6 +115,40 @@ const Admin = () => {
       setBackupStatus('');
     } finally {
       setIsBackupInProgress(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreData.trim()) {
+      setError('Please paste backup data in the text area');
+      return;
+    }
+
+    try {
+      setIsRestoreInProgress(true);
+      setRestoreStatus('Importing data...');
+      setRestoreResult(null);
+      setError(null);
+
+      const response = await invoke('adminData', {
+        action: 'import',
+        data: restoreData.trim()
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Restore failed');
+      }
+
+      setRestoreResult(response.summary);
+      setRestoreStatus('Restore completed successfully!');
+      setRestoreData('');
+
+      await loadStatistics();
+    } catch (err) {
+      setError(`Restore failed: ${err.message}`);
+      setRestoreStatus('');
+    } finally {
+      setIsRestoreInProgress(false);
     }
   };
 
@@ -203,6 +242,51 @@ const Admin = () => {
               />
               <Button onClick={handleClearBackup}>Clear</Button>
             </Stack>
+          )}
+        </Stack>
+      </Box>
+
+      <Box>
+        <Heading size="medium">Restore Data</Heading>
+        <Stack space="small">
+          <Text>Paste the backup data (base64-encoded .sql.gz content) below and click Restore:</Text>
+          <TextArea
+            value={restoreData}
+            onChange={(value) => setRestoreData(value)}
+            placeholder="Paste backup data here..."
+            minimumRows={10}
+            isDisabled={isRestoreInProgress}
+          />
+          <ButtonGroup>
+            <LoadingButton
+              onClick={handleRestore}
+              isLoading={isRestoreInProgress}
+              isDisabled={isRestoreInProgress || !restoreData.trim()}
+              appearance="primary"
+            >
+              Restore from Backup
+            </LoadingButton>
+            <Button
+              onClick={() => setRestoreData('')}
+              isDisabled={isRestoreInProgress}
+            >
+              Clear
+            </Button>
+          </ButtonGroup>
+          {restoreStatus && <Text>{restoreStatus}</Text>}
+          {restoreResult && (
+            <SectionMessage appearance="confirmation" title="Restore Summary">
+              <Stack space="small">
+                <Text>Contracts inserted: {restoreResult.contractsInserted}</Text>
+                <Text>Contracts updated: {restoreResult.contractsUpdated}</Text>
+                <Text>Signatures inserted: {restoreResult.signaturesInserted}</Text>
+                <Text>Signatures updated: {restoreResult.signaturesUpdated}</Text>
+                <Text>Execution time: {restoreResult.executionTimeSeconds}s</Text>
+                {restoreResult.errors && restoreResult.errors.length > 0 && (
+                  <Text>Errors: {restoreResult.errors.length}</Text>
+                )}
+              </Stack>
+            </SectionMessage>
           )}
         </Stack>
       </Box>
