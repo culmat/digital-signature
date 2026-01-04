@@ -11,7 +11,8 @@ import ForgeReconciler, {
   Strong,
   LoadingButton,
   TextArea,
-  ButtonGroup
+  ButtonGroup,
+  DynamicTable
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
@@ -178,9 +179,47 @@ const Admin = () => {
     URL.revokeObjectURL(url);
   };
 
+  const statisticsTableHead = {
+    cells: [
+      { key: 'metric', content: 'Metric' },
+      { key: 'value', content: 'Value' }
+    ]
+  };
+
+  const statisticsTableRows = statistics ? [
+    {
+      key: 'total-contracts',
+      cells: [
+        { key: 'metric', content: 'Total Contracts' },
+        { key: 'value', content: statistics.totalContracts }
+      ]
+    },
+    {
+      key: 'active-contracts',
+      cells: [
+        { key: 'metric', content: 'Active Contracts' },
+        { key: 'value', content: statistics.activeContracts }
+      ]
+    },
+    {
+      key: 'deleted-contracts',
+      cells: [
+        { key: 'metric', content: 'Deleted Contracts' },
+        { key: 'value', content: statistics.deletedContracts }
+      ]
+    },
+    {
+      key: 'total-signatures',
+      cells: [
+        { key: 'metric', content: 'Total Signatures' },
+        { key: 'value', content: statistics.totalSignatures }
+      ]
+    }
+  ] : [];
+
   return (
     <Stack space="medium">
-      <Heading size="large">Digital Signature Administration</Heading>
+      <Heading size="large">Administration</Heading>
 
       {error && (
         <SectionMessage appearance="error" title="Error">
@@ -188,67 +227,62 @@ const Admin = () => {
         </SectionMessage>
       )}
 
-      <Box>
-        <Heading size="medium">Database Statistics</Heading>
-        {loading ? (
-          <Text>Loading statistics...</Text>
-        ) : statistics ? (
-          <Stack space="small">
-            <Inline space="small">
-              <Strong>Total Contracts:</Strong>
-              <Text>{statistics.totalContracts}</Text>
-            </Inline>
-            <Inline space="small">
-              <Strong>Active Contracts:</Strong>
-              <Text>{statistics.activeContracts}</Text>
-            </Inline>
-            <Inline space="small">
-              <Strong>Deleted Contracts:</Strong>
-              <Text>{statistics.deletedContracts}</Text>
-            </Inline>
-            <Inline space="small">
-              <Strong>Total Signatures:</Strong>
-              <Text>{statistics.totalSignatures}</Text>
-            </Inline>
-            <Button onClick={loadStatistics}>Refresh Statistics</Button>
-          </Stack>
-        ) : (
-          <Text>No statistics available</Text>
-        )}
+      <Box paddingBlock="space.200">
+        <Stack space="small">
+          <Heading size="medium">Database Statistics</Heading>
+          {loading ? (
+            <Text>Loading statistics...</Text>
+          ) : statistics ? (
+            <Stack space="small">
+              <DynamicTable
+                head={statisticsTableHead}
+                rows={statisticsTableRows}
+              />
+              <Box paddingBlockStart="space.100">
+                <Button onClick={loadStatistics}>Refresh Statistics</Button>
+              </Box>
+            </Stack>
+          ) : (
+            <Text>No statistics available</Text>
+          )}
+        </Stack>
       </Box>
 
-      <Box>
-        <Heading size="medium">Backup Data</Heading>
+      <Box paddingBlock="space.200">
         <Stack space="small">
+          <Heading size="medium">Backup Data</Heading>
           <Text>Export all signature data to a compressed SQL dump (base64-encoded .sql.gz)</Text>
-          <LoadingButton
-            onClick={handleBackup}
-            isLoading={isBackupInProgress}
-            isDisabled={isBackupInProgress || backupData.length > 0}
-          >
-            Generate Backup
-          </LoadingButton>
+          <Box paddingBlockStart="space.100">
+            <LoadingButton
+              onClick={handleBackup}
+              isLoading={isBackupInProgress}
+              isDisabled={isBackupInProgress || backupData.length > 0}
+            >
+              Generate Backup
+            </LoadingButton>
+          </Box>
           {backupStatus && <Text>{backupStatus}</Text>}
           {isBackupInProgress && backupProgress > 0 && (
             <ProgressBar value={backupProgress / 100} />
           )}
           {backupData && (
             <Stack space="small">
-              <Text>Copy this data and save it to a file with .sql.gz extension:</Text>
               <TextArea
                 value={backupData}
                 isReadOnly={true}
                 minimumRows={10}
               />
-              <Button onClick={handleClearBackup}>Clear</Button>
+              <Box paddingBlockStart="space.100">
+                <Button onClick={handleClearBackup}>Clear</Button>
+              </Box>
             </Stack>
           )}
         </Stack>
       </Box>
 
-      <Box>
-        <Heading size="medium">Restore Data</Heading>
+      <Box paddingBlock="space.200">
         <Stack space="small">
+          <Heading size="medium">Restore Data</Heading>
           <Text>Paste the backup data (base64-encoded .sql.gz content) below and click Restore:</Text>
           <TextArea
             value={restoreData}
@@ -257,22 +291,24 @@ const Admin = () => {
             minimumRows={10}
             isDisabled={isRestoreInProgress}
           />
-          <ButtonGroup>
-            <LoadingButton
-              onClick={handleRestore}
-              isLoading={isRestoreInProgress}
-              isDisabled={isRestoreInProgress || !restoreData.trim()}
-              appearance="primary"
-            >
-              Restore from Backup
-            </LoadingButton>
-            <Button
-              onClick={() => setRestoreData('')}
-              isDisabled={isRestoreInProgress}
-            >
-              Clear
-            </Button>
-          </ButtonGroup>
+          <Box paddingBlockStart="space.100">
+            <ButtonGroup>
+              <LoadingButton
+                onClick={handleRestore}
+                isLoading={isRestoreInProgress}
+                isDisabled={isRestoreInProgress || !restoreData.trim()}
+                appearance="primary"
+              >
+                Restore from Backup
+              </LoadingButton>
+              <Button
+                onClick={() => setRestoreData('')}
+                isDisabled={isRestoreInProgress}
+              >
+                Clear
+              </Button>
+            </ButtonGroup>
+          </Box>
           {restoreStatus && <Text>{restoreStatus}</Text>}
           {restoreResult && (
             <SectionMessage appearance="confirmation" title="Restore Summary">
