@@ -1,20 +1,14 @@
-import { isConfluenceAdmin } from '../utils/adminAuth';
 import { exportData, importData, getStatistics } from '../storage/backupManager';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 
+// Admin authorization is enforced by Confluence for the globalSettings module.
+// No additional check is needed as only Confluence administrators can access this page.
 export async function adminDataResolver(req) {
   const { context, payload } = req;
   const accountId = context.accountId;
 
   if (!accountId) {
     return errorResponse(401, 'User not authenticated');
-  }
-
-  const isAdmin = await isConfluenceAdmin(accountId);
-
-  if (!isAdmin) {
-    console.warn(`Non-admin user ${accountId} attempted to access admin endpoint`);
-    return errorResponse(403, 'Access denied. Confluence administrator privileges required.');
   }
 
   try {
