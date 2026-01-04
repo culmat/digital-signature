@@ -27,8 +27,8 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
       SELECT hash, pageId, createdAt, deletedAt
       FROM contract
       ORDER BY hash
-      LIMIT ? OFFSET ?
-    `).bindParams(limit, offset).execute();
+      LIMIT ${limit} OFFSET ${offset}
+    `).execute();
 
     const contracts = contractsResult?.rows || contractsResult || [];
 
@@ -42,8 +42,8 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
       SELECT contractHash, accountId, signedAt
       FROM signature
       ORDER BY contractHash, accountId
-      LIMIT ? OFFSET ?
-    `).bindParams(limit, offset).execute();
+      LIMIT ${limit} OFFSET ${offset}
+    `).execute();
 
     const signatures = signaturesResult?.rows || signaturesResult || [];
 
@@ -86,7 +86,9 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
     };
   } catch (error) {
     console.error('Error exporting data:', error);
-    throw new Error(`Export failed: ${error.message}`);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    throw new Error(`Export failed: ${error.message || error}`);
   }
 }
 

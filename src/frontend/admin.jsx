@@ -43,8 +43,15 @@ const Admin = () => {
         action: 'getStatistics'
       });
 
+      console.log('Statistics response:', response);
+
       if (response.success) {
-        setStatistics(response.data);
+        setStatistics({
+          totalContracts: response.totalContracts,
+          activeContracts: response.activeContracts,
+          deletedContracts: response.deletedContracts,
+          totalSignatures: response.totalSignatures
+        });
       } else {
         setError(response.error || 'Failed to load statistics');
       }
@@ -80,13 +87,13 @@ const Admin = () => {
           throw new Error(response.error || 'Backup failed');
         }
 
-        chunks.push(response.data.data);
-        completed = response.data.completed;
+        chunks.push(response.data);
+        completed = response.completed;
 
         if (!completed) {
-          offset = response.data.offset;
+          offset = response.offset;
           const progress = Math.round(
-            (response.data.stats.processedContracts / response.data.stats.totalContracts) * 100
+            (response.stats.processedContracts / response.stats.totalContracts) * 100
           );
           setBackupProgress(progress);
         } else {
@@ -95,8 +102,14 @@ const Admin = () => {
       }
 
       const fullBackup = chunks.join('');
+      
+      // Trigger automatic download
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const filename = `digital-signature-backup-${timestamp}.sql.gz`;
+      downloadBackup(fullBackup, filename);
+      
       setBackupData(fullBackup);
-      setBackupStatus('Backup completed! Copy the data below and save it to a .sql.gz file.');
+      setBackupStatus(`Backup completed! File downloaded as ${filename}`);
     } catch (err) {
       setError(`Backup failed: ${err.message}`);
       setBackupStatus('');
@@ -126,7 +139,7 @@ const Admin = () => {
         throw new Error(response.error || 'Restore failed');
       }
 
-      setRestoreResult(response.data.summary);
+      setRestoreResult(response.summary);
       setRestoreStatus('Restore completed successfully!');
       setRestoreData('');
 
@@ -143,6 +156,26 @@ const Admin = () => {
     setBackupData('');
     setBackupStatus('');
     setBackupProgress(0);
+  };
+
+  const downloadBackup = (base64Data, filename) => {
+    // Convert base64 to binary
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Create blob and download
+    const blob = new Blob([bytes], { type: 'application/gzip' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
