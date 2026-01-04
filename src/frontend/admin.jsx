@@ -252,7 +252,7 @@ const Admin = () => {
           <Text>Paste the backup data (base64-encoded .sql.gz content) below and click Restore:</Text>
           <TextArea
             value={restoreData}
-            onChange={(value) => setRestoreData(value)}
+            onChange={(e) => setRestoreData(e.target.value)}
             placeholder="Paste backup data here..."
             minimumRows={10}
             isDisabled={isRestoreInProgress}
