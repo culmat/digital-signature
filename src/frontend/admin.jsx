@@ -40,8 +40,7 @@ const Admin = () => {
       setError(null);
 
       const response = await invoke('adminData', {
-        method: 'POST',
-        payload: { action: 'getStatistics' }
+        action: 'getStatistics'
       });
 
       if (response.success) {
@@ -72,8 +71,9 @@ const Admin = () => {
         setBackupStatus(`Downloading chunk at offset ${offset}...`);
 
         const response = await invoke('adminData', {
-          method: 'GET',
-          payload: { offset, limit: 5000 }
+          action: 'export',
+          offset,
+          limit: 5000
         });
 
         if (!response.success) {
@@ -118,8 +118,8 @@ const Admin = () => {
       setError(null);
 
       const response = await invoke('adminData', {
-        method: 'PUT',
-        payload: { data: restoreData.trim() }
+        action: 'import',
+        data: restoreData.trim()
       });
 
       if (!response.success) {

@@ -12,14 +12,16 @@ export async function adminDataResolver(req) {
   }
 
   try {
-    if (req.method === 'GET') {
+    const action = payload?.action;
+
+    if (action === 'export') {
       return await handleExport(req);
-    } else if (req.method === 'PUT') {
+    } else if (action === 'import') {
       return await handleImport(req);
-    } else if (req.method === 'POST' && payload?.action === 'getStatistics') {
+    } else if (action === 'getStatistics') {
       return await handleGetStatistics();
     } else {
-      return errorResponse(405, 'Method not allowed');
+      return errorResponse(400, `Unknown action: ${action}`);
     }
   } catch (error) {
     console.error('Admin data resolver error:', error);
