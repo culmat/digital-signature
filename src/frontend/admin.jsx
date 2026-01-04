@@ -210,7 +210,7 @@ const Admin = () => {
               <Strong>Total Signatures:</Strong>
               <Text>{statistics.totalSignatures}</Text>
             </Inline>
-            <Button text="Refresh Statistics" onClick={loadStatistics} />
+            <Button onClick={loadStatistics}>Refresh Statistics</Button>
           </Stack>
         ) : (
           <Text>No statistics available</Text>
@@ -222,11 +222,12 @@ const Admin = () => {
         <Stack space="small">
           <Text>Export all signature data to a compressed SQL dump (base64-encoded .sql.gz)</Text>
           <LoadingButton
-            text="Generate Backup"
             onClick={handleBackup}
             isLoading={isBackupInProgress}
             isDisabled={isBackupInProgress || backupData.length > 0}
-          />
+          >
+            Generate Backup
+          </LoadingButton>
           {backupStatus && <Text>{backupStatus}</Text>}
           {isBackupInProgress && backupProgress > 0 && (
             <ProgressBar value={backupProgress / 100} />
@@ -239,7 +240,7 @@ const Admin = () => {
                 isReadOnly={true}
                 minimumRows={10}
               />
-              <Button text="Clear" onClick={handleClearBackup} />
+              <Button onClick={handleClearBackup}>Clear</Button>
             </Stack>
           )}
         </Stack>
@@ -258,17 +259,19 @@ const Admin = () => {
           />
           <ButtonGroup>
             <LoadingButton
-              text="Restore from Backup"
               onClick={handleRestore}
               isLoading={isRestoreInProgress}
               isDisabled={isRestoreInProgress || !restoreData.trim()}
               appearance="primary"
-            />
+            >
+              Restore from Backup
+            </LoadingButton>
             <Button
-              text="Clear"
               onClick={() => setRestoreData('')}
               isDisabled={isRestoreInProgress}
-            />
+            >
+              Clear
+            </Button>
           </ButtonGroup>
           {restoreStatus && <Text>{restoreStatus}</Text>}
           {restoreResult && (
