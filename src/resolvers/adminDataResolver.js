@@ -1,4 +1,4 @@
-import { exportData, importData, getStatistics } from '../storage/backupManager';
+import { exportData, importData, getStatistics, deleteAllData } from '../storage/backupManager';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 
 // Admin authorization is enforced by Confluence for the globalSettings module.
@@ -20,6 +20,8 @@ export async function adminDataResolver(req) {
       return await handleImport(req);
     } else if (action === 'getStatistics') {
       return await handleGetStatistics();
+    } else if (action === 'deleteAll') {
+      return await handleDeleteAll();
     } else {
       return errorResponse(400, `Unknown action: ${action}`);
     }
@@ -63,4 +65,14 @@ async function handleGetStatistics() {
   const stats = await getStatistics();
 
   return successResponse(stats);
+}
+
+async function handleDeleteAll() {
+  console.log('Starting deletion of all signature data');
+
+  const result = await deleteAllData();
+
+  console.log(`Deletion completed. ${result.contractsDeleted} contracts and ${result.signaturesDeleted} signatures deleted`);
+
+  return successResponse(result);
 }

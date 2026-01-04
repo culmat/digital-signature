@@ -92,10 +92,29 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
   }
 }
 
-export async function importData(base64GzippedSqlDump) {
+export async function importData(inputData) {
   try {
-    const compressed = Buffer.from(base64GzippedSqlDump, 'base64');
-    const sqlDump = gunzipSync(compressed).toString('utf-8');
+    let sqlDump;
+
+    // Auto-detect format: check if it's plain SQL or base64-encoded gzip
+    const trimmedInput = inputData.trim();
+
+    // Check if it looks like SQL (starts with -- comment or SET or INSERT)
+    if (trimmedInput.startsWith('--') ||
+        trimmedInput.startsWith('SET ') ||
+        trimmedInput.startsWith('INSERT ')) {
+      console.log('Detected plain SQL format');
+      sqlDump = trimmedInput;
+    } else {
+      // Assume it's base64-encoded gzipped data
+      console.log('Detected base64-encoded gzip format');
+      try {
+        const compressed = Buffer.from(trimmedInput, 'base64');
+        sqlDump = gunzipSync(compressed).toString('utf-8');
+      } catch (decodeError) {
+        throw new Error('Invalid backup data format. Expected either plain SQL or base64-encoded .sql.gz data');
+      }
+    }
 
     const statements = parseSqlStatements(sqlDump);
 
@@ -120,12 +139,33 @@ export async function importData(base64GzippedSqlDump) {
 
         const result = await sql.executeRaw(statement);
 
+        // Handle both response formats: {rows: UpdateQueryResponse} or UpdateQueryResponse
+        const resultData = result?.rows || result;
+        const affectedRows = resultData?.affectedRows || 0;
+        const changedRows = resultData?.changedRows || 0;
+
+        // For INSERT ... ON DUPLICATE KEY UPDATE:
+        // - affectedRows = number of rows affected (1 per insert, 2 per update)
+        // - changedRows = number of rows actually changed (0 if data is same)
+        // - insertId = 0 (not useful for multi-row inserts)
+
         if (statement.includes('INSERT INTO contract')) {
-          summary.contractsInserted += result.insertId ? 1 : 0;
-          summary.contractsUpdated += result.affectedRows - (result.insertId ? 1 : 0);
+          // If changedRows > 0, some rows were updated with different data
+          // If changedRows = 0 but affectedRows > 0, rows were inserted or updated with same data
+          if (changedRows > 0) {
+            summary.contractsUpdated += changedRows;
+            summary.contractsInserted += Math.max(0, affectedRows - (changedRows * 2));
+          } else if (affectedRows > 0) {
+            // All rows were new inserts (affectedRows = 1 per insert)
+            summary.contractsInserted += affectedRows;
+          }
         } else if (statement.includes('INSERT INTO signature')) {
-          summary.signaturesInserted += result.insertId ? 1 : 0;
-          summary.signaturesUpdated += result.affectedRows - (result.insertId ? 1 : 0);
+          if (changedRows > 0) {
+            summary.signaturesUpdated += changedRows;
+            summary.signaturesInserted += Math.max(0, affectedRows - (changedRows * 2));
+          } else if (affectedRows > 0) {
+            summary.signaturesInserted += affectedRows;
+          }
         }
       } catch (error) {
         console.error('Error executing statement:', statement, error);
@@ -136,7 +176,7 @@ export async function importData(base64GzippedSqlDump) {
       }
     }
 
-    summary.executionTimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+    summary.executionTimeSeconds = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
 
     return {
       completed: true,
@@ -178,6 +218,41 @@ export async function getStatistics() {
   } catch (error) {
     console.error('Error fetching statistics:', error);
     throw new Error(`Failed to fetch statistics: ${error.message}`);
+  }
+}
+
+export async function deleteAllData() {
+  const startTime = Date.now();
+
+  try {
+    console.log('Starting deletion of all signature data');
+
+    // Delete signatures first (due to foreign key constraint)
+    const signaturesResult = await sql.executeRaw('DELETE FROM signature');
+
+    // Handle both response formats: {rows: UpdateQueryResponse} or UpdateQueryResponse
+    const signaturesData = signaturesResult?.rows || signaturesResult;
+    const signaturesDeleted = signaturesData?.affectedRows || 0;
+
+    // Delete contracts
+    const contractsResult = await sql.executeRaw('DELETE FROM contract');
+
+    const contractsData = contractsResult?.rows || contractsResult;
+    const contractsDeleted = contractsData?.affectedRows || 0;
+
+    const executionTimeSeconds = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+
+    console.log(`Deletion completed. Deleted ${contractsDeleted} contracts and ${signaturesDeleted} signatures in ${executionTimeSeconds}s`);
+
+    return {
+      success: true,
+      contractsDeleted,
+      signaturesDeleted,
+      executionTimeSeconds
+    };
+  } catch (error) {
+    console.error('Error deleting all data:', error);
+    throw new Error(`Failed to delete all data: ${error.message}`);
   }
 }
 

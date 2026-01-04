@@ -31,6 +31,10 @@ const Admin = () => {
   const [restoreResult, setRestoreResult] = useState(null);
   const [restoreData, setRestoreData] = useState('');
 
+  const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
+  const [deleteResult, setDeleteResult] = useState(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+
   useEffect(() => {
     loadStatistics();
   }, []);
@@ -159,6 +163,30 @@ const Admin = () => {
     setBackupProgress(0);
   };
 
+  const handleDeleteAll = async () => {
+    try {
+      setIsDeleteInProgress(true);
+      setDeleteResult(null);
+      setError(null);
+      setShowDeleteConfirmation(false);
+
+      const response = await invoke('adminData', {
+        action: 'deleteAll'
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Deletion failed');
+      }
+
+      setDeleteResult(response);
+      await loadStatistics();
+    } catch (err) {
+      setError(`Deletion failed: ${err.message}`);
+    } finally {
+      setIsDeleteInProgress(false);
+    }
+  };
+
   const downloadBackup = (base64Data, filename) => {
     // Convert base64 to binary
     const binaryString = atob(base64Data);
@@ -283,11 +311,14 @@ const Admin = () => {
       <Box paddingBlock="space.200">
         <Stack space="small">
           <Heading size="medium">Restore Data</Heading>
-          <Text>Paste the backup data (base64-encoded .sql.gz content) below and click Restore:</Text>
+          <Text>
+            Paste backup data below. Accepts both base64-encoded .sql.gz content (from the textarea above)
+            or plain SQL (from decompressed .sql.gz file).
+          </Text>
           <TextArea
             value={restoreData}
             onChange={(e) => setRestoreData(e.target.value)}
-            placeholder="Paste backup data here..."
+            placeholder="Paste backup data here (base64 or plain SQL)..."
             minimumRows={10}
             isDisabled={isRestoreInProgress}
           />
@@ -313,14 +344,83 @@ const Admin = () => {
           {restoreResult && (
             <SectionMessage appearance="confirmation" title="Restore Summary">
               <Stack space="small">
-                <Text>Contracts inserted: {restoreResult.contractsInserted}</Text>
-                <Text>Contracts updated: {restoreResult.contractsUpdated}</Text>
-                <Text>Signatures inserted: {restoreResult.signaturesInserted}</Text>
-                <Text>Signatures updated: {restoreResult.signaturesUpdated}</Text>
+                {restoreResult.contractsInserted > 0 && (
+                  <Text>New contracts: {restoreResult.contractsInserted}</Text>
+                )}
+                {restoreResult.contractsUpdated > 0 && (
+                  <Text>Updated contracts: {restoreResult.contractsUpdated}</Text>
+                )}
+                {restoreResult.signaturesInserted > 0 && (
+                  <Text>New signatures: {restoreResult.signaturesInserted}</Text>
+                )}
+                {restoreResult.signaturesUpdated > 0 && (
+                  <Text>Updated signatures: {restoreResult.signaturesUpdated}</Text>
+                )}
+                {restoreResult.contractsInserted === 0 && restoreResult.contractsUpdated === 0 &&
+                 restoreResult.signaturesInserted === 0 && restoreResult.signaturesUpdated === 0 && (
+                  <Text>No changes - all data already exists with the same values</Text>
+                )}
                 <Text>Execution time: {restoreResult.executionTimeSeconds}s</Text>
                 {restoreResult.errors && restoreResult.errors.length > 0 && (
                   <Text>Errors: {restoreResult.errors.length}</Text>
                 )}
+              </Stack>
+            </SectionMessage>
+          )}
+        </Stack>
+      </Box>
+
+      <Box paddingBlock="space.200">
+        <Stack space="small">
+          <Heading size="medium">Danger Zone</Heading>
+          <SectionMessage appearance="warning" title="Warning: Irreversible Action">
+            <Text>
+              Deleting all signature data will permanently remove all contracts and signatures from the database.
+              This action cannot be undone. Make sure you have created a backup before proceeding.
+            </Text>
+          </SectionMessage>
+          {!showDeleteConfirmation ? (
+            <Box paddingBlockStart="space.100">
+              <Button
+                onClick={() => setShowDeleteConfirmation(true)}
+                appearance="danger"
+                isDisabled={isDeleteInProgress}
+              >
+                Delete All Signature Data
+              </Button>
+            </Box>
+          ) : (
+            <Stack space="small">
+              <SectionMessage appearance="error" title="Confirmation Required">
+                <Text>
+                  Are you absolutely sure you want to delete ALL signature data? This will remove {statistics?.totalContracts || 0} contracts and {statistics?.totalSignatures || 0} signatures permanently.
+                </Text>
+              </SectionMessage>
+              <Box paddingBlockStart="space.100">
+                <ButtonGroup>
+                  <LoadingButton
+                    onClick={handleDeleteAll}
+                    isLoading={isDeleteInProgress}
+                    appearance="danger"
+                  >
+                    Yes, Delete Everything
+                  </LoadingButton>
+                  <Button
+                    onClick={() => setShowDeleteConfirmation(false)}
+                    isDisabled={isDeleteInProgress}
+                  >
+                    Cancel
+                  </Button>
+                </ButtonGroup>
+              </Box>
+            </Stack>
+          )}
+          {deleteResult && (
+            <SectionMessage appearance="confirmation" title="Deletion Complete">
+              <Stack space="small">
+                <Text>Contracts deleted: {deleteResult.contractsDeleted}</Text>
+                <Text>Signatures deleted: {deleteResult.signaturesDeleted}</Text>
+                <Text>Execution time: {deleteResult.executionTimeSeconds}s</Text>
               </Stack>
             </SectionMessage>
           )}
