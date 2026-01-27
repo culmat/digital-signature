@@ -3,6 +3,23 @@
  * Uses browser session cookies for authentication via page.evaluate().
  */
 
+// Construct base URL from env var
+const CONFLUENCE_HOST = process.env.CONFLUENCE_HOST;
+const BASE_URL = CONFLUENCE_HOST ? `https://${CONFLUENCE_HOST}` : '';
+
+/**
+ * Ensure browser is on the Confluence domain (needed for API calls with cookies).
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function ensureOnConfluence(page) {
+  const currentUrl = page.url();
+  // If we're not on the Confluence domain, navigate to it
+  if (!currentUrl.includes('/wiki') || !currentUrl.includes(CONFLUENCE_HOST)) {
+    await page.goto(`${BASE_URL}/wiki`);
+  }
+}
+
 /**
  * Get space ID from space key.
  *
@@ -11,6 +28,7 @@
  * @returns {Promise<string>}
  */
 async function getSpaceId(page, spaceKey) {
+  await ensureOnConfluence(page);
   const spaceId = await page.evaluate(async (spaceKey) => {
     const res = await fetch(`/wiki/api/v2/spaces?keys=${spaceKey}`);
     if (!res.ok) {
@@ -38,51 +56,51 @@ async function getSpaceId(page, spaceKey) {
  * @param {string[]} [macroConfig.signers] - Array of account IDs
  * @returns {Promise<{pageId: string, pageUrl: string, title: string}>}
  */
-async function createTestPage(page, spaceKey, title, macroBodyContent, macroConfig = {}) {
-  const spaceId = await getSpaceId(page, spaceKey);
+async function createTestPage(page, spaceKey, title, macroBodyText, macroConfig = {}) {
+  await ensureOnConfluence(page);
 
+  // Use v1 API with storage format - more reliable for Forge macros
+  // App ID: bab5617e-dc42-4ca8-ad38-947c826fe58c
+  // Macro key: digital-signature-confluence-cloud-culmat
   const result = await page.evaluate(
-    async ({ spaceId, title, macroContent, config }) => {
-      // Build the ADF for the page with macro
-      // Extension key from manifest: digital-signature-confluence-cloud-culmat
-      const pageBody = {
-        type: 'doc',
-        version: 1,
-        content: [
-          {
-            type: 'extension',
-            attrs: {
-              extensionType: 'com.atlassian.ecosystem',
-              extensionKey: 'digital-signature-confluence-cloud-culmat',
-              parameters: {
-                config: {
-                  panelTitle: config.panelTitle || '',
-                  signers: config.signers || [],
-                  signerGroups: [],
-                  inheritViewers: false,
-                  inheritEditors: false,
-                },
-              },
-              bodyType: 'rich',
-            },
-            content: [macroContent],
-          },
-        ],
-      };
+    async ({ spaceKey, title, bodyText, config }) => {
+      // Build storage format body with Forge macro
+      // Forge macros use: forge-{app-id}-{macro-key}
+      const macroName = 'forge-bab5617e-dc42-4ca8-ad38-947c826fe58c-digital-signature-confluence-cloud-culmat';
 
-      const res = await fetch('/wiki/api/v2/pages', {
+      // Build config parameters as macro parameters
+      const configJson = JSON.stringify({
+        panelTitle: config.panelTitle || '',
+        signers: config.signers || [],
+        signerGroups: [],
+        inheritViewers: false,
+        inheritEditors: false,
+      });
+
+      const storageBody = `
+        <ac:structured-macro ac:name="${macroName}" ac:schema-version="1" ac:macro-id="${crypto.randomUUID()}">
+          <ac:parameter ac:name="config">${configJson}</ac:parameter>
+          <ac:rich-text-body>
+            <p>${bodyText}</p>
+          </ac:rich-text-body>
+        </ac:structured-macro>
+      `;
+
+      const res = await fetch('/wiki/rest/api/content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          spaceId,
-          status: 'current',
+          type: 'page',
           title,
+          space: { key: spaceKey },
           body: {
-            representation: 'atlas_doc_format',
-            value: JSON.stringify(pageBody),
+            storage: {
+              value: storageBody,
+              representation: 'storage',
+            },
           },
         }),
       });
@@ -99,7 +117,7 @@ async function createTestPage(page, spaceKey, title, macroBodyContent, macroConf
         title: data.title,
       };
     },
-    { spaceId, title, macroContent: macroBodyContent, config: macroConfig }
+    { spaceKey, title, bodyText: macroBodyText, config: macroConfig }
   );
 
   return result;
@@ -112,6 +130,7 @@ async function createTestPage(page, spaceKey, title, macroBodyContent, macroConf
  * @param {string} pageId
  */
 async function deletePage(page, pageId) {
+  await ensureOnConfluence(page);
   await page.evaluate(async (pageId) => {
     const res = await fetch(`/wiki/api/v2/pages/${pageId}`, {
       method: 'DELETE',

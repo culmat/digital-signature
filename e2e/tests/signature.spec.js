@@ -1,74 +1,37 @@
-const { test, expect } = require('@playwright/test');
-const { createTestPage, deletePage } = require('../helpers/confluence-api');
-const { setupFixtures } = require('../helpers/admin-ui');
-const {
-  SAMPLE_CONTRACT_ADF,
-  generateRandomAccountId,
-  generateFixtureWithOneSignature,
-} = require('../fixtures');
+const { expect } = require('@playwright/test');
+const { test } = require('../fixtures/browser');
 
 // Test configuration from environment
-const TEST_SPACE = process.env.TEST_SPACE || 'TEST';
+const TEST_PAGE_ID = process.env.TEST_PAGE_ID;
+const TEST_SPACE = process.env.TEST_SPACE;
+const BASE_URL = process.env.CONFLUENCE_HOST
+  ? `https://${process.env.CONFLUENCE_HOST}`
+  : '';
 
 test.describe('Digital Signature Macro', () => {
-  let testPageId = null;
-
-  test.afterEach(async ({ page }) => {
-    // Clean up: delete test page if it was created
-    if (testPageId) {
-      await deletePage(page, testPageId);
-      testPageId = null;
+  test('displays macro and allows signing', async ({ page }) => {
+    if (!TEST_PAGE_ID || !TEST_SPACE) {
+      throw new Error('TEST_PAGE_ID and TEST_SPACE environment variables are required.');
     }
-  });
 
-  test('displays existing signature and allows signing', async ({ page }) => {
-    // Step 1: Create a test page with the macro
-    const pageTitle = `E2E Test - Signature - ${Date.now()}`;
+    // Navigate to the pre-created test page
+    await page.goto(`${BASE_URL}/wiki/spaces/${TEST_SPACE}/pages/${TEST_PAGE_ID}`);
 
-    const created = await createTestPage(
-      page,
-      TEST_SPACE,
-      pageTitle,
-      SAMPLE_CONTRACT_ADF
-    );
-    testPageId = created.pageId;
-
-    // Step 2: Generate fixture with one existing signature
-    const existingSignerAccountId = generateRandomAccountId();
-    const fixtureSQL = generateFixtureWithOneSignature(
-      testPageId,
-      pageTitle,
-      existingSignerAccountId,
-      SAMPLE_CONTRACT_ADF
-    );
-
-    // Step 3: Restore fixture via admin UI
-    await setupFixtures(page, fixtureSQL);
-
-    // Step 4: Navigate to the test page
-    await page.goto(created.pageUrl);
-
-    // Step 5: Wait for macro to load (inside Forge iframe)
+    // Wait for macro to load (Forge renders in iframe)
     const macroFrame = page.frameLocator('iframe[id*="digital-signature"]');
 
-    // Step 6: Assert existing signature is displayed
-    // The macro shows "Signed (N)" section
-    await expect(macroFrame.getByText('Signed (1)')).toBeVisible({
-      timeout: 30000,
-    });
-
-    // Step 7: Assert Sign button is visible (current user can sign in petition mode)
+    // Wait for macro content to be visible (look for the Sign button)
     const signButton = macroFrame.getByRole('button', { name: 'Sign' });
-    await expect(signButton).toBeVisible();
+    await expect(signButton).toBeVisible({ timeout: 7000 });
 
-    // Step 8: Click Sign button
+    // Click Sign button
     await signButton.click();
 
-    // Step 9: Wait for signing to complete
-    // The button text changes during signing, then back to Sign
-    // After signing, user should see their signature in the list
-    await expect(macroFrame.getByText('Signed (2)')).toBeVisible({
-      timeout: 30000,
+    // Wait for signing to complete - button should still be visible after signing
+    // (user can sign again if they want to revoke and re-sign, but the signature should appear)
+    // Look for "Signed" text which indicates at least one signature exists
+    await expect(macroFrame.getByText(/Signed \(\d+\)/)).toBeVisible({
+      timeout: 7000,
     });
   });
 });

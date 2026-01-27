@@ -8,15 +8,27 @@
 const { computeMacroHash } = require('../helpers/hash');
 
 /**
+ * Sample contract text (plain text for storage format).
+ */
+const SAMPLE_CONTRACT_TEXT = 'I hereby agree to the terms and conditions of this test contract.';
+
+/**
  * Sample ADF for a simple contract text.
- * This is the content INSIDE the macro body.
+ * This is the content INSIDE the macro body (what the frontend sees).
+ * This must match the ADF that Confluence generates from the storage format.
  */
 const SAMPLE_CONTRACT_ADF = {
-  type: 'paragraph',
+  type: 'doc',
+  version: 1,
   content: [
     {
-      type: 'text',
-      text: 'I hereby agree to the terms and conditions of this test contract. This document is for testing purposes only.',
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: SAMPLE_CONTRACT_TEXT,
+        },
+      ],
     },
   ],
 };
@@ -82,6 +94,7 @@ ON DUPLICATE KEY UPDATE
 }
 
 module.exports = {
+  SAMPLE_CONTRACT_TEXT,
   SAMPLE_CONTRACT_ADF,
   generateRandomAccountId,
   generateFixtureWithOneSignature,

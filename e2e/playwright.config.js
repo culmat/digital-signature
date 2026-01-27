@@ -1,5 +1,6 @@
 // @ts-check
 const { defineConfig } = require('@playwright/test');
+require('dotenv').config({ path: __dirname + '/.env' });
 
 /**
  * Playwright config for connecting to existing browser via CDP.
@@ -8,7 +9,7 @@ const { defineConfig } = require('@playwright/test');
  * Then log into Confluence manually before running tests.
  *
  * Environment variables:
- * - CONFLUENCE_URL: Base URL (e.g., https://your-instance.atlassian.net/wiki)
+ * - CONFLUENCE_HOST: Confluence host (e.g., your-instance.atlassian.net)
  * - TEST_SPACE: Space key for test pages (default: TEST)
  * - CDP_ENDPOINT: Chrome DevTools Protocol endpoint (default: http://localhost:9222)
  */
@@ -19,11 +20,8 @@ module.exports = defineConfig({
   workers: 1,               // Sequential - we reuse single browser
 
   use: {
-    // Connect to existing browser via CDP
-    connectOverCDP: process.env.CDP_ENDPOINT || 'http://localhost:9222',
-
-    // Base URL for Confluence instance
-    baseURL: process.env.CONFLUENCE_URL,
+    // Base URL for Confluence instance (constructed from host)
+    baseURL: process.env.CONFLUENCE_HOST ? `https://${process.env.CONFLUENCE_HOST}/wiki` : undefined,
 
     // Trace and screenshot on failure for debugging
     trace: 'retain-on-failure',

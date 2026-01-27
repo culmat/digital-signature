@@ -6,10 +6,12 @@
   "private": true,
   "scripts": {
     "lint": "eslint src/**/*",
-    "test:e2e": "playwright test --config=e2e/playwright.config.js"
+    "test:e2e": "npx playwright test --config=e2e/playwright.config.js",
+    "test:e2e:browser": "node e2e/scripts/launch-browser.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
+    "dotenv": "^16.3.0",
     "eslint": "^9.37.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.0.0"
