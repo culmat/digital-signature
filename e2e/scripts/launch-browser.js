@@ -31,6 +31,8 @@ console.log(`\nLog into Confluence, then run: npm run test:e2e\n`);
 const child = spawn('chromium', [
   `--remote-debugging-port=${CDP_PORT}`,
   `--user-data-dir=${userDataDir}`,
+  '--ignore-certificate-errors',
+  '--test-type',  // Suppress warning banner about unsupported flags
   url,
 ], {
   detached: true,

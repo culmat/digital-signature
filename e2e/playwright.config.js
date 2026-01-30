@@ -23,6 +23,9 @@ module.exports = defineConfig({
     // Base URL for Confluence instance (constructed from host)
     baseURL: process.env.CONFLUENCE_HOST ? `https://${process.env.CONFLUENCE_HOST}/wiki` : undefined,
 
+    // Ignore SSL certificate errors (for corporate proxies like Zscaler)
+    ignoreHTTPSErrors: true,
+
     // Trace and screenshot on failure for debugging
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
