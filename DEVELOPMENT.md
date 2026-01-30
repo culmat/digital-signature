@@ -49,6 +49,35 @@ if ! grep -q "global-agent/bootstrap" "$FORGE_CLI"; then
 fi
 ```
 
+- Configure forge credentials (required in WSL/headless environments):
+
+By default, forge uses the system keychain (gnome-keyring) to store credentials. In environments without a desktop (WSL, containers, headless servers), use environment variables instead:
+
+1. Get an API token from https://id.atlassian.com/manage-profile/security/api-tokens
+2. Set the credentials:
+
+```
+export FORGE_EMAIL=your-email@example.com
+export FORGE_API_TOKEN=your-api-token
+echo 'export FORGE_EMAIL=your-email@example.com' >> ~/.profile
+echo 'export FORGE_API_TOKEN=your-api-token' >> ~/.profile
+```
+
+- Install cloudflared (required for `forge tunnel`):
+
+If you encounter 
+
+```
+Error: Please check for any network restrictions that may be blocking the cloudflared package installation, and then reinstall the Forge CLI.
+```
+
+fix by installing:
+
+```
+curl -L --output /tmp/cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i /tmp/cloudflared.deb
+```
+
 - Install top-level dependencies:
 
 ```
