@@ -5,7 +5,17 @@
  * The SQL format matches the backup format from backupManager.js.
  */
 
+const { randomUUID } = require('crypto');
 const { computeMacroHash } = require('../helpers/hash');
+const { getAppId, getMacroKey } = require('../helpers/manifest');
+
+// Load env for FORGE_ENV_ID
+require('dotenv').config({ path: __dirname + '/../.env' });
+
+// App and macro identifiers parsed from manifest.yml
+const APP_ID = getAppId();
+const MACRO_KEY = getMacroKey();
+const FORGE_ENV_ID = process.env.FORGE_ENV_ID || 'fd9d205a-7091-4573-9f6f-2cbd40db6961';
 
 /**
  * Sample contract text (plain text for storage format).
@@ -40,12 +50,7 @@ const SAMPLE_CONTRACT_ADF = {
  * @returns {string}
  */
 function generateRandomAccountId() {
-  const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-  return `557058:${uuid}`;
+  return `557058:${randomUUID()}`;
 }
 
 /**
@@ -93,10 +98,37 @@ ON DUPLICATE KEY UPDATE
 `;
 }
 
+/**
+ * Generate Confluence storage format for a page with the Digital Signature macro.
+ *
+ * This generates the <ac:adf-extension> format used by Forge macros in Confluence.
+ *
+ * @param {string} bodyText - Plain text content for inside the macro body
+ * @param {object} [config] - Optional macro configuration
+ * @param {string} [config.panelTitle='Test Contract'] - Panel title
+ * @param {string[]} [config.signers=[]] - Array of account IDs
+ * @returns {string} Storage format XML
+ */
+function generateMacroStorageFormat(bodyText, config = {}) {
+  const { panelTitle = 'Test Contract', signers = [] } = config;
+  const localId = randomUUID();
+  const extensionKey = `${APP_ID}/${FORGE_ENV_ID}/static/${MACRO_KEY}`;
+  const extensionId = `ari:cloud:ecosystem::extension/${extensionKey}`;
+
+  // Build signers parameter values
+  const signersParams = signers.length > 0
+    ? signers.map(s => `<ac:adf-parameter-value>${s}</ac:adf-parameter-value>`).join('')
+    : '<ac:adf-parameter-value />';
+
+  return `<ac:adf-extension><ac:adf-node type="bodied-extension"><ac:adf-attribute key="extension-key">${extensionKey}</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="parameters"><ac:adf-parameter key="local-id">${localId}</ac:adf-parameter><ac:adf-parameter key="extension-id">${extensionId}</ac:adf-parameter><ac:adf-parameter key="extension-title">digital-signature (Development)</ac:adf-parameter><ac:adf-parameter key="layout">bodiedExtension</ac:adf-parameter><ac:adf-parameter key="forge-environment">DEVELOPMENT</ac:adf-parameter><ac:adf-parameter key="render">native</ac:adf-parameter><ac:adf-parameter key="guest-params"><ac:adf-parameter key="panel-title">${panelTitle}</ac:adf-parameter><ac:adf-parameter key="signers">${signersParams}</ac:adf-parameter><ac:adf-parameter key="signer-groups"><ac:adf-parameter-value /></ac:adf-parameter><ac:adf-parameter key="inherit-viewers" type="boolean">false</ac:adf-parameter><ac:adf-parameter key="inherit-editors" type="boolean">false</ac:adf-parameter></ac:adf-parameter></ac:adf-attribute><ac:adf-attribute key="text">digital-signature (Development)</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">${localId}</ac:adf-attribute><ac:adf-content>
+<p local-id="${randomUUID()}">${bodyText}</p></ac:adf-content></ac:adf-node></ac:adf-extension>`;
+}
+
 module.exports = {
   SAMPLE_CONTRACT_TEXT,
   SAMPLE_CONTRACT_ADF,
   generateRandomAccountId,
   generateFixtureWithOneSignature,
   formatTimestamp,
+  generateMacroStorageFormat,
 };

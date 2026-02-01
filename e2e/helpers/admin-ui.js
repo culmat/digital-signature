@@ -4,9 +4,10 @@
  */
 
 const { expect } = require('@playwright/test');
+const { getAppId } = require('./manifest');
 
-// App ID from manifest.yml
-const APP_UUID = 'bab5617e-dc42-4ca8-ad38-947c826fe58c';
+// App ID parsed from manifest.yml
+const APP_UUID = getAppId();
 // Environment ID is installation-specific - must be configured
 const ENV_ID = process.env.FORGE_ENV_ID;
 const ADMIN_PATH = `/wiki/admin/forge/apps/${APP_UUID}/${ENV_ID}/digital-signature-admin-settings`;
