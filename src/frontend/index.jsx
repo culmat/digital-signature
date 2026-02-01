@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo, useReducer } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, AdfRenderer, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge } from '@forge/react';
+import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
+import { MarkdownContent } from './markdown/renderToReact';
 
 const Signatures = ({ signatures, preFix, formatDate }) => {
   return (
@@ -36,7 +38,6 @@ const SignatureUser = ({ accountId, date }) => {
   );
 };
 import { invoke, view } from '@forge/bridge';
-import { checkForDynamicContent, validateTextContent } from './utils/adfValidator';
 import { signDocument, getSignatures, checkAuthorization } from './utils/signatureClient';
 
 const DEFAULT_LOCALE = 'en-GB';
@@ -71,16 +72,12 @@ function authReducer(state, action) {
 
 function useContentContext(context) {
   const pageId = context?.extension?.content?.id;
-  const pageTitle = context?.extension?.content?.title;
-  const macroBody = context?.extension?.macro?.body;
   const spaceKey = context?.extension?.space?.key;
-  
+
   return useMemo(() => ({
     pageId,
-    pageTitle: pageTitle || '',
-    macroBody,
     spaceKey,
-  }), [pageId, pageTitle, macroBody, spaceKey]);
+  }), [pageId, spaceKey]);
 }
 
 const App = () => {
@@ -107,19 +104,17 @@ const App = () => {
 
   const config = useConfig();
   const context = useProductContext();
-  const { pageId, pageTitle, macroBody } = useContentContext(context);
-  
+  const { pageId } = useContentContext(context);
+
   const panelTitle = config?.panelTitle || '';
+  const content = config?.content || '';
   const configuredSigners = config?.signers || [];
-  
-  // Check for dynamic content in the macro body
-  const dynamicContentWarning = macroBody ? checkForDynamicContent(macroBody) : null;
-  
-  // Check for insufficient text content
-  const textContentWarning = macroBody ? validateTextContent(macroBody) : null;
-  
-  // Combined validation - check dynamic content first, then text content
-  const validationWarning = dynamicContentWarning || textContentWarning;
+
+  // Parse markdown content to AST for rendering
+  const ast = useMemo(() => parseAndSanitize(content), [content]);
+
+  // Validate content
+  const validationWarning = validateMarkdownContent(content);
   
   // Styles for the container box with elevation
   const containerStyles = xcss({
@@ -163,18 +158,18 @@ const App = () => {
     fetchUser();
   }, []);
 
-  // Load signatures on mount and whenever macro body changes
+  // Load signatures on mount and whenever content changes
   useEffect(() => {
     const loadSignatures = async () => {
       // Only load if we have valid content (passed validation)
-      if (!macroBody || validationWarning) {
+      if (!content || validationWarning) {
         dispatchSignature({ type: 'SET_LOADING', payload: false });
         return;
       }
 
       try {
         dispatchSignature({ type: 'SET_LOADING', payload: true });
-        
+
         if (!pageId) {
           console.error('No page ID found in context');
           dispatchSignature({ type: 'SET_LOADING', payload: false });
@@ -185,8 +180,8 @@ const App = () => {
         const result = await getSignatures(
           invoke,
           pageId,
-          pageTitle,
-          macroBody
+          panelTitle,
+          content
         );
 
         if (result.success) {
@@ -203,11 +198,11 @@ const App = () => {
     };
 
     loadSignatures();
-  }, [macroBody, pageId, pageTitle, validationWarning]);
+  }, [content, pageId, panelTitle, validationWarning]);
 
   useEffect(() => {
     const checkAuth = async () => {
-      if (!macroBody || validationWarning || !userState.accountId || !pageId) {
+      if (!content || validationWarning || !userState.accountId || !pageId) {
         dispatchAuth({ type: 'CLEAR_STATUS' });
         return;
       }
@@ -218,13 +213,13 @@ const App = () => {
         const result = await checkAuthorization(
           invoke,
           pageId,
-          pageTitle,
-          macroBody
+          panelTitle,
+          content
         );
 
         if (result.success) {
-          dispatchAuth({ 
-            type: 'SET_STATUS', 
+          dispatchAuth({
+            type: 'SET_STATUS',
             payload: {
               allowed: result.allowed,
               reason: result.reason
@@ -241,13 +236,13 @@ const App = () => {
     };
 
     checkAuth();
-  }, [signatureState.entity, macroBody, pageTitle, userState.accountId, pageId, validationWarning]);
+  }, [signatureState.entity, content, panelTitle, userState.accountId, pageId, validationWarning]);
 
   const handleSign = async () => {
     try {
       setUIState(prev => ({ ...prev, isSigning: true, actionError: null }));
 
-      if (!pageId || !macroBody) {
+      if (!pageId || !content) {
         setUIState(prev => ({ ...prev, isSigning: false, actionError: 'Missing required data for signing' }));
         return;
       }
@@ -256,18 +251,18 @@ const App = () => {
       const result = await signDocument(
         invoke,
         pageId,
-        pageTitle,
-        macroBody
+        panelTitle,
+        content
       );
 
       if (result.success) {
         dispatchSignature({ type: 'UPDATE_AFTER_SIGN', payload: result.signature });
         console.log(result.message);
 
-        const authResult = await checkAuthorization(invoke, pageId, pageTitle, macroBody);
+        const authResult = await checkAuthorization(invoke, pageId, panelTitle, content);
         if (authResult.success) {
-          dispatchAuth({ 
-            type: 'SET_STATUS', 
+          dispatchAuth({
+            type: 'SET_STATUS',
             payload: {
               allowed: authResult.allowed,
               reason: authResult.reason
@@ -324,10 +319,10 @@ const App = () => {
   const pendingSignatures = calculatePendingSignatures();
   const hasPendingSignatures = pendingSignatures.length > 0;
 
-  // If validation fails (dynamic content or insufficient text), show warning instead of the macro
+  // If validation fails (insufficient content), show warning instead of the macro
   if (validationWarning) {
     return (
-      <SectionMessage 
+      <SectionMessage
         appearance="warning"
         title="Cannot Use for Digital Signatures"
       >
@@ -338,17 +333,10 @@ const App = () => {
           <Text>
             {validationWarning.message}
           </Text>
-          {validationWarning.type === 'insufficient-content' ? (
-            <Text>
-              Please add the complete contract text within the macro body. The contract must be fully contained 
-              in this macro and not reference content elsewhere on the page.
-            </Text>
-          ) : (
-            <Text>
-              For a legally binding digital signature, the document content must be static and unchangeable. 
-              Please remove the highlighted content from the macro body.
-            </Text>
-          )}
+          <Text>
+            Please add the complete contract text in the macro configuration. The contract must be fully
+            contained in this macro.
+          </Text>
         </Stack>
       </SectionMessage>
     );
@@ -368,12 +356,12 @@ const App = () => {
       {/* Panel Content */}
       <Box xcss={contentWrapperStyles}>
         <Stack space="space.200">
-          {/* Render the macro body content if it exists */}
-          {macroBody ? (
-            <AdfRenderer document={macroBody} />
+          {/* Render the markdown content if it exists */}
+          {content ? (
+            <MarkdownContent ast={ast} />
           ) : (
             <Text>
-              No content added yet. Edit the macro and add content in the body.
+              No content added yet. Edit the macro configuration and add content.
             </Text>
           )}
           
@@ -399,12 +387,12 @@ const App = () => {
               )}
 
               {/* Sign button - show only if authorized */}
-              {macroBody && userState.accountId && authState.status?.allowed && (
+              {content && userState.accountId && authState.status?.allowed && (
                 <Button
                   onClick={handleSign}
                   isDisabled={uiState.isSigning || authState.isChecking}
                   appearance="primary"
-                  >
+                >
                   {uiState.isSigning ? 'Signing...' : 'Sign'}
                 </Button>
               )}

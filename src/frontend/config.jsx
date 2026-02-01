@@ -29,7 +29,10 @@ const useSubmit = () => {
 const Config = () => {
   // Panel title state
   const [panelTitle, setPanelTitle] = useState('');
-  
+
+  // Contract content state (markdown)
+  const [content, setContent] = useState('');
+
   // Signer restriction states
   const [signers, setSigners] = useState([]);
   const [signerGroups, setSignerGroups] = useState('');
@@ -43,7 +46,8 @@ const Config = () => {
   // Initialize form fields from existing config
   useEffect(() => {
     setPanelTitle(config?.panelTitle || '');
-    
+    setContent(config?.content || '');
+
     // Extract account IDs from signers (config stores full user objects)
     // UserPicker value should be array of strings (account IDs)
     const signerIds = (config?.signers || []).map(signer => 
@@ -91,6 +95,7 @@ const Config = () => {
     
     submit({
       panelTitle,
+      content,
       signers: signerIds,
       signerGroups: groupIds,
       inheritViewers,
@@ -107,13 +112,24 @@ const Config = () => {
 
       {/* Contract Title */}
       <Label labelFor="panelTitle">Contract Title</Label>
-      <Textfield 
-        id="panelTitle" 
-        value={panelTitle} 
+      <Textfield
+        id="panelTitle"
+        value={panelTitle}
         onChange={(e) => setPanelTitle(e.target.value)}
       />
       <Text>Is part of the contract. Changes remove signatures.</Text>
-      
+
+      {/* Contract Content (Markdown) */}
+      <Label labelFor="content">Contract Content</Label>
+      <TextArea
+        id="content"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Enter contract text here.&#10;&#10;Supports basic Markdown:&#10;# Heading&#10;**bold** *italic*&#10;- list items&#10;> blockquote&#10;```code```"
+        rows={15}
+      />
+      <Text>Plain text or limited Markdown. This is the contract content that will be signed. Changes remove signatures.</Text>
+
       {/* Named Signers */}
       <Label labelFor="signers">Signers</Label>
       <UserPicker

@@ -6,12 +6,14 @@ modules:
       resolver:
         function: resolver
       title: digital-signature
-      layout: bodied
       config:
         resource: macro-config
         viewportSize: max
         render: native
         title: Digital Signature
+      export:
+        adfExport:
+          function: adfExportFunction
   confluence:globalSettings:
     - key: digital-signature-admin-settings
       title: Digital Signature Admin
@@ -22,6 +24,8 @@ modules:
   function:
     - key: resolver
       handler: index.handler
+    - key: adfExportFunction
+      handler: adfExport.handler
   sql:
     - key: db
       engine: mysql

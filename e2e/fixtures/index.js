@@ -6,7 +6,7 @@
  */
 
 const { randomUUID } = require('crypto');
-const { computeMacroHash } = require('../helpers/hash');
+const { computeConfigHash } = require('../helpers/hash');
 const { getAppId, getMacroKey } = require('../helpers/manifest');
 
 // Load env for FORGE_ENV_ID
@@ -18,30 +18,9 @@ const MACRO_KEY = getMacroKey();
 const FORGE_ENV_ID = process.env.FORGE_ENV_ID || 'fd9d205a-7091-4573-9f6f-2cbd40db6961';
 
 /**
- * Sample contract text (plain text for storage format).
+ * Sample contract text (markdown content for config).
  */
 const SAMPLE_CONTRACT_TEXT = 'I hereby agree to the terms and conditions of this test contract.';
-
-/**
- * Sample ADF for a simple contract text.
- * This is the content INSIDE the macro body (what the frontend sees).
- * This must match the ADF that Confluence generates from the storage format.
- */
-const SAMPLE_CONTRACT_ADF = {
-  type: 'doc',
-  version: 1,
-  content: [
-    {
-      type: 'paragraph',
-      content: [
-        {
-          type: 'text',
-          text: SAMPLE_CONTRACT_TEXT,
-        },
-      ],
-    },
-  ],
-};
 
 /**
  * Generate a random Atlassian account ID.
@@ -67,14 +46,15 @@ function formatTimestamp(date) {
  * Generate fixture SQL for a contract with one existing signature.
  *
  * @param {string} pageId - The Confluence page ID
- * @param {string} pageTitle - The page title
  * @param {string} signerAccountId - Account ID of the existing signer
- * @param {object} [macroBody] - ADF content inside the macro (default: SAMPLE_CONTRACT_ADF)
+ * @param {object} [config] - Macro configuration
+ * @param {string} [config.panelTitle] - Contract title
+ * @param {string} [config.content] - Raw markdown content
  * @returns {string} SQL INSERT statements
  */
-function generateFixtureWithOneSignature(pageId, pageTitle, signerAccountId, macroBody = SAMPLE_CONTRACT_ADF) {
-  const bodyJson = JSON.stringify(macroBody);
-  const hash = computeMacroHash(pageId, pageTitle, macroBody);
+function generateFixtureWithOneSignature(pageId, signerAccountId, config = {}) {
+  const { panelTitle = 'Test Contract', content = SAMPLE_CONTRACT_TEXT } = config;
+  const hash = computeConfigHash(pageId, { panelTitle, content });
 
   // Timestamps
   const createdAt = formatTimestamp(new Date(Date.now() - 7200000)); // 2 hours ago
@@ -82,7 +62,7 @@ function generateFixtureWithOneSignature(pageId, pageTitle, signerAccountId, mac
 
   return `-- Test fixture: Contract with one signature
 -- Hash: ${hash}
--- Page: ${pageId} - ${pageTitle}
+-- Page: ${pageId} - ${panelTitle}
 
 INSERT INTO contract (hash, pageId, createdAt, deletedAt) VALUES
 ('${hash}', ${pageId}, '${createdAt}', NULL)
@@ -102,15 +82,16 @@ ON DUPLICATE KEY UPDATE
  * Generate Confluence storage format for a page with the Digital Signature macro.
  *
  * This generates the <ac:adf-extension> format used by Forge macros in Confluence.
+ * The macro is now config-based (not bodied), so content is stored in guest-params.
  *
- * @param {string} bodyText - Plain text content for inside the macro body
- * @param {object} [config] - Optional macro configuration
+ * @param {object} [config] - Macro configuration
  * @param {string} [config.panelTitle='Test Contract'] - Panel title
+ * @param {string} [config.content=''] - Markdown content
  * @param {string[]} [config.signers=[]] - Array of account IDs
  * @returns {string} Storage format XML
  */
-function generateMacroStorageFormat(bodyText, config = {}) {
-  const { panelTitle = 'Test Contract', signers = [] } = config;
+function generateMacroStorageFormat(config = {}) {
+  const { panelTitle = 'Test Contract', content = '', signers = [] } = config;
   const localId = randomUUID();
   const extensionKey = `${APP_ID}/${FORGE_ENV_ID}/static/${MACRO_KEY}`;
   const extensionId = `ari:cloud:ecosystem::extension/${extensionKey}`;
@@ -120,13 +101,17 @@ function generateMacroStorageFormat(bodyText, config = {}) {
     ? signers.map(s => `<ac:adf-parameter-value>${s}</ac:adf-parameter-value>`).join('')
     : '<ac:adf-parameter-value />';
 
-  return `<ac:adf-extension><ac:adf-node type="bodied-extension"><ac:adf-attribute key="extension-key">${extensionKey}</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="parameters"><ac:adf-parameter key="local-id">${localId}</ac:adf-parameter><ac:adf-parameter key="extension-id">${extensionId}</ac:adf-parameter><ac:adf-parameter key="extension-title">digital-signature (Development)</ac:adf-parameter><ac:adf-parameter key="layout">bodiedExtension</ac:adf-parameter><ac:adf-parameter key="forge-environment">DEVELOPMENT</ac:adf-parameter><ac:adf-parameter key="render">native</ac:adf-parameter><ac:adf-parameter key="guest-params"><ac:adf-parameter key="panel-title">${panelTitle}</ac:adf-parameter><ac:adf-parameter key="signers">${signersParams}</ac:adf-parameter><ac:adf-parameter key="signer-groups"><ac:adf-parameter-value /></ac:adf-parameter><ac:adf-parameter key="inherit-viewers" type="boolean">false</ac:adf-parameter><ac:adf-parameter key="inherit-editors" type="boolean">false</ac:adf-parameter></ac:adf-parameter></ac:adf-attribute><ac:adf-attribute key="text">digital-signature (Development)</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">${localId}</ac:adf-attribute><ac:adf-content>
-<p local-id="${randomUUID()}">${bodyText}</p></ac:adf-content></ac:adf-node></ac:adf-extension>`;
+  // Escape content for XML
+  const escapedContent = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return `<ac:adf-extension><ac:adf-node type="extension"><ac:adf-attribute key="extension-key">${extensionKey}</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="parameters"><ac:adf-parameter key="local-id">${localId}</ac:adf-parameter><ac:adf-parameter key="extension-id">${extensionId}</ac:adf-parameter><ac:adf-parameter key="extension-title">digital-signature (Development)</ac:adf-parameter><ac:adf-parameter key="forge-environment">DEVELOPMENT</ac:adf-parameter><ac:adf-parameter key="render">native</ac:adf-parameter><ac:adf-parameter key="guest-params"><ac:adf-parameter key="panel-title">${panelTitle}</ac:adf-parameter><ac:adf-parameter key="content">${escapedContent}</ac:adf-parameter><ac:adf-parameter key="signers">${signersParams}</ac:adf-parameter><ac:adf-parameter key="signer-groups"><ac:adf-parameter-value /></ac:adf-parameter><ac:adf-parameter key="inherit-viewers" type="boolean">false</ac:adf-parameter><ac:adf-parameter key="inherit-editors" type="boolean">false</ac:adf-parameter></ac:adf-parameter></ac:adf-attribute><ac:adf-attribute key="text">digital-signature (Development)</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">${localId}</ac:adf-attribute></ac:adf-node></ac:adf-extension>`;
 }
 
 module.exports = {
   SAMPLE_CONTRACT_TEXT,
-  SAMPLE_CONTRACT_ADF,
   generateRandomAccountId,
   generateFixtureWithOneSignature,
   formatTimestamp,
