@@ -19,6 +19,12 @@ module.exports = defineConfig({
   retries: 0,               // No retries - dev machine only
   workers: 1,               // Sequential - we reuse single browser
 
+  // Use both the default list reporter and our custom AUI flag reporter
+  reporter: [
+    ['list'],
+    ['./reporters/aui-flag-reporter.js'],
+  ],
+
   use: {
     // Base URL for Confluence instance (constructed from host)
     baseURL: process.env.CONFLUENCE_HOST ? `https://${process.env.CONFLUENCE_HOST}/wiki` : undefined,
