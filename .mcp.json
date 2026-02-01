@@ -7,6 +7,10 @@
     "forge": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.atlassian.com/v1/forge/mcp"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
     }
   }
 }
