@@ -126,7 +126,9 @@ const Config = () => {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Enter contract text here.&#10;&#10;Supports basic Markdown:&#10;# Heading&#10;**bold** *italic*&#10;- list items&#10;> blockquote&#10;```code```"
-        rows={15}
+        minimumRows={15}
+        resize="vertical"
+        isMonospaced={true}
       />
       <Text>Plain text or limited Markdown. This is the contract content that will be signed. Changes remove signatures.</Text>
 
