@@ -11,9 +11,8 @@ modules:
         viewportSize: max
         render: native
         title: Digital Signature
-      export:
-        adfExport:
-          function: adfExportFunction
+      adfExport:
+        function: adfExportFunction
   confluence:globalSettings:
     - key: digital-signature-admin-settings
       title: Digital Signature Admin
