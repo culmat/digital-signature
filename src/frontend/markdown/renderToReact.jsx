@@ -6,30 +6,7 @@
  */
 
 import React from 'react';
-import { Box, Heading, Text, Strong, Stack, xcss } from '@forge/react';
-
-/**
- * Styles for code blocks.
- */
-const codeBlockStyles = xcss({
-    backgroundColor: 'color.background.neutral',
-    padding: 'space.100',
-    borderRadius: 'border.radius',
-    fontFamily: 'monospace',
-    whiteSpace: 'pre-wrap',
-    overflowX: 'auto',
-});
-
-/**
- * Styles for inline code.
- */
-const inlineCodeStyles = {
-    backgroundColor: '#f4f5f7',
-    padding: '2px 4px',
-    borderRadius: '3px',
-    fontFamily: 'monospace',
-    fontSize: '0.9em',
-};
+import { Box, Heading, Text, Strong, Em, Strike, Code, CodeBlock, List, ListItem, Stack, xcss } from '@forge/react';
 
 /**
  * Styles for blockquotes.
@@ -43,14 +20,13 @@ const blockquoteStyles = xcss({
     color: 'color.text.subtlest',
 });
 
-/**
- * Styles for horizontal rules.
- */
-const hrStyles = {
-    border: 'none',
-    borderTop: '1px solid #ddd',
-    margin: '16px 0',
-};
+const hrStyles = xcss({
+    borderTopWidth: 'border.width',
+    borderTopStyle: 'solid',
+    borderTopColor: 'color.border',
+    marginTop: 'space.200',
+    marginBottom: 'space.200',
+});
 
 /**
  * Maps heading depth to Atlassian Heading size.
@@ -87,27 +63,23 @@ function renderInline(node, index) {
 
         case 'emphasis':
             return (
-                <em key={index}>
+                <Em key={index}>
                     {node.children?.map((child, i) => renderInline(child, i))}
-                </em>
+                </Em>
             );
 
         case 'delete':
             return (
-                <del key={index}>
+                <Strike key={index}>
                     {node.children?.map((child, i) => renderInline(child, i))}
-                </del>
+                </Strike>
             );
 
         case 'inlineCode':
-            return (
-                <code key={index} style={inlineCodeStyles}>
-                    {node.value}
-                </code>
-            );
+            return <Code key={index}>{node.value}</Code>;
 
         case 'break':
-            return <br key={index} />;
+            return <Text key={index}>{'\n'}</Text>;
 
         default:
             // Fallback: render as text if has value, or render children
@@ -155,38 +127,35 @@ function renderBlock(node, index) {
 
         case 'code':
             return (
-                <Box key={index} xcss={codeBlockStyles}>
-                    <Text>
-                        <code>{node.value}</code>
-                    </Text>
-                </Box>
+                <CodeBlock
+                    key={index}
+                    text={node.value}
+                    language={node.lang || 'text'}
+                    showLineNumbers={false}
+                />
             );
 
-        case 'list': {
-            const ListTag = node.ordered ? 'ol' : 'ul';
+        case 'list':
             return (
-                <ListTag key={index} style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px' }}>
+                <List key={index} type={node.ordered ? 'ordered' : 'unordered'}>
                     {node.children?.map((child, i) => renderBlock(child, i))}
-                </ListTag>
+                </List>
             );
-        }
 
         case 'listItem':
             return (
-                <li key={index} style={{ marginBottom: '4px' }}>
+                <ListItem key={index}>
                     {node.children?.map((child, i) => {
-                        // List items can contain paragraphs or other blocks
                         if (child.type === 'paragraph') {
-                            // Render paragraph content directly without wrapping Text
                             return child.children?.map((c, j) => renderInline(c, j));
                         }
                         return renderBlock(child, i);
                     })}
-                </li>
+                </ListItem>
             );
 
         case 'thematicBreak':
-            return <hr key={index} style={hrStyles} />;
+            return <Box key={index} xcss={hrStyles} />;
 
         default:
             // Fallback: try to render as paragraph with text content
