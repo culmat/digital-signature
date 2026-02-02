@@ -19,6 +19,21 @@ const BASE_URL = process.env.CONFLUENCE_HOST
 const ADMIN_URL = `${BASE_URL}${ADMIN_PATH}`;
 
 /**
+ * Dismiss any blocking dialogs (e.g., Confluence promotion dialogs).
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function dismissDialogs(page) {
+  // Check for common Confluence dialogs and dismiss them
+  const okButton = page.getByRole('dialog').getByRole('button', { name: 'OK' });
+  if (await okButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await okButton.click();
+    // Wait for dialog to disappear
+    await page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  }
+}
+
+/**
  * Navigate to the Digital Signature admin page.
  *
  * @param {import('@playwright/test').Page} page
@@ -30,6 +45,9 @@ async function navigateToAdmin(page) {
   await expect(page.getByText('Database Statistics')).toBeVisible({
     timeout: 30000,
   });
+
+  // Dismiss any blocking dialogs
+  await dismissDialogs(page);
 }
 
 /**

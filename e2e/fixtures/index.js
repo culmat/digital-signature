@@ -79,6 +79,50 @@ ON DUPLICATE KEY UPDATE
 }
 
 /**
+ * Generate fixture SQL for a contract with multiple signatures.
+ * Useful for testing scenarios with multiple signers (e.g., offboarded users).
+ *
+ * @param {string} pageId - The Confluence page ID
+ * @param {string[]} signerAccountIds - Array of account IDs
+ * @param {object} [config] - Macro configuration
+ * @param {string} [config.panelTitle] - Contract title
+ * @param {string} [config.content] - Raw markdown content
+ * @returns {string} SQL INSERT statements
+ */
+function generateFixtureWithMultipleSignatures(pageId, signerAccountIds, config = {}) {
+  const { panelTitle = 'Test Contract', content = SAMPLE_CONTRACT_TEXT } = config;
+  const hash = computeConfigHash(pageId, { panelTitle, content });
+
+  const createdAt = formatTimestamp(new Date(Date.now() - 7200000)); // 2 hours ago
+
+  // Contract INSERT
+  let sql = `-- Test fixture: Contract with ${signerAccountIds.length} signatures
+-- Hash: ${hash}
+-- Page: ${pageId} - ${panelTitle}
+
+INSERT INTO contract (hash, pageId, createdAt, deletedAt) VALUES
+('${hash}', ${pageId}, '${createdAt}', NULL)
+ON DUPLICATE KEY UPDATE
+  pageId = VALUES(pageId),
+  createdAt = LEAST(createdAt, VALUES(createdAt)),
+  deletedAt = COALESCE(VALUES(deletedAt), deletedAt);
+
+`;
+
+  // Signature INSERTs (staggered timestamps, 1 minute apart)
+  signerAccountIds.forEach((accountId, index) => {
+    const signedAt = formatTimestamp(new Date(Date.now() - 3600000 + (index * 60000)));
+    sql += `INSERT INTO signature (contractHash, accountId, signedAt) VALUES
+('${hash}', '${accountId}', '${signedAt}')
+ON DUPLICATE KEY UPDATE signedAt = LEAST(signedAt, VALUES(signedAt));
+
+`;
+  });
+
+  return sql;
+}
+
+/**
  * Generate Confluence storage format for a page with the Digital Signature macro.
  *
  * This generates the <ac:adf-extension> format used by Forge macros in Confluence.
@@ -114,6 +158,7 @@ module.exports = {
   SAMPLE_CONTRACT_TEXT,
   generateRandomAccountId,
   generateFixtureWithOneSignature,
+  generateFixtureWithMultipleSignatures,
   formatTimestamp,
   generateMacroStorageFormat,
 };
