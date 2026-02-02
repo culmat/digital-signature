@@ -116,8 +116,40 @@ async function deleteTestPage(page, pageId) {
   }
 }
 
+/**
+ * Permanently delete (purge) a page from trash.
+ * Uses v2 API with purge=true parameter.
+ *
+ * @param {import('@playwright/test').Page} page - Playwright page
+ * @param {string} pageId - Page ID to purge
+ */
+async function purgeTestPage(page, pageId) {
+  const { baseUrl, auth } = getCredentials();
+
+  try {
+    await page.evaluate(
+      async ({ baseUrl, auth, pageId }) => {
+        const response = await fetch(`${baseUrl}/api/v2/pages/${pageId}?purge=true`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+          },
+        });
+
+        if (!response.ok && response.status !== 404) {
+          console.warn(`Failed to purge page ${pageId}: ${response.status}`);
+        }
+      },
+      { baseUrl, auth, pageId }
+    );
+  } catch (error) {
+    console.warn(`Failed to purge page ${pageId}:`, error.message);
+  }
+}
+
 module.exports = {
   getCredentials,
   createTestPage,
   deleteTestPage,
+  purgeTestPage,
 };

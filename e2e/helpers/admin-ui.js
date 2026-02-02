@@ -86,4 +86,31 @@ async function setupFixtures(page, sqlData) {
   await restoreFixtures(page, sqlData);
 }
 
-module.exports = { navigateToAdmin, restoreFixtures, setupFixtures, ADMIN_PATH };
+/**
+ * Read statistics from the admin page.
+ * Navigates to admin and parses the DynamicTable values.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{activeContracts: number, deletedContracts: number, totalSignatures: number}>}
+ */
+async function getStatistics(page) {
+  await navigateToAdmin(page);
+
+  // Wait for statistics table to load (table has rows with metric names)
+  await expect(page.getByText('Active Contracts')).toBeVisible({ timeout: 10000 });
+
+  // Parse values from DynamicTable rows
+  // Each row has: [Metric name cell, Value cell]
+  const activeContractsRow = page.locator('tr', { has: page.getByText('Active Contracts', { exact: true }) });
+  const deletedContractsRow = page.locator('tr', { has: page.getByText('Deleted Contracts', { exact: true }) });
+  const totalSignaturesRow = page.locator('tr', { has: page.getByText('Total Signatures', { exact: true }) });
+
+  // Get the value from the second cell of each row
+  const activeContracts = parseInt(await activeContractsRow.locator('td').nth(1).textContent(), 10);
+  const deletedContracts = parseInt(await deletedContractsRow.locator('td').nth(1).textContent(), 10);
+  const totalSignatures = parseInt(await totalSignaturesRow.locator('td').nth(1).textContent(), 10);
+
+  return { activeContracts, deletedContracts, totalSignatures };
+}
+
+module.exports = { navigateToAdmin, restoreFixtures, setupFixtures, getStatistics, ADMIN_PATH };

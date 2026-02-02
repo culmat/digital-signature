@@ -183,6 +183,46 @@ export async function cleanup(retentionDays) {
 }
 
 /**
+ * Permanently deletes all contracts and signatures for a given page (hard delete).
+ *
+ * Called when a Confluence page is permanently deleted (purged from trash).
+ * Removes signatures first to maintain referential integrity.
+ *
+ * @param {string} pageId - Confluence page ID
+ * @returns {Promise<number>} Number of contracts permanently deleted
+ */
+export async function hardDelete(pageId) {
+  if (!pageId) {
+    throw new Error('pageId is required');
+  }
+
+  try {
+    // Step 1: Delete signatures first (manual cascade for referential integrity)
+    const signatureResult = await sql.prepare(`
+      DELETE s FROM signature s
+      INNER JOIN contract c ON s.contractHash = c.hash
+      WHERE c.pageId = ?
+    `).bindParams(pageId).execute();
+
+    const signaturesDeleted = signatureResult.affectedRows || 0;
+    console.log(`Hard deleted ${signaturesDeleted} signatures for pageId ${pageId}`);
+
+    // Step 2: Delete contracts
+    const contractResult = await sql.prepare(`
+      DELETE FROM contract WHERE pageId = ?
+    `).bindParams(pageId).execute();
+
+    const contractsDeleted = contractResult.affectedRows || 0;
+    console.log(`Hard deleted ${contractsDeleted} contracts for pageId ${pageId}`);
+
+    return contractsDeleted;
+  } catch (error) {
+    console.error(`Error hard deleting for pageId ${pageId}:`, error);
+    throw new Error(`Failed to hard delete signatures: ${error.message}`);
+  }
+}
+
+/**
  * Transforms SQL query results into a SignatureEntity
  *
  * @param {Array<Object>} rows - SQL query results from contract LEFT JOIN signature

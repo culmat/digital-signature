@@ -20,11 +20,19 @@ modules:
       render: native
       resolver:
         function: resolver
+  trigger:
+    - key: page-lifecycle-trigger
+      function: pageLifecycleHandler
+      events:
+        - avi:confluence:trashed:page
+        - avi:confluence:deleted:page
   function:
     - key: resolver
       handler: index.handler
     - key: adfExportFunction
       handler: adfExport.handler
+    - key: pageLifecycleHandler
+      handler: pageLifecycleHandler.handler
   sql:
     - key: db
       engine: mysql
@@ -45,4 +53,6 @@ permissions:
   scopes:
     - read:confluence-user
     - read:confluence-content.all
+    - read:confluence-content.summary
+    - write:confluence-content
     - storage:app
