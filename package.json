@@ -7,7 +7,9 @@
   "scripts": {
     "lint": "eslint src/**/*",
     "test:e2e": "npx playwright test --config=e2e/playwright.config.js",
-    "test:e2e:browser": "node e2e/scripts/launch-browser.js"
+    "test:e2e:browser": "node e2e/scripts/launch-browser.js",
+    "test:e2e:save-auth": "node e2e/scripts/launch-browser.js --save-auth",
+    "test:e2e:codegen": "node e2e/scripts/launch-browser.js --codegen"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

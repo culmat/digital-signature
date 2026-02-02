@@ -2,6 +2,10 @@
 /**
  * Launch Chromium with remote debugging for e2e tests.
  * Reads configuration from e2e/.env
+ *
+ * Usage:
+ *   node launch-browser.js           # Launch browser for manual testing
+ *   node launch-browser.js --codegen # Launch playwright codegen
  */
 
 const { spawn, execSync } = require('child_process');
@@ -14,6 +18,9 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const HOST = process.env.CONFLUENCE_HOST;
 const SPACE = process.env.TEST_SPACE || 'TEST';
 const CDP_PORT = (process.env.CDP_ENDPOINT || 'http://localhost:9222').match(/:(\d+)/)?.[1] || '9222';
+const CODEGEN_MODE = process.argv.includes('--codegen');
+const SAVE_AUTH_MODE = process.argv.includes('--save-auth');
+const AUTH_FILE = path.join(__dirname, '..', '.auth-state.json');
 
 if (!HOST) {
   console.error('Error: CONFLUENCE_HOST not set in e2e/.env');
@@ -80,23 +87,94 @@ if (!browserPath) {
 const url = `https://${HOST}/wiki/spaces/${SPACE}/`;
 const userDataDir = '/tmp/pw-test';
 
-console.log(`Launching browser...`);
-console.log(`  Executable: ${browserPath}`);
-console.log(`  Debug port: ${CDP_PORT}`);
-console.log(`  URL: ${url}`);
-console.log(`  User data: ${userDataDir}`);
-console.log(`\nLog into Confluence, then run: npm run test:e2e\n`);
+if (SAVE_AUTH_MODE) {
+  // Save auth state from running browser
+  console.log(`Saving auth state from running browser...`);
+  console.log(`  CDP port: ${CDP_PORT}`);
+  console.log(`  Output: ${AUTH_FILE}\n`);
 
-const child = spawn(browserPath, [
-  `--remote-debugging-port=${CDP_PORT}`,
-  `--user-data-dir=${userDataDir}`,
-  '--ignore-certificate-errors',
-  '--test-type',
-  url,
-], {
-  detached: true,
-  stdio: 'ignore',
-});
+  const script = `
+    const { chromium } = require('@playwright/test');
+    (async () => {
+      try {
+        const browser = await chromium.connectOverCDP('http://localhost:${CDP_PORT}');
+        const contexts = browser.contexts();
+        const context = contexts[0];
+        if (!context) {
+          console.error('No browser context found');
+          process.exit(1);
+        }
+        await context.storageState({ path: '${AUTH_FILE}' });
+        console.log('Auth state saved to ${AUTH_FILE}');
+        console.log('Now run: npm run test:e2e:record');
+      } catch (e) {
+        if (e.message.includes('connect')) {
+          console.error('Could not connect to browser. Is it running?');
+          console.error('Start it first: npm run test:e2e:browser');
+        } else {
+          console.error(e.message);
+        }
+        process.exit(1);
+      }
+    })();
+  `;
 
-child.unref();
-console.log(`Browser launched (PID: ${child.pid})`);
+  const child = spawn('node', ['-e', script], {
+    stdio: 'inherit',
+    cwd: path.join(__dirname, '..'),
+  });
+
+  child.on('close', (code) => process.exit(code || 0));
+} else if (CODEGEN_MODE) {
+  // Launch playwright codegen with saved auth state
+  const authExists = fs.existsSync(AUTH_FILE);
+
+  console.log(`Launching playwright codegen...`);
+  console.log(`  URL: ${url}`);
+  console.log(`  Auth: ${authExists ? AUTH_FILE : 'none (run --save-auth first)'}\n`);
+
+  const args = [
+    'playwright', 'codegen',
+    '--ignore-https-errors',
+  ];
+
+  if (authExists) {
+    args.push(`--load-storage=${AUTH_FILE}`);
+  } else {
+    console.log('Tip: For authenticated sessions, run these steps:');
+    console.log('  1. npm run test:e2e:browser  (login in browser)');
+    console.log('  2. npm run test:e2e:save-auth');
+    console.log('  3. npm run test:e2e:record\n');
+  }
+
+  args.push(url);
+
+  const child = spawn('npx', args, {
+    stdio: 'inherit',
+    shell: true,
+  });
+
+  child.on('close', (code) => process.exit(code || 0));
+} else {
+  // Launch browser for manual testing
+  console.log(`Launching browser...`);
+  console.log(`  Executable: ${browserPath}`);
+  console.log(`  Debug port: ${CDP_PORT}`);
+  console.log(`  URL: ${url}`);
+  console.log(`  User data: ${userDataDir}`);
+  console.log(`\nLog into Confluence, then run: npm run test:e2e\n`);
+
+  const child = spawn(browserPath, [
+    `--remote-debugging-port=${CDP_PORT}`,
+    `--user-data-dir=${userDataDir}`,
+    '--ignore-certificate-errors',
+    '--test-type',
+    url,
+  ], {
+    detached: true,
+    stdio: 'ignore',
+  });
+
+  child.unref();
+  console.log(`Browser launched (PID: ${child.pid})`);
+}
