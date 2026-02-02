@@ -2,6 +2,9 @@ const { expect } = require('@playwright/test');
 const { test } = require('../fixtures/browser');
 const { getCredentials, createTestPage, deleteTestPage } = require('../helpers/confluence-client');
 const { generateMacroStorageFormat } = require('../fixtures');
+const { extractPdfText, extractWordText } = require('../helpers/export-parser');
+const path = require('path');
+const fs = require('fs');
 
 // Test configuration from environment
 const TEST_SPACE = process.env.TEST_SPACE;
@@ -143,5 +146,104 @@ test.describe('Markdown Formatting', () => {
     // Verify there is NO img element with this alt text
     const images = page.locator('img[alt="image alt text"]');
     await expect(images).toHaveCount(0);
+  });
+
+  test('exports contain correct markdown content in Word and PDF', async ({ page, downloadDir }) => {
+    // Extended timeout for PDF generation (~2 minutes)
+    test.setTimeout(180000);
+
+    // Create our own test page if needed (makes test self-contained)
+    let testPageId = createdPageId;
+    if (!testPageId) {
+      await page.goto(`${BASE_URL}/wiki`);
+      const storageBody = generateMacroStorageFormat({
+        panelTitle: 'Export Test',
+        content: MARKDOWN_CONTENT,
+      });
+      const title = `E2E-Export-${Date.now()}`;
+      const testPage = await createTestPage(page, TEST_SPACE, title, storageBody);
+      testPageId = testPage.id;
+      createdPageId = testPageId; // Store for cleanup
+      console.log(`Created test page for export: ${testPage.id}`);
+    }
+
+    // Navigate to the test page
+    await page.goto(`${BASE_URL}/wiki/spaces/${TEST_SPACE}/pages/${testPageId}`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('button', { name: 'Sign' })).toBeVisible({ timeout: 15000 });
+
+    // Clean up any existing files in download directory before starting
+    const existingFiles = fs.readdirSync(downloadDir);
+    for (const f of existingFiles) {
+      if (f.endsWith('.doc') || f.endsWith('.pdf')) {
+        fs.unlinkSync(path.join(downloadDir, f));
+        console.log(`Cleaned up existing file: ${f}`);
+      }
+    }
+
+    // Helper to wait for a file with given extension to appear in download dir
+    async function waitForDownload(extension, timeout = 30000) {
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < timeout) {
+        const currentFiles = fs.readdirSync(downloadDir).filter(f => f.endsWith(extension));
+
+        if (currentFiles.length > 0) {
+          const filePath = path.join(downloadDir, currentFiles[0]);
+          // Wait a moment for file to finish writing
+          await new Promise(r => setTimeout(r, 1000));
+          console.log(`Found download: ${currentFiles[0]}`);
+          return filePath;
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      // Debug: list what files exist
+      const finalFiles = fs.readdirSync(downloadDir);
+      console.log(`Timeout! Files in ${downloadDir}: ${finalFiles.join(', ') || '(empty)'}`);
+      throw new Error(`Timeout waiting for ${extension} file in ${downloadDir}`);
+    }
+
+    // Export to Word - downloads go directly to downloadDir via CDP config
+    console.log(`Download directory: ${downloadDir}`);
+    await page.getByTestId('object-header-actions-container')
+      .getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Export' }).click();
+    await page.getByRole('menuitem', { name: 'Export to Word' }).click();
+
+    // Wait for .doc file to appear
+    const wordPath = await waitForDownload('.doc');
+    console.log(`Word file downloaded: ${wordPath}`);
+
+    // Verify Word content
+    const wordText = extractWordText(wordPath);
+    expect(wordText).toContain('Heading Level 1');
+    expect(wordText).toContain('Unordered item one');
+    expect(wordText).toContain('link text here');
+    expect(wordText).not.toContain('https://example.com'); // URL should not appear
+
+    // Cleanup Word file
+    fs.unlinkSync(wordPath);
+
+    // Export to PDF
+    await page.getByTestId('object-header-actions-container')
+      .getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Export' }).click();
+    await page.getByRole('menuitem', { name: 'Export to PDF' }).click();
+    await page.getByRole('link', { name: 'Download PDF' }).click();
+
+    // Wait for .pdf file to appear (can take up to 2 minutes)
+    const pdfPath = await waitForDownload('.pdf', 150000);
+    console.log(`PDF file downloaded: ${pdfPath}`);
+
+    // Verify PDF content
+    const pdfText = await extractPdfText(pdfPath);
+    expect(pdfText).toContain('Heading Level 1');
+    expect(pdfText).toContain('Unordered item one');
+    expect(pdfText).toContain('link text here');
+    expect(pdfText).not.toContain('https://example.com'); // URL should not appear
+
+    // Cleanup PDF file
+    fs.unlinkSync(pdfPath);
   });
 });

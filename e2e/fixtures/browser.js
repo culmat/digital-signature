@@ -9,13 +9,30 @@ const path = require('path');
 
 const CDP_ENDPOINT = process.env.CDP_ENDPOINT || 'http://localhost:9222';
 const INITIAL_URL_FILE = path.join('/tmp', 'pw-test-initial-url');
+const DOWNLOAD_DIR = path.join(__dirname, '..', 'test-downloads');
 
 /**
  * Custom test fixture that connects to existing browser and reuses its context.
  */
 const test = base.extend({
   browser: async ({}, use) => {
-    const browser = await chromium.connectOverCDP(CDP_ENDPOINT);
+    let browser;
+    try {
+      browser = await chromium.connectOverCDP(CDP_ENDPOINT);
+    } catch (error) {
+      if (error.message.includes('ECONNREFUSED') || error.message.includes('connect')) {
+        console.error('\n' + '='.repeat(70));
+        console.error('ERROR: Could not connect to browser on ' + CDP_ENDPOINT);
+        console.error('='.repeat(70));
+        console.error('\nThe e2e tests require a running browser with remote debugging enabled.');
+        console.error('\nTo start the browser, run:\n');
+        console.error('  npm run test:e2e:browser\n');
+        console.error('Then log into Confluence and run the tests again:\n');
+        console.error('  npm run test:e2e\n');
+        console.error('='.repeat(70) + '\n');
+      }
+      throw error;
+    }
     await use(browser);
   },
 
@@ -37,7 +54,25 @@ const test = base.extend({
       }
     }
 
+    // Configure downloads via CDP for this page
+    if (!fs.existsSync(DOWNLOAD_DIR)) {
+      fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+    }
+    const client = await page.context().newCDPSession(page);
+    await client.send('Page.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: DOWNLOAD_DIR,
+    });
+
     await use(page);
+  },
+
+  // Expose download directory to tests
+  downloadDir: async ({}, use) => {
+    if (!fs.existsSync(DOWNLOAD_DIR)) {
+      fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+    }
+    await use(DOWNLOAD_DIR);
   },
 });
 
@@ -54,4 +89,4 @@ function getAndClearInitialUrl() {
   return null;
 }
 
-module.exports = { test, getAndClearInitialUrl, INITIAL_URL_FILE };
+module.exports = { test, getAndClearInitialUrl, INITIAL_URL_FILE, DOWNLOAD_DIR };
