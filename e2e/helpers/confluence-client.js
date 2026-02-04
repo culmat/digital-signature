@@ -117,6 +117,52 @@ async function deleteTestPage(page, pageId) {
 }
 
 /**
+ * Get members of an Atlassian group by group name.
+ * Uses Jira REST API v3 (groups are shared across Atlassian Cloud products).
+ * Confluence's group member endpoint was deprecated, so we use Jira's instead.
+ *
+ * @param {import('@playwright/test').Page} page - Playwright page
+ * @param {string} groupName - Group name (e.g., 'confluence-users-devds')
+ * @param {number} [limit=200] - Maximum number of members to return
+ * @returns {Promise<Array<{accountId: string, email: string, displayName: string}>>}
+ */
+async function getGroupMembers(page, groupName, limit = 200) {
+  const { baseUrl, auth } = getCredentials();
+  const jiraBaseUrl = baseUrl.replace('/wiki', '');
+
+  const result = await page.evaluate(
+    async ({ jiraBaseUrl, auth, groupName, limit }) => {
+      const encodedGroupName = encodeURIComponent(groupName);
+      const response = await fetch(
+        `${jiraBaseUrl}/rest/api/3/group/member?groupname=${encodedGroupName}&maxResults=${limit}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get group members: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data.values.map(user => ({
+        accountId: user.accountId,
+        email: user.emailAddress,
+        displayName: user.displayName,
+      }));
+    },
+    { jiraBaseUrl, auth, groupName, limit }
+  );
+
+  return result;
+}
+
+/**
  * Permanently delete (purge) a page from trash.
  * Uses v2 API with purge=true parameter.
  *
@@ -152,4 +198,5 @@ module.exports = {
   createTestPage,
   deleteTestPage,
   purgeTestPage,
+  getGroupMembers,
 };
