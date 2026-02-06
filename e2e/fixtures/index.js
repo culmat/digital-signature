@@ -132,10 +132,12 @@ ON DUPLICATE KEY UPDATE signedAt = LEAST(signedAt, VALUES(signedAt));
  * @param {string} [config.panelTitle='Test Contract'] - Panel title
  * @param {string} [config.content=''] - Markdown content
  * @param {string[]} [config.signers=[]] - Array of account IDs
+ * @param {string[]} [config.signerGroups=[]] - Array of group IDs
+ * @param {number} [config.maxSignatures] - Maximum number of signatures allowed
  * @returns {string} Storage format XML
  */
 function generateMacroStorageFormat(config = {}) {
-  const { panelTitle = 'Test Contract', content = '', signers = [] } = config;
+  const { panelTitle = 'Test Contract', content = '', signers = [], signerGroups = [], maxSignatures } = config;
   const localId = randomUUID();
   const extensionKey = `${APP_ID}/${FORGE_ENV_ID}/static/${MACRO_KEY}`;
   const extensionId = `ari:cloud:ecosystem::extension/${extensionKey}`;
@@ -145,13 +147,23 @@ function generateMacroStorageFormat(config = {}) {
     ? signers.map(s => `<ac:adf-parameter-value>${s}</ac:adf-parameter-value>`).join('')
     : '<ac:adf-parameter-value />';
 
+  // Build signer groups parameter values
+  const signerGroupsParams = signerGroups.length > 0
+    ? signerGroups.map(g => `<ac:adf-parameter-value>${g}</ac:adf-parameter-value>`).join('')
+    : '<ac:adf-parameter-value />';
+
+  // Build optional max signatures parameter
+  const maxSignaturesParam = maxSignatures !== undefined
+    ? `<ac:adf-parameter key="max-signatures" type="number">${maxSignatures}</ac:adf-parameter>`
+    : '';
+
   // Escape content for XML
   const escapedContent = content
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  return `<ac:adf-extension><ac:adf-node type="extension"><ac:adf-attribute key="extension-key">${extensionKey}</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="parameters"><ac:adf-parameter key="local-id">${localId}</ac:adf-parameter><ac:adf-parameter key="extension-id">${extensionId}</ac:adf-parameter><ac:adf-parameter key="extension-title">digital-signature (Development)</ac:adf-parameter><ac:adf-parameter key="forge-environment">DEVELOPMENT</ac:adf-parameter><ac:adf-parameter key="render">native</ac:adf-parameter><ac:adf-parameter key="guest-params"><ac:adf-parameter key="panel-title">${panelTitle}</ac:adf-parameter><ac:adf-parameter key="content">${escapedContent}</ac:adf-parameter><ac:adf-parameter key="signers">${signersParams}</ac:adf-parameter><ac:adf-parameter key="signer-groups"><ac:adf-parameter-value /></ac:adf-parameter><ac:adf-parameter key="inherit-viewers" type="boolean">false</ac:adf-parameter><ac:adf-parameter key="inherit-editors" type="boolean">false</ac:adf-parameter></ac:adf-parameter></ac:adf-attribute><ac:adf-attribute key="text">digital-signature (Development)</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">${localId}</ac:adf-attribute></ac:adf-node></ac:adf-extension>`;
+  return `<ac:adf-extension><ac:adf-node type="extension"><ac:adf-attribute key="extension-key">${extensionKey}</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="parameters"><ac:adf-parameter key="local-id">${localId}</ac:adf-parameter><ac:adf-parameter key="extension-id">${extensionId}</ac:adf-parameter><ac:adf-parameter key="extension-title">digital-signature (Development)</ac:adf-parameter><ac:adf-parameter key="forge-environment">DEVELOPMENT</ac:adf-parameter><ac:adf-parameter key="render">native</ac:adf-parameter><ac:adf-parameter key="guest-params"><ac:adf-parameter key="panel-title">${panelTitle}</ac:adf-parameter><ac:adf-parameter key="content">${escapedContent}</ac:adf-parameter><ac:adf-parameter key="signers">${signersParams}</ac:adf-parameter><ac:adf-parameter key="signer-groups">${signerGroupsParams}</ac:adf-parameter><ac:adf-parameter key="inherit-viewers" type="boolean">false</ac:adf-parameter><ac:adf-parameter key="inherit-editors" type="boolean">false</ac:adf-parameter>${maxSignaturesParam}</ac:adf-parameter></ac:adf-attribute><ac:adf-attribute key="text">digital-signature (Development)</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">${localId}</ac:adf-attribute></ac:adf-node></ac:adf-extension>`;
 }
 
 module.exports = {

@@ -26,9 +26,15 @@ export async function checkAuthorizationResolver(req) {
     }
 
     const config = req.context.extension.config;
+    console.log('[checkAuthorization] accountId:', accountId);
+    console.log('[checkAuthorization] pageId:', pageId);
+    console.log('[checkAuthorization] config:', JSON.stringify(config, null, 2));
+    
     const signatureEntity = await getSignature(hash) || { signatures: [] };
     const authResult = await canUserSign(accountId, pageId, config, signatureEntity);
 
+    console.log('[checkAuthorization] authResult:', authResult);
+    
     return successResponse({
       allowed: authResult.allowed,
       reason: authResult.reason,

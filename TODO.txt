@@ -7,8 +7,20 @@ SIGNATURE DISPLAY & UX:
 - carefully review wording. check for usability, avoid technical terms like "panel"
 
 MACRO CONFIGURATION:
-✅ implement macro config UI with parameters: signers, signerGroups, inheritViewers, inheritEditors, maxSignatures
-- implement macro config UI with parameters: title, visibilityLimit, notified, panel, protectedContent, signaturesVisible, pendingVisible
+- implement macro config UI with parameters: 
+  -- title ✅
+  -- content ✅ 👍
+  -- signers ✅
+  -- signerGroups ✅
+  -- inheritViewers ✅
+  -- inheritEditors ✅
+  -- maxSignatures ✅
+  -- visibilityLimit
+  -- notified
+  -- panel ❌ (won't do)
+  -- protectedContent ❌ (won't do)
+  -- signaturesVisible : always, if user is allowd to sign, if user has signed 
+  -- pendingVisible : always, if user is allowd to sign, if user has signed
 ✅ support "petition mode" (no restrictions = any logged-in user can sign, with UI warning)
 - support inheritSigners from page permissions (READERS_ONLY, WRITERS_ONLY, READERS_AND_WRITERS, NONE)
 ✅ implement maxSignatures limit (prevent further signatures when reached, support 0 to disable signing)
