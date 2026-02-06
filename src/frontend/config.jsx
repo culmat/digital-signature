@@ -39,6 +39,7 @@ const Config = () => {
   const [inheritViewers, setInheritViewers] = useState(false);
   const [inheritEditors, setInheritEditors] = useState(false);
   const [maxSignatures, setMaxSignatures] = useState('');
+  const [visibilityLimit, setVisibilityLimit] = useState('');
   
   const { error, message, submit } = useSubmit();
   const config = useConfig();
@@ -59,6 +60,7 @@ const Config = () => {
     setInheritViewers(config?.inheritViewers || false);
     setInheritEditors(config?.inheritEditors || false);
     setMaxSignatures(config?.maxSignatures !== undefined ? String(config.maxSignatures) : '');
+    setVisibilityLimit(config?.visibilityLimit !== undefined ? String(config.visibilityLimit) : '');
   }, [config]);
 
   // Check if petition mode is active (no restrictions)
@@ -86,6 +88,9 @@ const Config = () => {
     // Parse maxSignatures (empty = undefined for unlimited)
     const maxSigs = maxSignatures.trim() === '' ? undefined : parseInt(maxSignatures, 10);
     
+    // Parse visibilityLimit (empty = undefined for unlimited)
+    const visLimit = visibilityLimit.trim() === '' ? undefined : parseInt(visibilityLimit, 10);
+    
     // Extract just the account IDs from signers
     // UserPicker onChange returns array of user objects when selecting,
     // but might already be strings if loaded from config
@@ -100,7 +105,8 @@ const Config = () => {
       signerGroups: groupIds,
       inheritViewers,
       inheritEditors,
-      maxSignatures: maxSigs
+      maxSignatures: maxSigs,
+      visibilityLimit: visLimit
     });
   };
 
@@ -180,6 +186,17 @@ const Config = () => {
         placeholder="Leave empty for unlimited"
       />
       <Text>Maximum number of signatures allowed. Use 0 to disable signing. Leave empty for unlimited.</Text>
+      
+      {/* Visibility Limit */}
+      <Label labelFor="visibilityLimit">Signature Display Limit (optional)</Label>
+      <Textfield
+        id="visibilityLimit"
+        type="number"
+        value={visibilityLimit}
+        onChange={(e) => setVisibilityLimit(e.target.value)}
+        placeholder="Leave empty to show all"
+      />
+      <Text>Number of signed signatures to display initially. Leave empty to show all. Users can click "Show more" to see hidden signatures.</Text>
       
       {/* Petition Mode Warning */}
       {isPetitionMode && (

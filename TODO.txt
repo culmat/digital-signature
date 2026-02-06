@@ -15,7 +15,7 @@ MACRO CONFIGURATION:
   -- inheritViewers ✅
   -- inheritEditors ✅
   -- maxSignatures ✅
-  -- visibilityLimit
+  -- visibilityLimit ✅
   -- notified
   -- panel ❌ (won't do)
   -- protectedContent ❌ (won't do)

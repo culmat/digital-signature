@@ -102,6 +102,8 @@ const App = () => {
     actionError: null,
   });
 
+  const [showAllSigned, setShowAllSigned] = useState(false);
+
   const config = useConfig();
   const context = useProductContext();
   const { pageId } = useContentContext(context);
@@ -109,6 +111,7 @@ const App = () => {
   const panelTitle = config?.panelTitle || '';
   const content = config?.content || '';
   const configuredSigners = config?.signers || [];
+  const visibilityLimit = config?.visibilityLimit;
 
   // Parse markdown content to AST for rendering
   const ast = useMemo(() => parseAndSanitize(content), [content]);
@@ -372,7 +375,25 @@ const App = () => {
             <Stack space="space.200">
               {/* Signed signatures section */}
               {signatureState.entity?.signatures && signatureState.entity.signatures.length > 0 && (
-                <Signatures signatures={signatureState.entity.signatures} preFix="Signed" formatDate={formatDate} />
+                <Stack space="space.100">
+                  <Signatures 
+                    signatures={
+                      visibilityLimit && !showAllSigned
+                        ? signatureState.entity.signatures.slice(0, visibilityLimit)
+                        : signatureState.entity.signatures
+                    } 
+                    preFix="Signed" 
+                    formatDate={formatDate} 
+                  />
+                  {visibilityLimit && signatureState.entity.signatures.length > visibilityLimit && !showAllSigned && (
+                    <Button 
+                      appearance="link" 
+                      onClick={() => setShowAllSigned(true)}
+                    >
+                      Show {signatureState.entity.signatures.length - visibilityLimit} more
+                    </Button>
+                  )}
+                </Stack>
               )}
 
               {/* Pending signatures section */}
