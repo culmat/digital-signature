@@ -133,3 +133,8 @@ npm run test:e2e:browser
 ```
 npm run test:e2e
 ```
+
+or single test like
+```
+npx playwright test --config=e2e/playwright.config.js e2e/tests/authorization.spec.js
+```

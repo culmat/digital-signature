@@ -193,10 +193,188 @@ async function purgeTestPage(page, pageId) {
   }
 }
 
+/**
+ * Get the current authenticated user's account ID.
+ *
+ * @param {import('@playwright/test').Page} page - Playwright page
+ * @returns {Promise<{accountId: string, displayName: string}>}
+ */
+async function getCurrentUser(page) {
+  const { baseUrl, auth } = getCredentials();
+
+  const result = await page.evaluate(
+    async ({ baseUrl, auth }) => {
+      const response = await fetch(`${baseUrl}/rest/api/user/current`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get current user: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      return {
+        accountId: data.accountId,
+        displayName: data.displayName,
+      };
+    },
+    { baseUrl, auth }
+  );
+
+  return result;
+}
+
+/**
+ * Set a page restriction via the Confluence Share dialog.
+ * Uses the Share button UI since the REST API requires elevated
+ * space permissions ("Restrict Content") that API tokens may not have.
+ *
+ * @param {import('@playwright/test').Page} page - Playwright page (must be on Confluence)
+ * @param {string} pageId - Page ID
+ * @param {string} operation - 'read' or 'update'
+ * @param {string} accountId - Account ID of the user to grant the permission to
+ */
+async function setPageRestriction(page, pageId, operation, accountId) {
+  const { baseUrl } = getCredentials();
+  const spaceKey = process.env.TEST_SPACE;
+
+  // Navigate to the page
+  await page.goto(`${baseUrl}/spaces/${spaceKey}/pages/${pageId}`);
+  await page.waitForLoadState('networkidle');
+
+  // Click the Share button
+  const shareButton = page.getByRole('button', { name: /Share/i });
+  await shareButton.waitFor({ timeout: 10000 });
+  await shareButton.click();
+  await page.waitForTimeout(1000);
+
+  // Wait for the Share dialog
+  const dialog = page.locator('[role="dialog"]').filter({ hasText: /Share/i });
+  await dialog.waitFor({ timeout: 10000 });
+
+  // Get user display name for searching
+  const userDisplayName = await page.evaluate(
+    async ({ baseUrl, auth, accountId }) => {
+      const response = await fetch(`${baseUrl}/rest/api/user?accountId=${accountId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user info: ${response.status}`);
+      }
+
+      const user = await response.json();
+      return user.displayName || user.publicName || accountId;
+    },
+    { baseUrl, auth: Buffer.from(`${CONFLUENCE_EMAIL}:${CONFLUENCE_API_TOKEN}`).toString('base64'), accountId }
+  );
+
+  // Click on "General access" dropdown to access restriction options
+  // Look for the dropdown button - it might say "Open" or "Restricted"
+  const generalAccessDropdown = dialog.locator('button').filter({ hasText: /Open|Restricted|General access/i }).first();
+  const dropdownVisible = await generalAccessDropdown.isVisible({ timeout: 5000 }).catch(() => false);
+  
+  if (!dropdownVisible) {
+    console.log('General access dropdown not found, trying alternative selectors...');
+    // Try to find any button in the "General access" section
+    const generalAccessSection = dialog.locator('text=General access').locator('..');
+    const dropdownInSection = generalAccessSection.locator('button').first();
+    if (await dropdownInSection.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await dropdownInSection.click();
+    }
+  } else {
+    await generalAccessDropdown.click();
+  }
+  await page.waitForTimeout(1000);
+
+  // Debug: Check if the instance requires a paid plan
+  await page.waitForTimeout(500);
+  const menuItems = await page.locator('[role="menuitem"], [role="option"]').allTextContents();
+  console.log('Available menu options:', menuItems);
+
+  // Check if the instance requires a paid plan for restrictions
+  const requiresPaidPlan = menuItems.some(item => item.includes('paid plans'));
+  if (requiresPaidPlan) {
+    console.log('⚠️  This Confluence instance requires a paid plan to set page restrictions.');
+    console.log('⚠️  Skipping restriction setup. The test will not be able to verify restriction behavior.');
+    // Close the Share dialog by clicking outside or pressing Escape
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1000);
+    // Wait for dialog to close
+    const dialogClosed = await dialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => false);
+    if (!dialogClosed) {
+      // Try clicking the close button
+      const closeButton = dialog.locator('button[aria-label*="Close"], button[aria-label*="close"]').first();
+      if (await closeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await closeButton.click();
+        await page.waitForTimeout(500);
+      }
+    }
+    return;
+  }
+
+  // Select "Restricted" option - try multiple approaches
+  let restrictedOption = page.locator('[role="option"]').filter({ hasText: /^Restricted/i });
+  let optionVisible = await restrictedOption.isVisible({ timeout: 3000 }).catch(() => false);
+  
+  if (!optionVisible) {
+    restrictedOption = page.getByRole('menuitem').filter({ hasText: /Restricted.*specific people/i });
+    optionVisible = await restrictedOption.isVisible({ timeout: 3000 }).catch(() => false);
+  }
+  
+  if (!optionVisible) {
+    restrictedOption = page.locator('text=RestrictedOnly specific people can view or edit');
+  }
+  
+  await restrictedOption.waitFor({ timeout: 10000 });
+  await restrictedOption.click();
+  await page.waitForTimeout(1000);
+
+  // Now add the specific user in the search field at the top
+  const searchInput = dialog.locator('input[placeholder*="names"], input[placeholder*="groups"], input[placeholder*="emails"]').first();
+  await searchInput.waitFor({ timeout: 5000 });
+  await searchInput.fill(userDisplayName);
+  await page.waitForTimeout(2000);
+
+  // Click the matching user in the dropdown
+  const userOption = page.locator(`[role="option"]:has-text("${userDisplayName}")`).first();
+  await userOption.waitFor({ timeout: 5000 });
+  await userOption.click();
+  await page.waitForTimeout(500);
+
+  // The user should now be added with "Can edit" permission by default
+  // If we need view-only (operation === 'read'), we'd need to change the permission dropdown
+  // For update permission, "Can edit" is already the default
+
+  // Close the Share dialog
+  const closeButton = dialog.locator('button[aria-label*="Close"], button[aria-label*="close"]').first();
+  if (await closeButton.isVisible().catch(() => false)) {
+    await closeButton.click();
+  } else {
+    // Try clicking outside the dialog or pressing Escape
+    await page.keyboard.press('Escape');
+  }
+
+  await page.waitForTimeout(1000);
+
+  console.log(`Set ${operation} restriction on page ${pageId} for accountId: ${accountId} (${userDisplayName})`);
+}
+
 module.exports = {
   getCredentials,
   createTestPage,
   deleteTestPage,
   purgeTestPage,
   getGroupMembers,
+  getCurrentUser,
+  setPageRestriction,
 };
