@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo, useReducer } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge } from '@forge/react';
+import React, { useEffect, useState, useMemo, useReducer, useCallback } from 'react';
+import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea } from '@forge/react';
 import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
 import { MarkdownContent } from './markdown/renderToReact';
 
@@ -37,7 +37,7 @@ const SignatureUser = ({ accountId, date }) => {
     </Inline>
   );
 };
-import { invoke, view } from '@forge/bridge';
+import { invoke, view, router } from '@forge/bridge';
 import { signDocument, getSignatures, checkAuthorization } from './utils/signatureClient';
 
 const DEFAULT_LOCALE = 'en-GB';
@@ -103,6 +103,9 @@ const App = () => {
   });
 
   const [showAllSigned, setShowAllSigned] = useState(false);
+  const [emailPopupOpen, setEmailPopupOpen] = useState(false);
+  const [emailModal, setEmailModal] = useState({ isOpen: false, emails: [], title: '' });
+  const [emailLoading, setEmailLoading] = useState(false);
 
   const config = useConfig();
   const context = useProductContext();
@@ -321,6 +324,53 @@ const App = () => {
 
   const pendingSignatures = calculatePendingSignatures();
   const hasPendingSignatures = pendingSignatures.length > 0;
+  const hasSignatures = signatureState.entity?.signatures?.length > 0;
+
+  const handleEmailAction = useCallback(async (accountIds, label) => {
+    setEmailPopupOpen(false);
+    setEmailLoading(true);
+    try {
+      const result = await invoke('getEmailAddresses', {
+        accountIds,
+        subject: panelTitle || 'Digital Signature',
+      });
+
+      if (!result.success) {
+        console.error('Failed to fetch emails:', result.error);
+        return;
+      }
+
+      // If mailto URL fits, open it directly
+      if (result.mailto) {
+        router.open(result.mailto);
+        return;
+      }
+
+      // Otherwise show modal with email list
+      const emails = (result.users || [])
+        .filter(u => u.email)
+        .map(u => u.email);
+
+      setEmailModal({ isOpen: true, emails, title: label });
+    } catch (error) {
+      console.error('Error fetching email addresses:', error);
+    } finally {
+      setEmailLoading(false);
+    }
+  }, [panelTitle]);
+
+  const handleEmailSigned = useCallback(() => {
+    const signedIds = (signatureState.entity?.signatures || []).map(s => s.accountId);
+    handleEmailAction(signedIds, 'Signed Users');
+  }, [signatureState.entity, handleEmailAction]);
+
+  const handleEmailPending = useCallback(() => {
+    handleEmailAction(pendingSignatures, 'Pending Users');
+  }, [pendingSignatures, handleEmailAction]);
+
+  const closeEmailModal = useCallback(() => {
+    setEmailModal({ isOpen: false, emails: [], title: '' });
+  }, []);
 
   // If validation fails (insufficient content), show warning instead of the macro
   if (validationWarning) {
@@ -350,10 +400,49 @@ const App = () => {
       xcss={containerStyles}
     >
       {/* Panel Header */}
-      <Box 
-        xcss={headerStyles}
-      >
-        <Heading size="small">{panelTitle}</Heading>
+      <Box xcss={headerStyles}>
+        <Inline spread="space-between" alignBlock="center">
+          <Heading size="small">{panelTitle}</Heading>
+          {hasSignatures && (
+            <Popup
+              isOpen={emailPopupOpen}
+              onClose={() => setEmailPopupOpen(false)}
+              placement="bottom-end"
+              content={() => (
+                <Box xcss={xcss({ padding: 'space.100' })}>
+                  <Stack space="space.050">
+                    {hasSignatures && (
+                      <Button
+                        appearance="subtle"
+                        onClick={handleEmailSigned}
+                        isDisabled={emailLoading}
+                      >
+                        Email signed users
+                      </Button>
+                    )}
+                    {hasPendingSignatures && (
+                      <Button
+                        appearance="subtle"
+                        onClick={handleEmailPending}
+                        isDisabled={emailLoading}
+                      >
+                        Email pending users
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
+              )}
+              trigger={() => (
+                <Button
+                  appearance="subtle"
+                  iconBefore="email"
+                  onClick={() => setEmailPopupOpen(!emailPopupOpen)}
+                  isDisabled={emailLoading}
+                />
+              )}
+            />
+          )}
+        </Inline>
       </Box>
       
       {/* Panel Content */}
@@ -421,6 +510,42 @@ const App = () => {
           )}
         </Stack>
       </Box>
+
+      {/* Email addresses modal — shown when mailto URL would be too long */}
+      <ModalTransition>
+        {emailModal.isOpen && (
+          <Modal onClose={closeEmailModal}>
+            <ModalHeader>
+              <ModalTitle>{emailModal.title} — Email Addresses</ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              <Stack space="space.100">
+                <TextArea
+                  value={emailModal.emails.join(', ')}
+                  isReadOnly
+                  minimumRows={4}
+                />
+                <Text>{emailModal.emails.length} email address(es)</Text>
+              </Stack>
+            </ModalBody>
+            <ModalFooter>
+              <ButtonGroup>
+                <Button
+                  appearance="primary"
+                  onClick={() => {
+                    router.open(`mailto:${emailModal.emails.join(',')}?subject=${encodeURIComponent(panelTitle || 'Digital Signature')}`);
+                  }}
+                >
+                  Open in email client
+                </Button>
+                <Button appearance="subtle" onClick={closeEmailModal}>
+                  Close
+                </Button>
+              </ButtonGroup>
+            </ModalFooter>
+          </Modal>
+        )}
+      </ModalTransition>
     </Box>
   );
 };

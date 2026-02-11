@@ -1,5 +1,7 @@
 import { exportData, importData, getStatistics, deleteAllData } from '../storage/backupManager';
 import { successResponse, errorResponse } from '../utils/responseHelper';
+import { getWebhookConfig, setWebhookConfig } from '../services/webhookConfigStore';
+import { sendTestEvent } from '../services/eventPublisher';
 
 // Admin authorization is enforced by Confluence for the globalSettings module.
 // No additional check is needed as only Confluence administrators can access this page.
@@ -22,6 +24,12 @@ export async function adminDataResolver(req) {
       return await handleGetStatistics();
     } else if (action === 'deleteAll') {
       return await handleDeleteAll();
+    } else if (action === 'getWebhookConfig') {
+      return await handleGetWebhookConfig();
+    } else if (action === 'setWebhookConfig') {
+      return await handleSetWebhookConfig(req);
+    } else if (action === 'testWebhook') {
+      return await handleTestWebhook(req);
     } else {
       return errorResponse(400, `Unknown action: ${action}`);
     }
@@ -75,4 +83,39 @@ async function handleDeleteAll() {
   console.log(`Deletion completed. ${result.contractsDeleted} contracts and ${result.signaturesDeleted} signatures deleted`);
 
   return successResponse(result);
+}
+
+async function handleGetWebhookConfig() {
+  const config = await getWebhookConfig();
+  return successResponse(config);
+}
+
+async function handleSetWebhookConfig(req) {
+  const { payload } = req;
+
+  if (!payload?.webhooks || !Array.isArray(payload.webhooks)) {
+    return errorResponse(400, 'Missing required field: webhooks (array)');
+  }
+
+  const saved = await setWebhookConfig({ webhooks: payload.webhooks });
+  console.log(`Webhook config updated: ${saved.webhooks.length} webhook(s) configured`);
+  return successResponse(saved);
+}
+
+async function handleTestWebhook(req) {
+  const { payload } = req;
+
+  if (!payload?.url) {
+    return errorResponse(400, 'Missing required field: url');
+  }
+
+  const result = await sendTestEvent({
+    url: payload.url,
+    secret: payload.secret || undefined,
+  });
+
+  if (result.success) {
+    return successResponse({ message: 'Test event sent successfully' });
+  }
+  return errorResponse(400, `Test failed: ${result.error}`);
 }

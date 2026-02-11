@@ -3,6 +3,7 @@ import { signResolver } from './signResolver';
 import { getSignaturesResolver } from './getSignaturesResolver';
 import { checkAuthorizationResolver } from './checkAuthorizationResolver';
 import { adminDataResolver } from './adminDataResolver';
+import { emailAddressesResolver } from './emailAddressesResolver';
 import { runSchemaMigrations } from '../storage/migrations/schema';
 
 const resolver = new Resolver();
@@ -48,6 +49,7 @@ resolver.define('sign', wrapResolver(signResolver));
 resolver.define('getSignatures', wrapResolver(getSignaturesResolver));
 resolver.define('checkAuthorization', wrapResolver(checkAuthorizationResolver));
 resolver.define('adminData', wrapResolver(adminDataResolver));
+resolver.define('getEmailAddresses', wrapResolver(emailAddressesResolver));
 
 // Admin resolver to manually trigger migrations
 resolver.define('runMigrations', async () => {

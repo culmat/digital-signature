@@ -12,7 +12,9 @@ import ForgeReconciler, {
   LoadingButton,
   TextArea,
   ButtonGroup,
-  DynamicTable
+  DynamicTable,
+  Textfield,
+  Lozenge
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
@@ -35,8 +37,15 @@ const Admin = () => {
   const [deleteResult, setDeleteResult] = useState(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
+  const [webhooks, setWebhooks] = useState([]);
+  const [webhookLoading, setWebhookLoading] = useState(true);
+  const [webhookSaving, setWebhookSaving] = useState(false);
+  const [webhookSaveStatus, setWebhookSaveStatus] = useState('');
+  const [webhookTestResults, setWebhookTestResults] = useState({});
+
   useEffect(() => {
     loadStatistics();
+    loadWebhookConfig();
   }, []);
 
   const loadStatistics = async () => {
@@ -161,6 +170,84 @@ const Admin = () => {
     setBackupData('');
     setBackupStatus('');
     setBackupProgress(0);
+  };
+
+  const loadWebhookConfig = async () => {
+    try {
+      setWebhookLoading(true);
+      const response = await invoke('adminData', { action: 'getWebhookConfig' });
+      if (response.success) {
+        setWebhooks(response.webhooks || []);
+      }
+    } catch (err) {
+      console.error('Failed to load webhook config:', err);
+    } finally {
+      setWebhookLoading(false);
+    }
+  };
+
+  const handleWebhookUrlChange = (index, value) => {
+    setWebhooks(prev => prev.map((w, i) => i === index ? { ...w, url: value } : w));
+    setWebhookSaveStatus('');
+  };
+
+  const handleWebhookSecretChange = (index, value) => {
+    setWebhooks(prev => prev.map((w, i) => i === index ? { ...w, secret: value } : w));
+    setWebhookSaveStatus('');
+  };
+
+  const handleAddWebhook = () => {
+    setWebhooks(prev => [...prev, { url: '', secret: '' }]);
+    setWebhookSaveStatus('');
+  };
+
+  const handleRemoveWebhook = (index) => {
+    setWebhooks(prev => prev.filter((_, i) => i !== index));
+    setWebhookSaveStatus('');
+  };
+
+  const handleSaveWebhooks = async () => {
+    try {
+      setWebhookSaving(true);
+      setWebhookSaveStatus('');
+      const nonEmptyWebhooks = webhooks.filter(w => w.url?.trim());
+      const response = await invoke('adminData', {
+        action: 'setWebhookConfig',
+        webhooks: nonEmptyWebhooks,
+      });
+      if (response.success) {
+        setWebhooks(response.webhooks || []);
+        setWebhookSaveStatus('saved');
+      } else {
+        setWebhookSaveStatus('error');
+      }
+    } catch (err) {
+      console.error('Failed to save webhook config:', err);
+      setWebhookSaveStatus('error');
+    } finally {
+      setWebhookSaving(false);
+    }
+  };
+
+  const handleTestWebhook = async (index) => {
+    const webhook = webhooks[index];
+    if (!webhook?.url?.trim()) return;
+
+    setWebhookTestResults(prev => ({ ...prev, [index]: 'testing' }));
+
+    try {
+      const response = await invoke('adminData', {
+        action: 'testWebhook',
+        url: webhook.url,
+        secret: webhook.secret || undefined,
+      });
+      setWebhookTestResults(prev => ({
+        ...prev,
+        [index]: response.success ? 'success' : 'failed',
+      }));
+    } catch {
+      setWebhookTestResults(prev => ({ ...prev, [index]: 'failed' }));
+    }
   };
 
   const handleDeleteAll = async () => {
@@ -366,6 +453,75 @@ const Admin = () => {
                 )}
               </Stack>
             </SectionMessage>
+          )}
+        </Stack>
+      </Box>
+
+      <Box paddingBlock="space.200">
+        <Stack space="small">
+          <Heading size="medium">Event Webhooks</Heading>
+          <Text>
+            Configure webhook URLs to receive events when signatures are added, quorum is reached, or pages are deleted.
+            Compatible with Atlassian Automation incoming webhooks and any HTTP endpoint.
+          </Text>
+          {webhookLoading ? (
+            <Text>Loading webhook configuration...</Text>
+          ) : (
+            <Stack space="small">
+              {webhooks.map((webhook, index) => (
+                <Box key={`webhook-${index}`} paddingBlock="space.100">
+                  <Stack space="space.050">
+                    <Inline space="space.100" alignBlock="center">
+                      <Text><Strong>Webhook {index + 1}</Strong></Text>
+                      {webhookTestResults[index] === 'success' && <Lozenge appearance="success">OK</Lozenge>}
+                      {webhookTestResults[index] === 'failed' && <Lozenge appearance="removed">Failed</Lozenge>}
+                      {webhookTestResults[index] === 'testing' && <Lozenge>Testing...</Lozenge>}
+                    </Inline>
+                    <Textfield
+                      value={webhook.url}
+                      onChange={(e) => handleWebhookUrlChange(index, e.target.value)}
+                      placeholder="https://automation.atlassian.com/pro/hooks/..."
+                    />
+                    <Textfield
+                      value={webhook.secret || ''}
+                      onChange={(e) => handleWebhookSecretChange(index, e.target.value)}
+                      placeholder="Secret token (optional)"
+                      type="password"
+                    />
+                    <Inline space="space.100">
+                      <Button
+                        onClick={() => handleTestWebhook(index)}
+                        isDisabled={!webhook.url?.trim() || webhookTestResults[index] === 'testing'}
+                      >
+                        Test
+                      </Button>
+                      <Button
+                        onClick={() => handleRemoveWebhook(index)}
+                        appearance="subtle"
+                      >
+                        Remove
+                      </Button>
+                    </Inline>
+                  </Stack>
+                </Box>
+              ))}
+              <Box paddingBlockStart="space.100">
+                <Inline space="space.100">
+                  <Button onClick={handleAddWebhook} appearance="subtle">
+                    Add Webhook
+                  </Button>
+                  <LoadingButton
+                    onClick={handleSaveWebhooks}
+                    isLoading={webhookSaving}
+                    appearance="primary"
+                  >
+                    Save
+                  </LoadingButton>
+                  {webhookSaveStatus === 'saved' && <Lozenge appearance="success">Saved</Lozenge>}
+                  {webhookSaveStatus === 'error' && <Lozenge appearance="removed">Save failed</Lozenge>}
+                </Inline>
+              </Box>
+            </Stack>
           )}
         </Stack>
       </Box>
