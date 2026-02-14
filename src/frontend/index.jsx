@@ -384,6 +384,11 @@ const App = () => {
     setEmailModal({ isOpen: false, emails: [], title: '' });
   }, []);
 
+  // Wait for config to load before rendering anything
+  if (!config) {
+    return <Spinner />;
+  }
+
   // If validation fails (insufficient content), show warning instead of the macro
   if (validationWarning) {
     return (
