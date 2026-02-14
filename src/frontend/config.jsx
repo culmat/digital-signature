@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ForgeReconciler, { useConfig, Button, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea } from '@forge/react';
+import ForgeReconciler, { useConfig, Button, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup } from '@forge/react';
 import { view } from '@forge/bridge';
 
 const useSubmit = () => {
@@ -40,6 +40,8 @@ const Config = () => {
   const [inheritEditors, setInheritEditors] = useState(false);
   const [maxSignatures, setMaxSignatures] = useState('');
   const [visibilityLimit, setVisibilityLimit] = useState('');
+  const [signaturesVisible, setSignaturesVisible] = useState('ALWAYS');
+  const [pendingVisible, setPendingVisible] = useState('ALWAYS');
   
   const { error, message, submit } = useSubmit();
   const config = useConfig();
@@ -61,6 +63,8 @@ const Config = () => {
     setInheritEditors(config?.inheritEditors || false);
     setMaxSignatures(config?.maxSignatures !== undefined ? String(config.maxSignatures) : '');
     setVisibilityLimit(config?.visibilityLimit !== undefined ? String(config.visibilityLimit) : '');
+    setSignaturesVisible(config?.signaturesVisible || 'ALWAYS');
+    setPendingVisible(config?.pendingVisible || 'ALWAYS');
   }, [config]);
 
   // Check if petition mode is active (no restrictions)
@@ -106,7 +110,9 @@ const Config = () => {
       inheritViewers,
       inheritEditors,
       maxSignatures: maxSigs,
-      visibilityLimit: visLimit
+      visibilityLimit: visLimit,
+      signaturesVisible,
+      pendingVisible,
     });
   };
 
@@ -197,7 +203,35 @@ const Config = () => {
         placeholder="Leave empty to show all"
       />
       <Text>Number of signed signatures to display initially. Leave empty to show all. Users can click "Show more" to see hidden signatures.</Text>
-      
+
+      {/* Signatures Visibility */}
+      <Label labelFor="signaturesVisible">Signatures Visibility</Label>
+      <RadioGroup
+        name="signaturesVisible"
+        value={signaturesVisible}
+        onChange={(e) => setSignaturesVisible(e.target.value)}
+        options={[
+          { label: 'Always visible', value: 'ALWAYS' },
+          { label: 'Only if user can sign', value: 'IF_SIGNATORY' },
+          { label: 'Only if user has signed', value: 'IF_SIGNED' },
+        ]}
+      />
+      <Text>Controls who can see the list of signed signatures.</Text>
+
+      {/* Pending Signatures Visibility */}
+      <Label labelFor="pendingVisible">Pending Signatures Visibility</Label>
+      <RadioGroup
+        name="pendingVisible"
+        value={pendingVisible}
+        onChange={(e) => setPendingVisible(e.target.value)}
+        options={[
+          { label: 'Always visible', value: 'ALWAYS' },
+          { label: 'Only if user can sign', value: 'IF_SIGNATORY' },
+          { label: 'Only if user has signed', value: 'IF_SIGNED' },
+        ]}
+      />
+      <Text>Controls who can see the list of pending signatures.</Text>
+
       {/* Petition Mode Warning */}
       {isPetitionMode && (
         <SectionMessage appearance="warning" title="Petition Mode Active">

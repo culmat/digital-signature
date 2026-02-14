@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useReducer, useCallback } from 're
 import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea } from '@forge/react';
 import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
 import { MarkdownContent } from './markdown/renderToReact';
+import { isSectionVisible } from '../shared/visibilityCheck';
 
 const Signatures = ({ signatures, preFix, formatDate }) => {
   return (
@@ -115,6 +116,8 @@ const App = () => {
   const content = config?.content || '';
   const configuredSigners = config?.signers || [];
   const visibilityLimit = config?.visibilityLimit;
+  const signaturesVisible = config?.signaturesVisible;
+  const pendingVisible = config?.pendingVisible;
 
   // Parse markdown content to AST for rendering
   const ast = useMemo(() => parseAndSanitize(content), [content]);
@@ -326,6 +329,15 @@ const App = () => {
   const hasPendingSignatures = pendingSignatures.length > 0;
   const hasSignatures = signatureState.entity?.signatures?.length > 0;
 
+  // Visibility controls: determine if current user can see signed/pending sections
+  const hasSigned = signatureState.entity?.signatures?.some(
+    sig => sig.accountId === userState.accountId
+  ) ?? false;
+  // authState.status.allowed becomes false after signing, but user is still a signatory
+  const isSignatory = authState.status?.allowed || hasSigned;
+  const showSignedSection = isSectionVisible(signaturesVisible, { isSignatory, hasSigned });
+  const showPendingSection = isSectionVisible(pendingVisible, { isSignatory, hasSigned });
+
   const handleEmailAction = useCallback(async (accountIds, label) => {
     setEmailPopupOpen(false);
     setEmailLoading(true);
@@ -458,12 +470,17 @@ const App = () => {
           )}
           
           {/* Signature section */}
-          {signatureState.isLoading ? (
+          {/* When IF_SIGNATORY visibility is configured, wait for auth to resolve before rendering
+              to prevent sections from flashing before the auth check determines signatory status */}
+          {signatureState.isLoading || (
+            (signaturesVisible === 'IF_SIGNATORY' || pendingVisible === 'IF_SIGNATORY')
+            && authState.status === null
+          ) ? (
             <Spinner />
           ) : (
             <Stack space="space.200">
               {/* Signed signatures section */}
-              {signatureState.entity?.signatures && signatureState.entity.signatures.length > 0 && (
+              {showSignedSection && signatureState.entity?.signatures && signatureState.entity.signatures.length > 0 && (
                 <Stack space="space.100">
                   <Signatures 
                     signatures={
@@ -486,7 +503,7 @@ const App = () => {
               )}
 
               {/* Pending signatures section */}
-              {hasPendingSignatures && (
+              {showPendingSection && hasPendingSignatures && (
                 <Signatures signatures={pendingSignatures} preFix="Pending"/>
               )}
               
