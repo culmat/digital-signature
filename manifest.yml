@@ -57,7 +57,3 @@ permissions:
     - write:confluence-content
     - storage:app
     - read:user:confluence
-  external:
-    fetch:
-      backend:
-        - '*'

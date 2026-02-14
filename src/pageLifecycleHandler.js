@@ -1,5 +1,4 @@
-import { setDeleted, hardDeleteByPageId as hardDelete } from './storage/signatureStore';
-import { publishEvent } from './services/eventPublisher';
+import { setDeleted, hardDelete } from './storage/signatureStore';
 
 /**
  * Handles Confluence page lifecycle events (trashed, deleted).
@@ -25,14 +24,8 @@ export async function handler(event) {
   if (event.eventType === 'avi:confluence:trashed:page') {
     const affected = await setDeleted(pageId);
     console.log(`Soft deleted ${affected} contracts for trashed page ${pageId}`);
-    publishEvent('contract.trashed', { pageId, contractsAffected: affected }).catch(err =>
-      console.error('Failed to publish contract.trashed event:', err)
-    );
   } else if (event.eventType === 'avi:confluence:deleted:page') {
     const affected = await hardDelete(pageId);
     console.log(`Hard deleted ${affected} contracts for purged page ${pageId}`);
-    publishEvent('contract.deleted', { pageId, contractsAffected: affected }).catch(err =>
-      console.error('Failed to publish contract.deleted event:', err)
-    );
   }
 }

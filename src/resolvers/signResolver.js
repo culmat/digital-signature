@@ -2,7 +2,6 @@ import { putSignature, getSignature } from '../storage/signatureStore';
 import { canUserSign } from '../utils/signatureAuthorization';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 import { validateHashInput, validateRequiredFields } from './validation';
-import { publishEvent } from '../services/eventPublisher';
 
 /**
  * Serializes a signature entity for transmission to frontend.
@@ -63,39 +62,6 @@ export async function signResolver(req) {
     }
 
     const signature = await putSignature(hash, pageId, accountId);
-
-    // Publish signature event (fire-and-forget — never blocks the sign response)
-    const configuredSigners = config?.signers || [];
-    const eventData = {
-      pageId,
-      contractHash: hash,
-      contractTitle: config?.panelTitle || 'Untitled Document',
-      signer: { accountId },
-      signatures: {
-        current: signature.signatures.length,
-        required: configuredSigners.length > 0 ? configuredSigners.length : null,
-        isComplete: false,
-      },
-    };
-
-    const allNamedSignersSigned = configuredSigners.length > 0
-      && configuredSigners.every(id =>
-        signature.signatures.some(s => s.accountId === id)
-      );
-
-    if (allNamedSignersSigned) {
-      eventData.signatures.isComplete = true;
-    }
-
-    publishEvent('signature.added', eventData).catch(err =>
-      console.error('Failed to publish signature.added event:', err)
-    );
-
-    if (allNamedSignersSigned) {
-      publishEvent('signature.quorum_reached', eventData).catch(err =>
-        console.error('Failed to publish signature.quorum_reached event:', err)
-      );
-    }
 
     return successResponse({
       signature: serializeEntity(signature),
