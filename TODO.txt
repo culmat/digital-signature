@@ -16,7 +16,7 @@ MACRO CONFIGURATION:
   -- inheritEditors ✅
   -- maxSignatures ✅
   -- visibilityLimit ✅
-  -- notified
+  -- notified ❌ not possible in forge. Maybe add page property alerts later 
   -- panel ❌ (won't do)
   -- protectedContent ❌ (won't do)
   -- signaturesVisible : always, if user is allowd to sign, if user has signed 
