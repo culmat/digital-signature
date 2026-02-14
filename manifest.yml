@@ -57,3 +57,4 @@ permissions:
     - write:confluence-content
     - storage:app
     - read:user:confluence
+    - read:email-address:confluence
