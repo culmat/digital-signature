@@ -10,20 +10,20 @@ MACRO CONFIGURATION:
 - implement macro config UI with parameters: 
   -- title ✅
   -- content ✅ 👍
-  -- signers ✅
-  -- signerGroups ✅
-  -- inheritViewers ✅
-  -- inheritEditors ✅
-  -- maxSignatures ✅
-  -- visibilityLimit ✅
+  -- signers ✅ 👍
+  -- signerGroups ✅ 👍
+  -- inheritViewers ✅ 👍
+  -- inheritEditors ✅ 👍
+  -- maxSignatures ✅ 👍
+  -- visibilityLimit ✅ 👍
   -- notified ❌ not possible in forge. Maybe add page property alerts later 
   -- panel ❌ (won't do)
   -- protectedContent ❌ (won't do)
   -- signaturesVisible : always, if user is allowd to sign, if user has signed ✅ 👍
   -- pendingVisible : always, if user is allowd to sign, if user has signed ✅ 👍
-✅ support "petition mode" (no restrictions = any logged-in user can sign, with UI warning)
+✅ 👍 support "petition mode" (no restrictions = any logged-in user can sign, with UI warning)
 - support inheritSigners from page permissions (READERS_ONLY, WRITERS_ONLY, READERS_AND_WRITERS, NONE)
-✅ implement maxSignatures limit (prevent further signatures when reached, support 0 to disable signing)
+✅ 👍 implement maxSignatures limit (prevent further signatures when reached, support 0 to disable signing)
 - implement visibility controls: signaturesVisible and pendingVisible (ALWAYS, IF_SIGNATORY, IF_SIGNED)
 
 NOTIFICATIONS & EMAIL:
@@ -43,7 +43,7 @@ PROTECTED CONTENT:
 - use signature hash as protected page key
 
 LIFECYCLE & CLEANUP:
-✅ implement event listener for page deletion
+✅ 👍 implement event listener for page deletion
 
 ADMIN UI & BACKUP/RESTORE:
 ✅  specification completed: docs/backup-restore-spec.md
@@ -57,7 +57,7 @@ ADMIN UI & BACKUP/RESTORE:
 - integrate cleanup UI into admin page
 
 MISSING SIGNATURES TRACKING:
-✅ track and display missing signatures (users who haven't signed yet) - Phase 1: Named signers only
+✅ 👍 track and display missing signatures (users who haven't signed yet) - Phase 1: Named signers only
 - sync missing signatures list when macro config changes (add/remove users)
 - support petition mode where missing list shows "*" for any user
 - Phase 2: Add group resolution for pending calculation
