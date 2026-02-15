@@ -172,8 +172,30 @@ cmd_plan() {
 
   echo ""
   openspec new change "$change_name"
-  echo ""
-  echo -e "  ${GREEN}●${RESET} Created OpenSpec change: ${BOLD}${change_name}${RESET}"
+
+  # Scaffold proposal.md with the template from openspec instructions
+  local change_dir
+  change_dir="$(openspec instructions proposal --change "$change_name" --json \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['changeDir'])")"
+  local template
+  template="$(openspec instructions proposal --change "$change_name" --json \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['template'])")"
+  local proposal_path="${change_dir}/proposal.md"
+
+  if [[ -n "$template" && -n "$change_dir" ]]; then
+    {
+      echo "<!-- Backlog: ${target_id}: ${title} -->"
+      echo ""
+      echo "$template"
+    } > "$proposal_path"
+    echo ""
+    echo -e "  ${GREEN}●${RESET} Created OpenSpec change: ${BOLD}${change_name}${RESET}"
+    echo -e "  ${DIM}Scaffolded proposal.md${RESET}"
+  else
+    echo ""
+    echo -e "  ${GREEN}●${RESET} Created OpenSpec change: ${BOLD}${change_name}${RESET}"
+    echo -e "  ${YELLOW}Warning:${RESET} Could not scaffold proposal.md"
+  fi
   echo ""
 }
 
