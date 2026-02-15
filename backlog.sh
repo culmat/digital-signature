@@ -1,0 +1,369 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKLOG_FILE="$SCRIPT_DIR/BACKLOG.md"
+ID_PATTERN='i[0-9][0-9][0-9][0-9]'
+
+# --- colors (disabled when not a terminal or --no-color) ---
+
+if [[ -t 1 ]] && [[ "${NO_COLOR:-}" == "" ]]; then
+  BOLD='\033[1m'
+  DIM='\033[2m'
+  CYAN='\033[36m'
+  GREEN='\033[32m'
+  YELLOW='\033[33m'
+  RED='\033[31m'
+  RESET='\033[0m'
+else
+  BOLD='' DIM='' CYAN='' GREEN='' YELLOW='' RED='' RESET=''
+fi
+
+# --- dependency check ---
+
+check_dependencies() {
+  if ! command -v openspec &>/dev/null; then
+    echo -e "${RED}Error:${RESET} openspec CLI is not installed."
+    echo "Install it from: https://github.com/openspec-dev/openspec"
+    exit 1
+  fi
+}
+
+# --- parsing helpers ---
+
+parse_next_id() {
+  sed -n "s/.*<!-- next-id: \(${ID_PATTERN}\) -->.*/\1/p" "$BACKLOG_FILE"
+}
+
+increment_id() {
+  local num="${1#i}"
+  printf "i%04d" "$(( 10#$num + 1 ))"
+}
+
+get_active_items() {
+  sed -n "/^# Backlog\$/,/^## Archive/{
+    /^- ${ID_PATTERN}:/p
+  }" "$BACKLOG_FILE"
+}
+
+get_archived_items() {
+  sed -n "/^## Archive/,\${
+    /^- ${ID_PATTERN}:/p
+  }" "$BACKLOG_FILE"
+}
+
+extract_id() {
+  echo "$1" | sed -n "s/.*\(${ID_PATTERN}\).*/\1/p"
+}
+
+extract_title() {
+  echo "$1" | sed "s/^- ${ID_PATTERN}: //"
+}
+
+title_to_slug() {
+  echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40
+}
+
+# Fetch openspec statuses as "id|status" lines
+OPENSPEC_CACHE=""
+
+load_openspec_statuses() {
+  local active_cache
+  active_cache="$(openspec list --json 2>/dev/null | python3 -c "
+import sys, json, re
+data = json.load(sys.stdin)
+for c in data.get('changes', []):
+    m = re.match(r'(i\d{4})', c.get('name',''))
+    if m: print(m.group(1) + '|' + c.get('status',''))
+" 2>/dev/null || true)"
+
+  local archive_dir="$SCRIPT_DIR/openspec/changes/archive"
+  local archived_cache=""
+  if [[ -d "$archive_dir" ]]; then
+    for dir in "$archive_dir"/*/; do
+      [[ -d "$dir" ]] || continue
+      local prefix
+      prefix="$(basename "$dir" | sed -n "s/.*\(${ID_PATTERN}\).*/\1/p")"
+      [[ -n "$prefix" ]] && archived_cache="${archived_cache}${prefix}|archived
+"
+    done
+  fi
+
+  OPENSPEC_CACHE="${active_cache}
+${archived_cache}"
+}
+
+lookup_status() {
+  local id="$1"
+  echo "$OPENSPEC_CACHE" | while IFS='|' read -r prefix status; do
+    if [[ "$prefix" == "$id" ]]; then
+      echo "$status"
+      return
+    fi
+  done
+}
+
+# --- commands ---
+
+cmd_add() {
+  local title="$1"
+  local current_id
+  current_id="$(parse_next_id)"
+  local next_id
+  next_id="$(increment_id "$current_id")"
+
+  local last_item_line
+  last_item_line="$(awk "/^- ${ID_PATTERN}:/{n=NR} END{print n+0}" "$BACKLOG_FILE")"
+  if [[ "$last_item_line" -gt 0 ]]; then
+    sed -i '' "${last_item_line}a\\
+- ${current_id}: ${title}
+" "$BACKLOG_FILE"
+  else
+    local heading_line
+    heading_line="$(awk '/^# Backlog$/{print NR}' "$BACKLOG_FILE")"
+    sed -i '' "$((heading_line + 1))a\\
+- ${current_id}: ${title}
+" "$BACKLOG_FILE"
+  fi
+
+  # Ensure blank line before ## Archive
+  awk '
+    /^## Archive/ && prev !~ /^$/ { print "" }
+    { print; prev = $0 }
+  ' "$BACKLOG_FILE" > "$BACKLOG_FILE.tmp" && mv "$BACKLOG_FILE.tmp" "$BACKLOG_FILE"
+
+  sed -i '' "s/<!-- next-id: ${current_id} -->/<!-- next-id: ${next_id} -->/" "$BACKLOG_FILE"
+
+  echo ""
+  echo -e "  ${GREEN}●${RESET} Added ${BOLD}${current_id}${RESET}: ${title}"
+  echo -e "  ${DIM}Next ID: ${next_id}${RESET}"
+  echo ""
+}
+
+cmd_plan() {
+  check_dependencies
+  local target_id="$1"
+
+  local match
+  match="$(get_active_items | grep "^- ${target_id}:" || true)"
+
+  if [[ -z "$match" ]]; then
+    local archived
+    archived="$(get_archived_items | grep "^- ${target_id}:" || true)"
+    if [[ -n "$archived" ]]; then
+      echo -e "${RED}Error:${RESET} ${target_id} is archived."
+    else
+      echo -e "${RED}Error:${RESET} ${target_id} not found in backlog."
+    fi
+    exit 1
+  fi
+
+  local title
+  title="$(extract_title "$match")"
+  local slug
+  slug="$(title_to_slug "$title")"
+  local change_name="${target_id}-${slug}"
+
+  echo ""
+  openspec new change "$change_name"
+  echo ""
+  echo -e "  ${GREEN}●${RESET} Created OpenSpec change: ${BOLD}${change_name}${RESET}"
+  echo ""
+}
+
+cmd_view() {
+  check_dependencies
+  load_openspec_statuses
+
+  local active
+  active="$(get_active_items)"
+  local count
+  count="$(echo "$active" | grep -c "^- ${ID_PATTERN}" || true)"
+
+  echo ""
+  echo -e "${BOLD}Backlog Dashboard${RESET}"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo -e "  ${BOLD}Active Items:${RESET} ${count}"
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+
+  if [[ "$count" -eq 0 ]]; then
+    echo -e "  ${DIM}No active items.${RESET}"
+    echo ""
+    return
+  fi
+
+  printf "  ${BOLD}%-8s  %-44s  %s${RESET}\n" "ID" "Title" "Status"
+  printf "  ${DIM}%-8s  %-44s  %s${RESET}\n" "────────" "────────────────────────────────────────────" "──────────"
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    local id
+    id="$(extract_id "$line")"
+    local title
+    title="$(extract_title "$line")"
+    [[ ${#title} -gt 44 ]] && title="${title:0:41}..."
+    local status
+    status="$(lookup_status "$id")"
+    status="${status:--}"
+
+    local status_display
+    case "$status" in
+      active|in-progress) status_display="${CYAN}${status}${RESET}" ;;
+      done|archived)      status_display="${GREEN}${status}${RESET}" ;;
+      -)                  status_display="${DIM}-${RESET}" ;;
+      *)                  status_display="${YELLOW}${status}${RESET}" ;;
+    esac
+
+    printf "  %-8s  %-44s  ${status_display}\n" "$id" "$title"
+  done <<< "$active"
+
+  echo ""
+}
+
+cmd_doctor() {
+  check_dependencies
+  local auto_fix=false
+  [[ "${1:-}" == "--fix" ]] && auto_fix=true
+
+  load_openspec_statuses
+
+  local issues_found=false
+
+  echo ""
+  echo -e "${BOLD}Backlog Doctor${RESET}"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    local id
+    id="$(extract_id "$line")"
+    local status
+    status="$(lookup_status "$id")"
+
+    if [[ "$status" == "archived" || "$status" == "done" ]]; then
+      issues_found=true
+      echo -e "  ${YELLOW}●${RESET} ${BOLD}${id}${RESET} is '${status}' in OpenSpec but still active in backlog."
+
+      if $auto_fix; then
+        sed -i '' "/^- ${id}:/d" "$BACKLOG_FILE"
+        sed -i '' "/^## Archive/a\\
+- ${line#- } (done)
+" "$BACKLOG_FILE"
+        echo -e "    ${GREEN}Fixed:${RESET} moved to archive."
+      else
+        read -rp "    Move to archive? [y/N] " answer
+        if [[ "$answer" =~ ^[Yy]$ ]]; then
+          sed -i '' "/^- ${id}:/d" "$BACKLOG_FILE"
+          sed -i '' "/^## Archive/a\\
+- ${line#- } (done)
+" "$BACKLOG_FILE"
+          echo -e "    ${GREEN}Moved to archive.${RESET}"
+        else
+          echo -e "    ${DIM}Skipped.${RESET}"
+        fi
+      fi
+    fi
+  done < <(get_active_items)
+
+  local current_next_id
+  current_next_id="$(parse_next_id)"
+  local current_num="${current_next_id#i}"
+  current_num=$((10#$current_num))
+
+  local highest=0
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    local id
+    id="$(extract_id "$line")"
+    local num="${id#i}"
+    num=$((10#$num))
+    (( num > highest )) && highest=$num
+  done < <(grep "^- ${ID_PATTERN}:" "$BACKLOG_FILE")
+
+  local expected_next=$(( highest + 1 ))
+  if (( current_num != expected_next )); then
+    issues_found=true
+    local expected_id
+    expected_id="$(printf "i%04d" "$expected_next")"
+    echo -e "  ${YELLOW}●${RESET} next-id is ${BOLD}${current_next_id}${RESET} but should be ${BOLD}${expected_id}${RESET}."
+
+    if $auto_fix; then
+      sed -i '' "s/<!-- next-id: ${current_next_id} -->/<!-- next-id: ${expected_id} -->/" "$BACKLOG_FILE"
+      echo -e "    ${GREEN}Fixed:${RESET} updated next-id to ${expected_id}."
+    else
+      read -rp "    Fix next-id to ${expected_id}? [y/N] " answer
+      if [[ "$answer" =~ ^[Yy]$ ]]; then
+        sed -i '' "s/<!-- next-id: ${current_next_id} -->/<!-- next-id: ${expected_id} -->/" "$BACKLOG_FILE"
+        echo -e "    ${GREEN}Fixed.${RESET}"
+      else
+        echo -e "    ${DIM}Skipped.${RESET}"
+      fi
+    fi
+  fi
+
+  echo ""
+  if ! $issues_found; then
+    echo -e "  ${GREEN}●${RESET} All checks passed."
+  fi
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+}
+
+cmd_help() {
+  echo ""
+  echo -e "${BOLD}Backlog${RESET} — minimalist backlog for OpenSpec"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+  echo -e "  ${BOLD}Usage:${RESET} backlog.sh <command> [args]"
+  echo ""
+  echo -e "  ${BOLD}Commands:${RESET}"
+  echo -e "    add <title>       Add a new item to the backlog"
+  echo -e "    plan <ID>         Create an OpenSpec change for an item"
+  echo -e "    view              Display dashboard of active items"
+  echo -e "    doctor [--fix]    Check and fix backlog issues"
+  echo -e "    help              Show this help message"
+  echo ""
+  echo -e "  ${BOLD}Examples:${RESET}"
+  echo -e "    ${DIM}backlog.sh add \"Implement user auth\"${RESET}"
+  echo -e "    ${DIM}backlog.sh plan i0001${RESET}"
+  echo -e "    ${DIM}backlog.sh view${RESET}"
+  echo -e "    ${DIM}backlog.sh doctor --fix${RESET}"
+  echo ""
+  echo "════════════════════════════════════════════════════════════"
+  echo ""
+}
+
+# --- main dispatch ---
+
+main() {
+  case "${1:-help}" in
+    add)
+      [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} title required. Usage: backlog.sh add <title>"; exit 1; }
+      cmd_add "$2"
+      ;;
+    plan)
+      [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} ID required. Usage: backlog.sh plan <ID>"; exit 1; }
+      cmd_plan "$2"
+      ;;
+    view)
+      cmd_view
+      ;;
+    doctor)
+      cmd_doctor "${2:-}"
+      ;;
+    help|--help|-h)
+      cmd_help
+      ;;
+    *)
+      echo -e "${RED}Unknown command:${RESET} $1"
+      cmd_help
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
