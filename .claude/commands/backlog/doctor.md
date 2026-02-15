@@ -7,6 +7,6 @@ tags: [backlog, doctor, maintenance]
 
 Run the backlog doctor to check for issues and apply fixes.
 
-Run: `./backlog.sh doctor --fix`
+Run: `./backlog doctor --fix`
 
 Show the output to the user.

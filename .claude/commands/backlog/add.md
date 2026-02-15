@@ -7,6 +7,6 @@ tags: [backlog, add]
 
 Add a new item to the backlog.
 
-Run: `./backlog.sh add "$ARGUMENTS"`
+Run: `./backlog add "$ARGUMENTS"`
 
 Show the output to the user.

@@ -7,6 +7,6 @@ tags: [backlog, view, dashboard]
 
 Display the backlog dashboard.
 
-Run: `./backlog.sh view`
+Run: `./backlog view`
 
 Show the output to the user.

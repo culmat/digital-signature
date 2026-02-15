@@ -330,7 +330,7 @@ cmd_help() {
   echo ""
   echo "════════════════════════════════════════════════════════════"
   echo ""
-  echo -e "  ${BOLD}Usage:${RESET} backlog.sh <command> [args]"
+  echo -e "  ${BOLD}Usage:${RESET} backlog <command> [args]"
   echo ""
   echo -e "  ${BOLD}Commands:${RESET}"
   echo -e "    add <title>       Add a new item to the backlog"
@@ -340,10 +340,10 @@ cmd_help() {
   echo -e "    help              Show this help message"
   echo ""
   echo -e "  ${BOLD}Examples:${RESET}"
-  echo -e "    ${DIM}backlog.sh add \"Implement user auth\"${RESET}"
-  echo -e "    ${DIM}backlog.sh plan i0001${RESET}"
-  echo -e "    ${DIM}backlog.sh view${RESET}"
-  echo -e "    ${DIM}backlog.sh doctor --fix${RESET}"
+  echo -e "    ${DIM}backlog add \"Implement user auth\"${RESET}"
+  echo -e "    ${DIM}backlog plan i0001${RESET}"
+  echo -e "    ${DIM}backlog view${RESET}"
+  echo -e "    ${DIM}backlog doctor --fix${RESET}"
   echo ""
   echo "════════════════════════════════════════════════════════════"
   echo ""
@@ -354,11 +354,11 @@ cmd_help() {
 main() {
   case "${1:-help}" in
     add)
-      [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} title required. Usage: backlog.sh add <title>"; exit 1; }
+      [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} title required. Usage: backlog add <title>"; exit 1; }
       cmd_add "$2"
       ;;
     plan)
-      [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} ID required. Usage: backlog.sh plan <ID>"; exit 1; }
+      [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} ID required. Usage: backlog plan <ID>"; exit 1; }
       cmd_plan "$2"
       ;;
     view)
