@@ -1,6 +1,5 @@
 # Backlog
 
-- i0001: Optimize for many signatures (sort, paginate, show latest 10)
 - i0007: Macro config: title validation and tests
 - i0027: Mailto links with fallback — complete tests
 - i0028: /emails endpoint — complete tests
@@ -54,6 +53,7 @@
 - i0033: Signature hash as protected page key (wontdo)
 - i0034: Event listener for page deletion (done)
 - i0035: Backup/restore specification (done)
+- i0001: Optimize for many signatures; sort by signed timestamp (done)
 - i0044: Missing signatures Phase 1: named signers only (done)
 
 <!-- next-id: i0053 -->
