@@ -60,6 +60,12 @@ extract_title() {
   echo "$1" | sed "s/^- ${ID_PATTERN}: //"
 }
 
+# Pad string to visible width (handles multi-byte chars like —)
+pad_right() {
+  local str="$1" width="$2"
+  python3 -c "import sys; s=sys.argv[1]; print(s + ' ' * max(0, int(sys.argv[2]) - len(s)), end='')" "$str" "$width"
+}
+
 title_to_slug() {
   echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40
 }
@@ -194,8 +200,9 @@ cmd_view() {
     return
   fi
 
-  printf "  ${BOLD}%-8s  %-44s  %s${RESET}\n" "ID" "Title" "Status"
-  printf "  ${DIM}%-8s  %-44s  %s${RESET}\n" "────────" "────────────────────────────────────────────" "──────────"
+  local title_width=44
+  printf "  ${BOLD}%-8s  %s  %s${RESET}\n" "ID" "$(pad_right "Title" $title_width)" "Status"
+  printf "  ${DIM}%-8s  %s  %s${RESET}\n" "────────" "$(pad_right "────────────────────────────────────────────" $title_width)" "──────────"
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
@@ -203,7 +210,12 @@ cmd_view() {
     id="$(extract_id "$line")"
     local title
     title="$(extract_title "$line")"
-    [[ ${#title} -gt 44 ]] && title="${title:0:41}..."
+    # Truncate to visible character width (UTF-8 safe)
+    local visible_len
+    visible_len="$(printf '%s' "$title" | LC_ALL=en_US.UTF-8 wc -m | tr -d ' ')"
+    if [[ "$visible_len" -gt "$title_width" ]]; then
+      title="$(python3 -c "import sys; print(sys.argv[1][:$(( title_width - 3 ))] + '...')" "$title")"
+    fi
     local status
     status="$(lookup_status "$id")"
     status="${status:--}"
@@ -216,7 +228,7 @@ cmd_view() {
       *)                  status_display="${YELLOW}${status}${RESET}" ;;
     esac
 
-    printf "  %-8s  %-44s  ${status_display}\n" "$id" "$title"
+    printf "  %-8s  %s  ${status_display}\n" "$id" "$(pad_right "$title" $title_width)"
   done <<< "$active"
 
   echo ""
