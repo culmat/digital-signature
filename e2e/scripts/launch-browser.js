@@ -44,9 +44,19 @@ function findBrowserExecutable() {
         .sort()
         .reverse();
 
+      // All known Playwright Chromium layouts across versions and architectures
+      const playwrightSubpaths = [
+        'chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+        'chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+        'chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+        'chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+      ];
+
       for (const dir of chromiumDirs) {
-        const execPath = path.join(playwrightCacheDir, dir, 'chrome-mac/Chromium.app/Contents/MacOS/Chromium');
-        if (fs.existsSync(execPath)) return execPath;
+        for (const subpath of playwrightSubpaths) {
+          const candidate = path.join(playwrightCacheDir, dir, subpath);
+          if (fs.existsSync(candidate)) return candidate;
+        }
       }
     }
 

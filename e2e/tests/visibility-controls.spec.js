@@ -215,4 +215,81 @@ test.describe('Visibility Controls', () => {
     // After signing: Signed section should become visible
     await expect(page.locator(MACRO_CONTAINER).getByText('Signed (1)')).toBeVisible({ timeout: 15000 });
   });
+
+  test('visibilityLimit truncates signed list and shows "Show more" button', async ({ page }) => {
+    await page.goto(`${BASE_URL}/wiki`);
+
+    const signerIds = Array.from({ length: 5 }, () => generateRandomAccountId());
+    const macroConfig = {
+      panelTitle: 'Visibility Test - Limit',
+      content: 'Only two signatures shown initially.',
+      visibilityLimit: 2,
+    };
+    const storageBody = generateMacroStorageFormat(macroConfig);
+    const title = `E2E-Vis-Limit-${Date.now()}`;
+    const testPage = await createTestPage(page, TEST_SPACE, title, storageBody);
+    testPageId = testPage.id;
+    console.log(`Created test page: ${testPage.id} - ${testPage.title}`);
+
+    const fixtureSQL = generateFixtureWithMultipleSignatures(
+      testPage.id,
+      signerIds,
+      macroConfig,
+    );
+    await setupFixtures(page, fixtureSQL);
+
+    await page.goto(`${BASE_URL}/wiki/spaces/${TEST_SPACE}/pages/${testPage.id}`);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByText('Only two signatures shown initially.')).toBeVisible({ timeout: 15000 });
+
+    // Only 2 of 5 signatures shown initially
+    await expect(page.locator(MACRO_CONTAINER).getByText('Signed (2)')).toBeVisible();
+
+    // "Show 3 more" button should be visible
+    const showMoreButton = page.locator(MACRO_CONTAINER).getByRole('button', { name: 'Show 3 more' });
+    await expect(showMoreButton).toBeVisible();
+
+    // Click to reveal all signatures
+    await showMoreButton.click();
+
+    // All 5 signatures now visible
+    await expect(page.locator(MACRO_CONTAINER).getByText('Signed (5)')).toBeVisible({ timeout: 15000 });
+
+    // "Show more" button should be gone
+    await expect(showMoreButton).not.toBeVisible();
+  });
+
+  test('no visibilityLimit shows all signatures without "Show more" button', async ({ page }) => {
+    await page.goto(`${BASE_URL}/wiki`);
+
+    const signerIds = Array.from({ length: 5 }, () => generateRandomAccountId());
+    const macroConfig = {
+      panelTitle: 'Visibility Test - No Limit',
+      content: 'All signatures shown immediately.',
+    };
+    const storageBody = generateMacroStorageFormat(macroConfig);
+    const title = `E2E-Vis-NoLimit-${Date.now()}`;
+    const testPage = await createTestPage(page, TEST_SPACE, title, storageBody);
+    testPageId = testPage.id;
+    console.log(`Created test page: ${testPage.id} - ${testPage.title}`);
+
+    const fixtureSQL = generateFixtureWithMultipleSignatures(
+      testPage.id,
+      signerIds,
+      macroConfig,
+    );
+    await setupFixtures(page, fixtureSQL);
+
+    await page.goto(`${BASE_URL}/wiki/spaces/${TEST_SPACE}/pages/${testPage.id}`);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByText('All signatures shown immediately.')).toBeVisible({ timeout: 15000 });
+
+    // All 5 signatures shown directly
+    await expect(page.locator(MACRO_CONTAINER).getByText('Signed (5)')).toBeVisible();
+
+    // No "Show more" button should exist
+    await expect(page.locator(MACRO_CONTAINER).getByRole('button', { name: /Show \d+ more/ })).not.toBeVisible();
+  });
 });
