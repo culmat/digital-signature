@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ForgeReconciler, { useConfig, Button, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup } from '@forge/react';
+import ForgeReconciler, { useConfig, Button, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup, ErrorMessage } from '@forge/react';
 import { view } from '@forge/bridge';
 
 const useSubmit = () => {
@@ -81,8 +81,13 @@ const Config = () => {
     setSigners(ids);
   };
 
+  // Title validation: max 200 characters
+  const TITLE_MAX_LENGTH = 200;
+  const titleTooLong = panelTitle.length > TITLE_MAX_LENGTH;
+
   // Handle form submission
   const handleSubmit = () => {
+    if (titleTooLong) return;
     // Parse signerGroups from textarea (one ID per line)
     const groupIds = signerGroups
       .split('\n')
@@ -129,7 +134,10 @@ const Config = () => {
         value={panelTitle}
         onChange={(e) => setPanelTitle(e.target.value)}
       />
-      <Text>Is part of the contract. Changes remove signatures.</Text>
+      {titleTooLong
+        ? <ErrorMessage>Title must be {TITLE_MAX_LENGTH} characters or fewer ({panelTitle.length}/{TITLE_MAX_LENGTH}).</ErrorMessage>
+        : <Text>Is part of the contract. Changes remove signatures.</Text>
+      }
 
       {/* Contract Content (Markdown) */}
       <Label labelFor="content">Contract Content</Label>
