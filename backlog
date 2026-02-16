@@ -346,6 +346,64 @@ cmd_doctor() {
   echo ""
 }
 
+cmd_archive() {
+  local ids=("$@")
+  local errors=()
+  local archived=()
+
+  for target_id in "${ids[@]}"; do
+    # Validate format
+    if ! [[ "$target_id" =~ ^i[0-9]{4}$ ]]; then
+      errors+=("${target_id}: invalid ID format")
+      continue
+    fi
+
+    # Find the item in the active backlog
+    local match
+    match="$(get_active_items | grep "^- ${target_id}:" || true)"
+
+    if [[ -z "$match" ]]; then
+      # Check if already archived
+      local already
+      already="$(get_archived_items | grep "^- ${target_id}:" || true)"
+      if [[ -n "$already" ]]; then
+        errors+=("${target_id}: already archived")
+      else
+        errors+=("${target_id}: not found in backlog")
+      fi
+      continue
+    fi
+
+    local title
+    title="$(extract_title "$match")"
+
+    # Remove the line from the active section
+    # Use exact match to avoid partial ID collisions (e.g., i0001 vs i00011)
+    sed -i '' "/^- ${target_id}: /d" "$BACKLOG_FILE"
+
+    # Insert at the top of the Archive section (after the ## Archive header line)
+    local archive_line="- ${target_id}: ${title}"
+    sed -i '' "/^## Archive/a\\
+${archive_line}
+" "$BACKLOG_FILE"
+
+    archived+=("${target_id}: ${title}")
+  done
+
+  echo ""
+  if [[ ${#archived[@]} -gt 0 ]]; then
+    for item in "${archived[@]}"; do
+      echo -e "  ${GREEN}●${RESET} Archived ${BOLD}${item}${RESET}"
+    done
+  fi
+  if [[ ${#errors[@]} -gt 0 ]]; then
+    for err in "${errors[@]}"; do
+      echo -e "  ${RED}●${RESET} ${err}"
+    done
+  fi
+  echo ""
+}
+
 cmd_help() {
   echo ""
   echo -e "${BOLD}Backlog${RESET} — minimalist backlog for OpenSpec"
@@ -356,6 +414,7 @@ cmd_help() {
   echo ""
   echo -e "  ${BOLD}Commands:${RESET}"
   echo -e "    add <title>       Add a new item to the backlog"
+  echo -e "    archive <ID...>   Move items to archive as done"
   echo -e "    plan <ID>         Create an OpenSpec change for an item"
   echo -e "    view              Display dashboard of active items"
   echo -e "    doctor [--fix]    Check and fix backlog issues"
@@ -363,6 +422,7 @@ cmd_help() {
   echo ""
   echo -e "  ${BOLD}Examples:${RESET}"
   echo -e "    ${DIM}backlog add \"Implement user auth\"${RESET}"
+  echo -e "    ${DIM}backlog archive i0001 i0007${RESET}"
   echo -e "    ${DIM}backlog plan i0001${RESET}"
   echo -e "    ${DIM}backlog view${RESET}"
   echo -e "    ${DIM}backlog doctor --fix${RESET}"
@@ -378,6 +438,11 @@ main() {
     add)
       [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} title required. Usage: backlog add <title>"; exit 1; }
       cmd_add "$2"
+      ;;
+    archive)
+      shift
+      [[ $# -eq 0 ]] && { echo -e "${RED}Error:${RESET} ID(s) required. Usage: backlog archive <ID...>"; exit 1; }
+      cmd_archive "$@"
       ;;
     plan)
       [[ -z "${2:-}" ]] && { echo -e "${RED}Error:${RESET} ID required. Usage: backlog plan <ID>"; exit 1; }
