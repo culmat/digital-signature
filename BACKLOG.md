@@ -1,6 +1,5 @@
 # Backlog
 
-- i0007: Macro config: title validation and tests
 - i0027: Mailto links with fallback — complete tests
 - i0028: /emails endpoint — complete tests
 - i0029: /export endpoint (printable HTML)
@@ -29,7 +28,7 @@
 - i0052: Import into forge macro
 
 ## Archive (do not reuse IDs)
-
+- i0007: Macro config: title validation and tests (done)
 - i0002: visibilityLimit collapse with "Show all" button (done)
 - i0003: Display user full name via users-bulk API (done)
 - i0004: Panel mode toggle (wontdo)
