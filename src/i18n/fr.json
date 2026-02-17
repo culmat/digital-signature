@@ -1,0 +1,199 @@
+{
+  "app": {
+    "title": "Digital Signature",
+    "admin_title": "Digital Signature Admin"
+  },
+  "ui": {
+    "button": {
+      "sign": "Signer",
+      "signing": "Signature en cours...",
+      "confirm": "Confirmer la signature",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "show_all": "Afficher tout",
+      "show_less": "Afficher moins",
+      "email_signed": "Envoyer un e-mail aux signataires",
+      "email_pending": "Envoyer un e-mail aux signataires en attente",
+      "open_email_client": "Ouvrir dans le client de messagerie",
+      "generate_backup": "Générer une sauvegarde",
+      "clear_backup": "Effacer la sauvegarde",
+      "restore_data": "Restaurer les données",
+      "delete_everything": "Oui, tout supprimer",
+      "cancel_deletion": "Non, garder les données"
+    },
+    "heading": {
+      "signed": "Signé",
+      "pending": "En attente",
+      "signatures": "Signatures",
+      "statistics": "Statistiques de la base de données",
+      "backup": "Sauvegarde des données",
+      "restore": "Restauration des données",
+      "danger_zone": "Zone de danger"
+    },
+    "status": {
+      "loading": "Chargement...",
+      "saving": "Enregistrement...",
+      "invalid_date": "Date invalide"
+    }
+  },
+  "macro": {
+    "no_content": "Aucun contenu pour le moment. Ouvrez les paramètres du macro pour ajouter le texte du contrat.",
+    "show_more": "Afficher {count} de plus",
+    "email_modal": {
+      "title_suffix": "Adresses e-mail",
+      "count": "{count} adresse(s) e-mail"
+    },
+    "confirm_dialog": {
+      "title": "Signer le contrat",
+      "message": "Êtes-vous sûr de vouloir signer ce contrat ? Cette action est irréversible."
+    },
+    "validation": {
+      "cannot_use": "Impossible d'utiliser pour les signatures numériques",
+      "add_complete_text": "Veuillez ajouter le texte complet du contrat dans la configuration du macro. Le contrat doit être entièrement contenu dans ce macro.",
+      "header_missing": "Titre 1 (#) manquant (requis comme titre)",
+      "multiple_headers": "Plusieurs Titres 1 (#) trouvés"
+    }
+  },
+  "config": {
+    "description_prefix": "Intègre un contrat pour signature par un ou plusieurs utilisateurs Confluence. Voir ",
+    "description_suffix": " pour plus de détails.",
+    "documentation_link": "documentation",
+    "petition_mode": {
+      "title": "Mode Pétition Actif",
+      "description": "Aucune restriction configurée. Tout utilisateur connecté peut signer ce contrat."
+    },
+    "visibility_settings_signatures": "Visibilité des signatures",
+    "visibility_settings_pending": "Visibilité des signatures en attente",
+    "visibility_description_signatures": "Contrôle qui peut voir la liste des signataires.",
+    "visibility_description_pending": "Contrôle qui peut voir la liste des signataires en attente.",
+    "fields": {
+      "title": {
+        "label": "Titre du contrat",
+        "description": "Fait partie du contrat signé. Toute modification réinitialisera les signatures.",
+        "too_long": "Le titre doit comporter au maximum {max} caractères ({current}/{max})."
+      },
+      "content": {
+        "label": "Contenu du contrat",
+        "placeholder": "Entrez le texte du contrat ici.\n\nPrend en charge le Markdown de base :\n# Titre\n**gras** *italique*\n- éléments de liste\n> citation\n```code```",
+        "description": "Texte brut ou Markdown limité. C'est le contenu du contrat qui sera signé. Toute modification réinitialisera les signatures."
+      },
+      "signers": {
+        "label": "Signataires",
+        "description": "Sélectionnez les utilisateurs spécifiques qui peuvent signer ce contrat."
+      },
+      "signer_groups": {
+        "label": "Groupes de signataires (IDs de groupe)",
+        "placeholder": "Entrez les IDs de groupe Atlassian, un par ligne\nExemple : 0a89c6b3-e6dc-41af-a86b-1e012a309a30",
+        "description": "Entrez les IDs de groupe Atlassian (pas les IDs d'équipe), un par ligne. Trouvez les IDs de groupe dans l'administration Atlassian."
+      },
+      "inherit_viewers": {
+        "label": "Autoriser les spectateurs de la page à signer"
+      },
+      "inherit_editors": {
+        "label": "Autoriser les éditeurs de la page à signer"
+      },
+      "max_signatures": {
+        "label": "Nombre maximum de signatures (optionnel)",
+        "placeholder": "Laissez vide pour illimité",
+        "description": "Nombre maximum de signatures autorisées. Utilisez 0 pour désactiver la signature. Laissez vide pour illimité."
+      },
+      "visibility_limit": {
+        "label": "Limite d'affichage des signatures (optionnel)",
+        "placeholder": "Laissez vide pour tout afficher",
+        "description": "Nombre de signatures à afficher initialement. Laissez vide pour tout afficher. Les utilisateurs peuvent cliquer sur 'Afficher plus' pour voir les signatures masquées."
+      },
+      "signatures_visible": {
+        "label": "Afficher la liste des signataires",
+        "options": {
+          "always": "Toujours visible",
+          "signatory": "Seulement si l'utilisateur peut signer",
+          "signed": "Seulement si l'utilisateur a signé"
+        }
+      },
+      "pending_visible": {
+        "label": "Afficher la liste des signataires en attente",
+        "options": {
+          "always": "Toujours visible",
+          "signatory": "Seulement si l'utilisateur peut signer",
+          "signed": "Seulement si l'utilisateur a signé"
+        }
+      }
+    },
+    "button": {
+      "submit": "Soumettre"
+    }
+  },
+  "admin": {
+    "statistics": {
+      "metric": "Métrique",
+      "value": "Valeur",
+      "total_contracts": "Total des contrats",
+      "active_contracts": "Contrats actifs",
+      "deleted_contracts": "Contrats supprimés",
+      "total_signatures": "Total des signatures"
+    },
+    "backup": {
+      "downloaded": "Sauvegarde terminée ! Fichier téléchargé sous le nom {filename}",
+      "progress": "Démarrage de la sauvegarde...",
+      "chunk": "Téléchargement du morceau à l'offset {offset}..."
+    },
+    "restore": {
+      "placeholder": "Collez les données de sauvegarde ici (base64 ou SQL brut)...",
+      "description": "Collez les données de sauvegarde ci-dessous. Accepte à la fois le contenu .sql.gz encodé en base64 ou le SQL brut.",
+      "progress": "Importation des données...",
+      "success": "Restauration terminée avec succès !",
+      "error_empty": "Veuillez coller les données de sauvegarde dans la zone de texte",
+      "summary": {
+        "title": "Résumé de la restauration",
+        "new_contracts": "Nouveaux contrats : {count}",
+        "updated_contracts": "Contrats mis à jour : {count}",
+        "new_signatures": "Nouvelles signatures : {count}",
+        "updated_signatures": "Signatures mises à jour : {count}",
+        "no_changes": "Aucun changement - toutes les données existent déjà avec les mêmes valeurs",
+        "execution_time": "Temps d'exécution : {count}s",
+        "errors": "Erreurs : {count}"
+      }
+    },
+    "delete": {
+      "title": "Supprimer toutes les données",
+      "description": "Ceci supprimera définitivement TOUTES les données de signature de la base de données. Cette action est IRRÉVERSIBLE.",
+      "warning_title": "Avertissement : Action Irréversible",
+      "warning_description": "La suppression de toutes les données de signature supprimera définitivement tous les contrats et signatures de la base de données. Cette action ne peut pas être annulée. Assurez-vous d'avoir créé une sauvegarde avant de continuer.",
+      "placeholder": "Tapez 'DELETE' pour confirmer",
+      "confirm_title": "Confirmation requise",
+      "confirm_message": "Êtes-vous absolument sûr de vouloir supprimer TOUTES les données de signature ? Cela supprimera {contracts} contrats et {signatures} signatures de manière permanente.",
+      "success": "{contracts} contrats et {signatures} signatures supprimés avec succès.",
+      "summary_title": "Suppression terminée",
+      "contracts_deleted": "Contrats supprimés : {count}",
+      "signatures_deleted": "Signatures supprimées : {count}",
+      "execution_time": "Temps d'exécution : {count}s"
+    },
+    "backup_description": "Exporter toutes les données de signature vers un dump SQL compressé (encodé en base64 .sql.gz)",
+    "refresh_stats": "Actualiser les statistiques",
+    "no_stats": "Aucune statistique disponible"
+  },
+  "error": {
+    "unauthorized": "Veuillez vous connecter pour continuer",
+    "forbidden": "Vous n'avez pas la permission de signer ce contrat",
+    "max_signatures_reached": "Nombre maximum de signatures atteint",
+    "already_signed": "Vous avez déjà signé ce contrat",
+    "api_failure": "Échec de l'API lors de la vérification d'autorisation",
+    "forbidden_criteria": "Vous ne remplissez pas les conditions pour signer ce contrat",
+    "failed_load_stats": "Échec du chargement des statistiques",
+    "failed_backup": "Échec de la sauvegarde : {message}",
+    "failed_restore": "Échec de la restauration : {message}",
+    "failed_delete": "Échec de la suppression : {message}",
+    "missing_hash": "Champ obligatoire manquant : hash",
+    "invalid_hash": "Format de hash invalide : doit être une chaîne hexadécimale de 64 caractères",
+    "missing_fields": "Champ(s) obligatoire(s) manquant(s) : {fields}",
+    "missing_account_ids": "accountIds doit être un tableau non vide",
+    "generic": "Un problème est survenu. Veuillez réessayer.",
+    "auth_check_failed": "Échec de la vérification d'autorisation : {message}",
+    "unknown_action": "Action inconnue : {action}"
+  },
+  "success": {
+    "signed": "Signé avec succès ! Ce contrat compte maintenant {count} signature(s).",
+    "config_saved": "Paramètres enregistrés avec succès !",
+    "restore_summary": "Importation terminée : {contracts} contrats, {signatures} signatures."
+  }
+}

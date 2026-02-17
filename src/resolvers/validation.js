@@ -3,12 +3,10 @@ import { validationError } from '../utils/responseHelper';
 
 export function validateHashInput(hash) {
   if (!hash) {
-    return validationError('Missing required field: hash');
+    return validationError('error.missing_hash');
   }
   if (!isValidHash(hash)) {
-    return validationError(
-      'Invalid hash format: must be 64-character hexadecimal string'
-    );
+    return validationError('error.invalid_hash');
   }
   return null;
 }
@@ -19,9 +17,11 @@ export function validateRequiredFields(fields) {
     if (!value) missing.push(name);
   }
   if (missing.length > 0) {
-    return validationError(
-      `Missing required field(s): ${missing.join(', ')}`
-    );
+    // Return key and metadata for frontend translation
+    return errorResponse({
+      key: 'error.missing_fields',
+      params: { fields: missing.join(', ') }
+    }, 400);
   }
   return null;
 }

@@ -5,17 +5,20 @@ modules:
       render: native
       resolver:
         function: resolver
-      title: digital-signature
+      title:
+        i18n: app.title
       config:
         resource: macro-config
         viewportSize: max
         render: native
-        title: Digital Signature
+        title:
+          i18n: config.fields.title.label
       adfExport:
         function: adfExportFunction
   confluence:globalSettings:
     - key: digital-signature-admin-settings
-      title: Digital Signature Admin
+      title:
+        i18n: app.admin_title
       resource: admin-ui
       render: native
       resolver:
@@ -43,6 +46,16 @@ resources:
     path: src/frontend/config.jsx
   - key: admin-ui
     path: src/frontend/admin.jsx
+translations:
+  resources:
+    - key: en-US
+      path: src/i18n/en.json
+    - key: de-DE
+      path: src/i18n/de.json
+    - key: fr-FR
+      path: src/i18n/fr.json
+  fallback:
+    default: en-US
 app:
   runtime:
     name: nodejs22.x

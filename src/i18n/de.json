@@ -1,0 +1,199 @@
+{
+  "app": {
+    "title": "Digital Signature",
+    "admin_title": "Digital Signature Admin"
+  },
+  "ui": {
+    "button": {
+      "sign": "Unterschreiben",
+      "signing": "Wird unterschrieben...",
+      "confirm": "Unterschrift bestätigen",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "show_all": "Alle anzeigen",
+      "show_less": "Weniger anzeigen",
+      "email_signed": "Unterzeichnern eine E-Mail senden",
+      "email_pending": "Ausstehenden eine E-Mail senden",
+      "open_email_client": "Im E-Mail-Programm öffnen",
+      "generate_backup": "Backup erstellen",
+      "clear_backup": "Backup löschen",
+      "restore_data": "Daten wiederherstellen",
+      "delete_everything": "Ja, alles löschen",
+      "cancel_deletion": "Nein, Daten behalten"
+    },
+    "heading": {
+      "signed": "Unterschrieben",
+      "pending": "Ausstehend",
+      "signatures": "Unterschriften",
+      "statistics": "Datenbank-Statistiken",
+      "backup": "Backup-Daten",
+      "restore": "Daten wiederherstellen",
+      "danger_zone": "Gefahrenzone"
+    },
+    "status": {
+      "loading": "Lädt...",
+      "saving": "Speichert...",
+      "invalid_date": "Ungültiges Datum"
+    }
+  },
+  "macro": {
+    "no_content": "Noch kein Inhalt vorhanden. Öffnen Sie die Makro-Einstellungen, um den Vertragstext hinzuzufügen.",
+    "show_more": "{count} weitere anzeigen",
+    "email_modal": {
+      "title_suffix": "E-Mail-Adressen",
+      "count": "{count} E-Mail-Adresse(n)"
+    },
+    "confirm_dialog": {
+      "title": "Vertrag unterschreiben",
+      "message": "Sind Sie sicher, dass Sie diesen Vertrag unterschreiben möchten? Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "validation": {
+      "cannot_use": "Kann nicht für digitale Unterschriften verwendet werden",
+      "add_complete_text": "Bitte fügen Sie den vollständigen Vertragstext in der Makro-Konfiguration hinzu. Der Vertrag muss vollständig in diesem Makro enthalten sein.",
+      "header_missing": "Überschrift 1 (#) fehlt (als Titel erforderlich)",
+      "multiple_headers": "Mehrere Überschriften 1 (#) gefunden"
+    }
+  },
+  "config": {
+    "description_prefix": "Bettet einen Vertrag zur Unterschrift durch einen oder mehrere Confluence-Benutzer ein. Einzelheiten siehe ",
+    "description_suffix": ".",
+    "documentation_link": "Dokumentation",
+    "petition_mode": {
+      "title": "Petitionsmodus aktiv",
+      "description": "Keine Einschränkungen konfiguriert. Jeder angemeldete Benutzer kann diesen Vertrag unterschreiben."
+    },
+    "visibility_settings_signatures": "Sichtbarkeit der Unterschriften",
+    "visibility_settings_pending": "Sichtbarkeit der ausstehenden Unterschriften",
+    "visibility_description_signatures": "Steuert, wer die Liste der Unterzeichner sehen kann.",
+    "visibility_description_pending": "Steuert, wer die Liste der ausstehenden Unterzeichner sehen kann.",
+    "fields": {
+      "title": {
+        "label": "Titel des Vertrags",
+        "description": "Teil des unterschriebenen Vertrags. Änderungen setzen alle Unterschriften zurück.",
+        "too_long": "Der Titel darf maximal {max} Zeichen lang sein ({current}/{max})."
+      },
+      "content": {
+        "label": "Inhalt des Vertrags",
+        "placeholder": "Vertragstext hier eingeben.\n\nUnterstützt einfaches Markdown:\n# Überschrift\n**fett** *kursiv*\n- Listenpunkte\n> Blockzitat\n```Code```",
+        "description": "Nur Text oder eingeschränktes Markdown. Dies ist der Vertragsinhalt, der unterschrieben wird. Änderungen setzen alle Unterschriften zurück."
+      },
+      "signers": {
+        "label": "Unterzeichner",
+        "description": "Wählen Sie bestimmte Benutzer aus, die diesen Vertrag unterschreiben können."
+      },
+      "signer_groups": {
+        "label": "Unterzeichnergruppen (Gruppen-IDs)",
+        "placeholder": "Atlassian Gruppen-IDs eingeben, eine pro Zeile\nBeispiel: 0a89c6b3-e6dc-41af-a86b-1e012a309a30",
+        "description": "Geben Sie Atlassian Gruppen-IDs (nicht Team-IDs) ein, eine pro Zeile. Gruppen-IDs finden Sie in der Atlassian Verwaltung."
+      },
+      "inherit_viewers": {
+        "label": "Seitenbetrachtern das Unterschreiben erlauben"
+      },
+      "inherit_editors": {
+        "label": "Seitenbearbeitern das Unterschreiben erlauben"
+      },
+      "max_signatures": {
+        "label": "Maximale Anzahl an Unterschriften (optional)",
+        "placeholder": "Leer lassen für unbegrenzt",
+        "description": "Maximale Anzahl erlaubter Unterschriften. Verwenden Sie 0, um das Unterschreiben zu deaktivieren. Leer lassen für unbegrenzt."
+      },
+      "visibility_limit": {
+        "label": "Anzeigebeschränkung für Unterschriften (optional)",
+        "placeholder": "Leer lassen, um alle anzuzeigen",
+        "description": "Anzahl der initial anzuzeigenden Unterschriften. Leer lassen, um alle anzuzeigen. Benutzer können auf 'Mehr anzeigen' klicken, um weitere Unterschriften zu sehen."
+      },
+      "signatures_visible": {
+        "label": "Liste der Unterzeichner anzeigen",
+        "options": {
+          "always": "Immer sichtbar",
+          "signatory": "Nur wenn Benutzer unterschreiben kann",
+          "signed": "Nur wenn Benutzer unterschrieben hat"
+        }
+      },
+      "pending_visible": {
+        "label": "Liste der ausstehenden Unterzeichner anzeigen",
+        "options": {
+          "always": "Immer sichtbar",
+          "signatory": "Nur wenn Benutzer unterschreiben kann",
+          "signed": "Nur wenn Benutzer unterschrieben hat"
+        }
+      }
+    },
+    "button": {
+      "submit": "Absenden"
+    }
+  },
+  "admin": {
+    "statistics": {
+      "metric": "Metrik",
+      "value": "Wert",
+      "total_contracts": "Verträge insgesamt",
+      "active_contracts": "Aktive Verträge",
+      "deleted_contracts": "Gelöschte Verträge",
+      "total_signatures": "Unterschriften insgesamt"
+    },
+    "backup": {
+      "downloaded": "Backup abgeschlossen! Datei heruntergeladen als {filename}",
+      "progress": "Starte Backup...",
+      "chunk": "Lade Chunk bei Offset {offset} herunter..."
+    },
+    "restore": {
+      "placeholder": "Backup-Daten hier einfügen (base64 oder Klartext-SQL)...",
+      "description": "Fügen Sie unten Backup-Daten ein. Akzeptiert sowohl base64-kodierten .sql.gz Inhalt als auch Klartext-SQL.",
+      "progress": "Importiere Daten...",
+      "success": "Wiederherstellung erfolgreich abgeschlossen!",
+      "error_empty": "Bitte fügen Sie Backup-Daten in das Textfeld ein",
+      "summary": {
+        "title": "Zusammenfassung der Wiederherstellung",
+        "new_contracts": "Neue Verträge: {count}",
+        "updated_contracts": "Aktualisierte Verträge: {count}",
+        "new_signatures": "Neue Unterschriften: {count}",
+        "updated_signatures": "Aktualisierte Unterschriften: {count}",
+        "no_changes": "Keine Änderungen - alle Daten existieren bereits mit denselben Werten",
+        "execution_time": "Ausführungszeit: {count}s",
+        "errors": "Fehler: {count}"
+      }
+    },
+    "delete": {
+      "title": "Alle Daten löschen",
+      "description": "Dies wird permanent ALLE Unterschriftsdaten aus der Datenbank löschen. Diese Aktion ist IRREVERSIBEL.",
+      "warning_title": "Warnung: Unwiderrufliche Aktion",
+      "warning_description": "Das Löschen aller Unterschriftsdaten entfernt permanent alle Verträge und Unterschriften aus der Datenbank. Diese Aktion kann nicht rückgängig gemacht werden. Stellen Sie sicher, dass Sie ein Backup erstellt haben, bevor Sie fortfahren.",
+      "placeholder": "Geben Sie 'DELETE' zur Bestätigung ein",
+      "confirm_title": "Bestätigung erforderlich",
+      "confirm_message": "Sind Sie absolut sicher, dass Sie ALLE Unterschriftsdaten löschen möchten? Dies wird {contracts} Verträge und {signatures} Unterschriften dauerhaft entfernen.",
+      "success": "Erfolgreich {contracts} Verträge und {signatures} Unterschriften gelöscht.",
+      "summary_title": "Löschvorgang abgeschlossen",
+      "contracts_deleted": "Gelöschte Verträge: {count}",
+      "signatures_deleted": "Gelöschte Unterschriften: {count}",
+      "execution_time": "Ausführungszeit: {count}s"
+    },
+    "backup_description": "Alle Unterschriftsdaten in einen komprimierten SQL-Dump exportieren (base64-kodiertes .sql.gz)",
+    "refresh_stats": "Statistiken aktualisieren",
+    "no_stats": "Keine Statistiken verfügbar"
+  },
+  "error": {
+    "unauthorized": "Bitte melden Sie sich an, um fortzufahren",
+    "forbidden": "Sie haben keine Berechtigung, diesen Vertrag zu unterschreiben",
+    "max_signatures_reached": "Maximale Anzahl an Unterschriften erreicht",
+    "already_signed": "Sie haben diesen Vertrag bereits unterschrieben",
+    "api_failure": "API-Fehler bei der Berechtigungsprüfung",
+    "forbidden_criteria": "Sie erfüllen nicht die Voraussetzungen, um diesen Vertrag zu unterschreiben",
+    "failed_load_stats": "Fehler beim Laden der Statistiken",
+    "failed_backup": "Backup fehlgeschlagen: {message}",
+    "failed_restore": "Wiederherstellung fehlgeschlagen: {message}",
+    "failed_delete": "Löschvorgang fehlgeschlagen: {message}",
+    "missing_hash": "Erforderliches Feld fehlt: hash",
+    "invalid_hash": "Ungültiges Hash-Format: muss eine 64-stellige Hexadezimalzeichenfolge sein",
+    "missing_fields": "Erforderliche(s) Feld(er) fehlt(en): {fields}",
+    "missing_account_ids": "accountIds muss ein nicht-leeres Array sein",
+    "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "auth_check_failed": "Berechtigungsprüfung fehlgeschlagen: {message}",
+    "unknown_action": "Unbekannte Aktion: {action}"
+  },
+  "success": {
+    "signed": "Erfolgreich unterschrieben! Dieser Vertrag hat jetzt {count} Unterschrift(en).",
+    "config_saved": "Einstellungen erfolgreich gespeichert!",
+    "restore_summary": "Import abgeschlossen: {contracts} Verträge, {signatures} Unterschriften."
+  }
+}

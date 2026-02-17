@@ -8,7 +8,7 @@ export async function adminDataResolver(req) {
   const accountId = context.accountId;
 
   if (!accountId) {
-    return errorResponse(401, 'User not authenticated');
+    return errorResponse('error.unauthorized', 401);
   }
 
   try {
@@ -23,11 +23,17 @@ export async function adminDataResolver(req) {
     } else if (action === 'deleteAll') {
       return await handleDeleteAll();
     } else {
-      return errorResponse(400, `Unknown action: ${action}`);
+      return errorResponse({
+        key: 'error.unknown_action',
+        params: { action }
+      }, 400);
     }
   } catch (error) {
     console.error('Admin data resolver error:', error);
-    return errorResponse(500, `Operation failed: ${error.message}`);
+    return errorResponse({
+      key: 'error.generic',
+      params: { message: error.message }
+    }, 500);
   }
 }
 
@@ -49,7 +55,10 @@ async function handleImport(req) {
   const { payload } = req;
 
   if (!payload?.data) {
-    return errorResponse(400, 'Missing required field: data');
+    return errorResponse({
+      key: 'error.missing_fields',
+      params: { fields: 'data' }
+    }, 400);
   }
 
   console.log('Starting import operation');

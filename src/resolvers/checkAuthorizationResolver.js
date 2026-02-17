@@ -9,7 +9,7 @@ export async function checkAuthorizationResolver(req) {
     if (!accountId) {
       return successResponse({
         allowed: false,
-        reason: 'User not authenticated',
+        reason: 'error.unauthorized',
       });
     }
 
@@ -41,6 +41,9 @@ export async function checkAuthorizationResolver(req) {
     });
   } catch (error) {
     console.error('Error in checkAuthorization resolver:', error);
-    return errorResponse(error.message || 'An unexpected error occurred', 500);
+    return errorResponse({
+      key: 'error.generic',
+      params: { message: error.message }
+    }, 500);
   }
 }

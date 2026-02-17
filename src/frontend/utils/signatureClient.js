@@ -44,7 +44,7 @@ export async function signDocument(invoke, pageId, panelTitle, content) {
         if (!result.success) {
             return {
                 success: false,
-                error: result.message || result.error || 'Failed to sign',
+                error: result.error,
                 status: result.status
             };
         }
@@ -53,7 +53,7 @@ export async function signDocument(invoke, pageId, panelTitle, content) {
         console.error('Error signing:', error);
         return {
             success: false,
-            error: error.message || 'Failed to sign'
+            error: error.message
         };
     }
 }

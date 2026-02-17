@@ -1,6 +1,11 @@
 # Backlog
 
-- i0028: /emails endpoint — complete tests
+- i0005: Internationalization (i18n)
+- i0006: Review wording/usability
+- i0049: Write migration specification
+- i0050: Define common migration format (JSONL.gz)
+- i0051: Export from legacy macro
+- i0052: Import into forge macro
 - i0029: /export endpoint (printable HTML)
 - i0030: PDF export
 - i0036: Admin globalSettings module — add tests
@@ -10,23 +15,17 @@
 - i0040: Admin data resolver (GET/PUT) — add tests
 - i0041: Admin route in resolvers/index.js — add tests
 - i0043: Admin cleanup UI — add tests
+- i0042: Admin: test with large datasets
+
+## Archive (do not reuse IDs)
 - i0045: Sync missing signers list on config change
-- i0046: Petition mode missing list shows "*"
-- i0005: Internationalization (i18n)
-- i0006: Review wording/usability
+- i0048: Page permission inheritance for pending signatures
+- i0047: Group resolution for pending signatures
 - i0021: inheritSigners from page permissions
 - i0024: Notified users list
 - i0025: In-app notifications on sign
 - i0026: Email notifications on sign
-- i0042: Admin: test with large datasets
-- i0047: Group resolution for pending signatures
-- i0048: Page permission inheritance for pending signatures
-- i0049: Write migration specification
-- i0050: Define common migration format (JSONL.gz)
-- i0051: Export from legacy macro
-- i0052: Import into forge macro
-
-## Archive (do not reuse IDs)
+- i0046: Petition mode missing list shows "*"
 - i0027: Mailto links with fallback — complete tests
 - i0007: Macro config: title validation and tests (done)
 - i0002: visibilityLimit collapse with "Show all" button (done)

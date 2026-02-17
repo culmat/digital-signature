@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import ForgeReconciler, { useConfig, Button, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup, ErrorMessage } from '@forge/react';
+import ForgeReconciler, { useConfig, useTranslation, I18nProvider, Button, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup, ErrorMessage } from '@forge/react';
 import { view } from '@forge/bridge';
 
+// Simple parameter interpolation for translation strings with {variable} placeholders.
+// Forge's t() only supports (key, defaultValue) — it does not interpolate parameters.
+const interpolate = (str, params) => {
+  let result = str;
+  for (const [key, value] of Object.entries(params)) {
+    result = result.replace(`{${key}}`, String(value));
+  }
+  return result;
+};
+
 const useSubmit = () => {
+  const { t } = useTranslation();
   const [error, setError] = useState();
   const [message, setMessage] = useState('');
 
@@ -12,7 +23,7 @@ const useSubmit = () => {
     try {
       await view.submit(payload);
       setError(false);
-      setMessage(`Submitted successfully.`);
+      setMessage(t('success.config_saved'));
     } catch (error) {
       setError(true);
       setMessage(`${error.code}: ${error.message}`);
@@ -27,6 +38,10 @@ const useSubmit = () => {
 };
 
 const Config = () => {
+  const { ready, t } = useTranslation();
+
+  // Wrapper: translate key then interpolate {variable} placeholders
+  const tp = (key, params) => interpolate(t(key), params);
   // Panel title state
   const [panelTitle, setPanelTitle] = useState('');
 
@@ -121,39 +136,42 @@ const Config = () => {
     });
   };
 
+  // Wait for translations to be ready before rendering
+  if (!ready) return null;
+
   return (
     <Stack space="space.200">
-      <Text>Embeds contract for signature by one or more Confluence users.
-        See <Link href="https://github.com/culmat/digital-signature/wiki/Signature-Macro-Usage">documentation</Link>
+      <Text>
+        {t('config.description_prefix')}<Link href="https://github.com/culmat/digital-signature/wiki/Signature-Macro-Usage">{t('config.documentation_link')}</Link>{t('config.description_suffix')}
       </Text>
 
       {/* Contract Title */}
-      <Label labelFor="panelTitle">Contract Title</Label>
+      <Label labelFor="panelTitle">{t('config.fields.title.label')}</Label>
       <Textfield
         id="panelTitle"
         value={panelTitle}
         onChange={(e) => setPanelTitle(e.target.value)}
       />
       {titleTooLong
-        ? <ErrorMessage>Title must be {TITLE_MAX_LENGTH} characters or fewer ({panelTitle.length}/{TITLE_MAX_LENGTH}).</ErrorMessage>
-        : <Text>Is part of the contract. Changes remove signatures.</Text>
+        ? <ErrorMessage>{tp('config.fields.title.too_long', { max: TITLE_MAX_LENGTH, current: panelTitle.length })}</ErrorMessage>
+        : <Text>{t('config.fields.title.description')}</Text>
       }
 
       {/* Contract Content (Markdown) */}
-      <Label labelFor="content">Contract Content</Label>
+      <Label labelFor="content">{t('config.fields.content.label')}</Label>
       <TextArea
         id="content"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Enter contract text here.&#10;&#10;Supports basic Markdown:&#10;# Heading&#10;**bold** *italic*&#10;- list items&#10;> blockquote&#10;```code```"
+        placeholder={t('config.fields.content.placeholder')}
         minimumRows={15}
         resize="vertical"
         isMonospaced={true}
       />
-      <Text>Plain text or limited Markdown. This is the contract content that will be signed. Changes remove signatures.</Text>
+      <Text>{t('config.fields.content.description')}</Text>
 
       {/* Named Signers */}
-      <Label labelFor="signers">Signers</Label>
+      <Label labelFor="signers">{t('config.fields.signers.label')}</Label>
       <UserPicker
         key={`user-picker-${signers.join(',')}`}
         id="signers"
@@ -162,97 +180,97 @@ const Config = () => {
         defaultValue={signers}
         onChange={handleSignersChange}
       />
-      <Text>Select specific users who can sign this contract.</Text>
+      <Text>{t('config.fields.signers.description')}</Text>
       
       {/* Signer Groups */}
-      <Label labelFor="signerGroups">Signer Groups (Group IDs)</Label>
+      <Label labelFor="signerGroups">{t('config.fields.signer_groups.label')}</Label>
       <TextArea
         id="signerGroups"
         value={signerGroups}
         onChange={(e) => setSignerGroups(e.target.value)}
-        placeholder="Enter Atlassian group IDs, one per line&#10;Example: 0a89c6b3-e6dc-41af-a86b-1e012a309a30"
+        placeholder={t('config.fields.signer_groups.placeholder')}
         rows={3}
       />
-      <Text>Enter Atlassian group IDs (not team IDs), one per line. Find group IDs in Atlassian Admin.</Text>
+      <Text>{t('config.fields.signer_groups.description')}</Text>
       
       {/* Inherit from Page Permissions */}
       <Checkbox
         id="inheritViewers"
-        label="Allow page viewers to sign"
+        label={t('config.fields.inherit_viewers.label')}
         isChecked={inheritViewers}
         onChange={(e) => setInheritViewers(e.target.checked)}
       />
       
       <Checkbox
         id="inheritEditors"
-        label="Allow page editors to sign"
+        label={t('config.fields.inherit_editors.label')}
         isChecked={inheritEditors}
         onChange={(e) => setInheritEditors(e.target.checked)}
       />
       
       {/* Max Signatures */}
-      <Label labelFor="maxSignatures">Maximum Signatures (optional)</Label>
+      <Label labelFor="maxSignatures">{t('config.fields.max_signatures.label')}</Label>
       <Textfield
         id="maxSignatures"
         type="number"
         value={maxSignatures}
         onChange={(e) => setMaxSignatures(e.target.value)}
-        placeholder="Leave empty for unlimited"
+        placeholder={t('config.fields.max_signatures.placeholder')}
       />
-      <Text>Maximum number of signatures allowed. Use 0 to disable signing. Leave empty for unlimited.</Text>
+      <Text>{t('config.fields.max_signatures.description')}</Text>
       
       {/* Visibility Limit */}
-      <Label labelFor="visibilityLimit">Signature Display Limit (optional)</Label>
+      <Label labelFor="visibilityLimit">{t('config.fields.visibility_limit.label')}</Label>
       <Textfield
         id="visibilityLimit"
         type="number"
         value={visibilityLimit}
         onChange={(e) => setVisibilityLimit(e.target.value)}
-        placeholder="Leave empty to show all"
+        placeholder={t('config.fields.visibility_limit.placeholder')}
       />
-      <Text>Number of signed signatures to display initially. Leave empty to show all. Users can click "Show more" to see hidden signatures.</Text>
+      <Text>{t('config.fields.visibility_limit.description')}</Text>
 
       {/* Signatures Visibility */}
-      <Label labelFor="signaturesVisible">Signatures Visibility</Label>
+      <Label labelFor="signaturesVisible">{t('config.visibility_settings_signatures')}</Label>
       <RadioGroup
         name="signaturesVisible"
         value={signaturesVisible}
         onChange={(e) => setSignaturesVisible(e.target.value)}
         options={[
-          { label: 'Always visible', value: 'ALWAYS' },
-          { label: 'Only if user can sign', value: 'IF_SIGNATORY' },
-          { label: 'Only if user has signed', value: 'IF_SIGNED' },
+          { label: t('config.fields.signatures_visible.options.always'), value: 'ALWAYS' },
+          { label: t('config.fields.signatures_visible.options.signatory'), value: 'IF_SIGNATORY' },
+          { label: t('config.fields.signatures_visible.options.signed'), value: 'IF_SIGNED' },
         ]}
       />
-      <Text>Controls who can see the list of signed signatures.</Text>
+      <Text>{t('config.visibility_description_signatures')}</Text>
 
       {/* Pending Signatures Visibility */}
-      <Label labelFor="pendingVisible">Pending Signatures Visibility</Label>
+      <Label labelFor="pendingVisible">{t('config.visibility_settings_pending')}</Label>
       <RadioGroup
         name="pendingVisible"
         value={pendingVisible}
         onChange={(e) => setPendingVisible(e.target.value)}
         options={[
-          { label: 'Always visible', value: 'ALWAYS' },
-          { label: 'Only if user can sign', value: 'IF_SIGNATORY' },
-          { label: 'Only if user has signed', value: 'IF_SIGNED' },
+          { label: t('config.fields.pending_visible.options.always'), value: 'ALWAYS' },
+          { label: t('config.fields.pending_visible.options.signatory'), value: 'IF_SIGNATORY' },
+          { label: t('config.fields.pending_visible.options.signed'), value: 'IF_SIGNED' },
         ]}
       />
-      <Text>Controls who can see the list of pending signatures.</Text>
+      <Text>{t('config.visibility_description_pending')}</Text>
 
       {/* Petition Mode Warning */}
       {isPetitionMode && (
-        <SectionMessage appearance="warning" title="Petition Mode Active">
-          <Text>No restrictions configured. Any logged-in user can sign this document.</Text>
+        <SectionMessage appearance="warning" title={t('config.petition_mode.title')}>
+          <Text>{t('config.petition_mode.description')}</Text>
         </SectionMessage>
       )}
       
       {/* Action Buttons */}
       <Button appearance="subtle" onClick={view.close}>
-        Close
+        {t('ui.button.close')}
       </Button>
       <Button appearance="primary" onClick={handleSubmit}>
-        Submit
+        {t('config.button.submit')}
       </Button>
       
       {/* Feedback Message */}
@@ -265,6 +283,8 @@ const Config = () => {
 
 ForgeReconciler.render(
   <React.StrictMode>
-    <Config />
+    <I18nProvider>
+      <Config />
+    </I18nProvider>
   </React.StrictMode>
 );

@@ -10,11 +10,27 @@ import ForgeReconciler, {
   LoadingButton,
   TextArea,
   ButtonGroup,
-  DynamicTable
+  DynamicTable,
+  useTranslation,
+  I18nProvider
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
+// Simple parameter interpolation for translation strings with {variable} placeholders.
+// Forge's t() only supports (key, defaultValue) — it does not interpolate parameters.
+const interpolate = (str, params) => {
+  let result = str;
+  for (const [key, value] of Object.entries(params)) {
+    result = result.replace(`{${key}}`, String(value));
+  }
+  return result;
+};
+
 const Admin = () => {
+  const { ready, t } = useTranslation();
+
+  // Wrapper: translate key then interpolate {variable} placeholders
+  const tp = (key, params) => interpolate(t(key), params);
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,10 +72,10 @@ const Admin = () => {
           totalSignatures: response.totalSignatures
         });
       } else {
-        setError(response.error || 'Failed to load statistics');
+        setError(response.error || 'error.failed_load_stats');
       }
     } catch (err) {
-      setError(`Error loading statistics: ${err.message}`);
+      setError({ key: 'error.failed_load_stats', params: { message: err.message } });
     } finally {
       setLoading(false);
     }
@@ -69,7 +85,7 @@ const Admin = () => {
     try {
       setIsBackupInProgress(true);
       setBackupProgress(0);
-      setBackupStatus('Starting backup...');
+      setBackupStatus(t('admin.backup.progress'));
       setError(null);
       setBackupData('');
 
@@ -78,7 +94,7 @@ const Admin = () => {
       let completed = false;
 
       while (!completed) {
-        setBackupStatus(`Downloading chunk at offset ${offset}...`);
+        setBackupStatus(tp('admin.backup.chunk', { offset }));
 
         const response = await invoke('adminData', {
           action: 'export',
@@ -87,7 +103,10 @@ const Admin = () => {
         });
 
         if (!response.success) {
-          throw new Error(response.error || 'Backup failed');
+          setError(response.error || 'error.failed_backup');
+          setBackupStatus('');
+          setIsBackupInProgress(false);
+          return;
         }
 
         chunks.push(response.data);
@@ -112,9 +131,9 @@ const Admin = () => {
       downloadBackup(fullBackup, filename);
       
       setBackupData(fullBackup);
-      setBackupStatus(`Backup completed! File downloaded as ${filename}`);
+      setBackupStatus(tp('admin.backup.downloaded', { filename }));
     } catch (err) {
-      setError(`Backup failed: ${err.message}`);
+      setError({ key: 'error.failed_backup', params: { message: err.message } });
       setBackupStatus('');
     } finally {
       setIsBackupInProgress(false);
@@ -123,13 +142,13 @@ const Admin = () => {
 
   const handleRestore = async () => {
     if (!restoreData.trim()) {
-      setError('Please paste backup data in the text area');
+      setError('admin.restore.error_empty');
       return;
     }
 
     try {
       setIsRestoreInProgress(true);
-      setRestoreStatus('Importing data...');
+      setRestoreStatus(t('admin.restore.progress'));
       setRestoreResult(null);
       setError(null);
 
@@ -139,16 +158,19 @@ const Admin = () => {
       });
 
       if (!response.success) {
-        throw new Error(response.error || 'Restore failed');
+        setError(response.error || 'error.failed_restore');
+        setRestoreStatus('');
+        setIsRestoreInProgress(false);
+        return;
       }
 
       setRestoreResult(response.summary);
-      setRestoreStatus('Restore completed successfully!');
+      setRestoreStatus(t('admin.restore.success'));
       setRestoreData('');
 
       await loadStatistics();
     } catch (err) {
-      setError(`Restore failed: ${err.message}`);
+      setError({ key: 'error.failed_restore', params: { message: err.message } });
       setRestoreStatus('');
     } finally {
       setIsRestoreInProgress(false);
@@ -173,13 +195,15 @@ const Admin = () => {
       });
 
       if (!response.success) {
-        throw new Error(response.error || 'Deletion failed');
+        setError(response.error || 'error.failed_delete');
+        setIsDeleteInProgress(false);
+        return;
       }
 
       setDeleteResult(response);
       await loadStatistics();
     } catch (err) {
-      setError(`Deletion failed: ${err.message}`);
+      setError({ key: 'error.failed_delete', params: { message: err.message } });
     } finally {
       setIsDeleteInProgress(false);
     }
@@ -205,10 +229,13 @@ const Admin = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Wait for translations to be ready before rendering
+  if (!ready) return null;
+
   const statisticsTableHead = {
     cells: [
-      { key: 'metric', content: 'Metric' },
-      { key: 'value', content: 'Value' }
+      { key: 'metric', content: t('admin.statistics.metric') },
+      { key: 'value', content: t('admin.statistics.value') }
     ]
   };
 
@@ -216,28 +243,28 @@ const Admin = () => {
     {
       key: 'total-contracts',
       cells: [
-        { key: 'metric', content: 'Total Contracts' },
+        { key: 'metric', content: t('admin.statistics.total_contracts') },
         { key: 'value', content: statistics.totalContracts }
       ]
     },
     {
       key: 'active-contracts',
       cells: [
-        { key: 'metric', content: 'Active Contracts' },
+        { key: 'metric', content: t('admin.statistics.active_contracts') },
         { key: 'value', content: statistics.activeContracts }
       ]
     },
     {
       key: 'deleted-contracts',
       cells: [
-        { key: 'metric', content: 'Deleted Contracts' },
+        { key: 'metric', content: t('admin.statistics.deleted_contracts') },
         { key: 'value', content: statistics.deletedContracts }
       ]
     },
     {
       key: 'total-signatures',
       cells: [
-        { key: 'metric', content: 'Total Signatures' },
+        { key: 'metric', content: t('admin.statistics.total_signatures') },
         { key: 'value', content: statistics.totalSignatures }
       ]
     }
@@ -245,19 +272,23 @@ const Admin = () => {
 
   return (
     <Stack space="medium">
-      <Heading size="large">Administration</Heading>
+      <Heading size="large">{t('app.admin_title')}</Heading>
 
       {error && (
-        <SectionMessage appearance="error" title="Error">
-          <Text>{error}</Text>
+        <SectionMessage appearance="error" title={t('error.generic')}>
+          <Text>
+            {typeof error === 'string'
+              ? t(error)
+              : (error.key && error.params ? tp(error.key, error.params) : t(error.key || 'error.generic'))}
+          </Text>
         </SectionMessage>
       )}
 
       <Box paddingBlock="space.200">
         <Stack space="small">
-          <Heading size="medium">Database Statistics</Heading>
+          <Heading size="medium">{t('ui.heading.statistics')}</Heading>
           {loading ? (
-            <Text>Loading statistics...</Text>
+            <Text>{t('ui.status.loading')}</Text>
           ) : statistics ? (
             <Stack space="small">
               <DynamicTable
@@ -265,26 +296,26 @@ const Admin = () => {
                 rows={statisticsTableRows}
               />
               <Box paddingBlockStart="space.100">
-                <Button onClick={loadStatistics}>Refresh Statistics</Button>
+                <Button onClick={loadStatistics}>{t('admin.refresh_stats')}</Button>
               </Box>
             </Stack>
           ) : (
-            <Text>No statistics available</Text>
+            <Text>{t('admin.no_stats')}</Text>
           )}
         </Stack>
       </Box>
 
       <Box paddingBlock="space.200">
         <Stack space="small">
-          <Heading size="medium">Backup Data</Heading>
-          <Text>Export all signature data to a compressed SQL dump (base64-encoded .sql.gz)</Text>
+          <Heading size="medium">{t('ui.heading.backup')}</Heading>
+          <Text>{t('admin.backup_description')}</Text>
           <Box paddingBlockStart="space.100">
             <LoadingButton
               onClick={handleBackup}
               isLoading={isBackupInProgress}
               isDisabled={isBackupInProgress || backupData.length > 0}
             >
-              Generate Backup
+              {t('ui.button.generate_backup')}
             </LoadingButton>
           </Box>
           {backupStatus && <Text>{backupStatus}</Text>}
@@ -299,7 +330,7 @@ const Admin = () => {
                 minimumRows={10}
               />
               <Box paddingBlockStart="space.100">
-                <Button onClick={handleClearBackup}>Clear</Button>
+                <Button onClick={handleClearBackup}>{t('ui.button.clear_backup')}</Button>
               </Box>
             </Stack>
           )}
@@ -308,15 +339,14 @@ const Admin = () => {
 
       <Box paddingBlock="space.200">
         <Stack space="small">
-          <Heading size="medium">Restore Data</Heading>
+          <Heading size="medium">{t('ui.heading.restore')}</Heading>
           <Text>
-            Paste backup data below. Accepts both base64-encoded .sql.gz content (from the textarea above)
-            or plain SQL (from decompressed .sql.gz file).
+            {t('admin.restore.description')}
           </Text>
           <TextArea
             value={restoreData}
             onChange={(e) => setRestoreData(e.target.value)}
-            placeholder="Paste backup data here (base64 or plain SQL)..."
+            placeholder={t('admin.restore.placeholder')}
             minimumRows={10}
             isDisabled={isRestoreInProgress}
           />
@@ -328,39 +358,39 @@ const Admin = () => {
                 isDisabled={isRestoreInProgress || !restoreData.trim()}
                 appearance="primary"
               >
-                Restore from Backup
+                {t('ui.button.restore_data')}
               </LoadingButton>
               <Button
                 onClick={() => setRestoreData('')}
                 isDisabled={isRestoreInProgress}
               >
-                Clear
+                {t('ui.button.close')}
               </Button>
             </ButtonGroup>
           </Box>
           {restoreStatus && <Text>{restoreStatus}</Text>}
           {restoreResult && (
-            <SectionMessage appearance="confirmation" title="Restore Summary">
+            <SectionMessage appearance="confirmation" title={t('admin.restore.summary.title')}>
               <Stack space="small">
                 {restoreResult.contractsInserted > 0 && (
-                  <Text>New contracts: {restoreResult.contractsInserted}</Text>
+                  <Text>{tp('admin.restore.summary.new_contracts', { count: restoreResult.contractsInserted })}</Text>
                 )}
                 {restoreResult.contractsUpdated > 0 && (
-                  <Text>Updated contracts: {restoreResult.contractsUpdated}</Text>
+                  <Text>{tp('admin.restore.summary.updated_contracts', { count: restoreResult.contractsUpdated })}</Text>
                 )}
                 {restoreResult.signaturesInserted > 0 && (
-                  <Text>New signatures: {restoreResult.signaturesInserted}</Text>
+                  <Text>{tp('admin.restore.summary.new_signatures', { count: restoreResult.signaturesInserted })}</Text>
                 )}
                 {restoreResult.signaturesUpdated > 0 && (
-                  <Text>Updated signatures: {restoreResult.signaturesUpdated}</Text>
+                  <Text>{tp('admin.restore.summary.updated_signatures', { count: restoreResult.signaturesUpdated })}</Text>
                 )}
                 {restoreResult.contractsInserted === 0 && restoreResult.contractsUpdated === 0 &&
                  restoreResult.signaturesInserted === 0 && restoreResult.signaturesUpdated === 0 && (
-                  <Text>No changes - all data already exists with the same values</Text>
+                  <Text>{t('admin.restore.summary.no_changes')}</Text>
                 )}
-                <Text>Execution time: {restoreResult.executionTimeSeconds}s</Text>
+                <Text>{tp('admin.restore.summary.execution_time', { count: restoreResult.executionTimeSeconds })}</Text>
                 {restoreResult.errors && restoreResult.errors.length > 0 && (
-                  <Text>Errors: {restoreResult.errors.length}</Text>
+                  <Text>{tp('admin.restore.summary.errors', { count: restoreResult.errors.length })}</Text>
                 )}
               </Stack>
             </SectionMessage>
@@ -370,11 +400,10 @@ const Admin = () => {
 
       <Box paddingBlock="space.200">
         <Stack space="small">
-          <Heading size="medium">Danger Zone</Heading>
-          <SectionMessage appearance="warning" title="Warning: Irreversible Action">
+          <Heading size="medium">{t('ui.heading.danger_zone')}</Heading>
+          <SectionMessage appearance="warning" title={t('admin.delete.warning_title')}>
             <Text>
-              Deleting all signature data will permanently remove all contracts and signatures from the database.
-              This action cannot be undone. Make sure you have created a backup before proceeding.
+              {t('admin.delete.warning_description')}
             </Text>
           </SectionMessage>
           {!showDeleteConfirmation ? (
@@ -384,14 +413,14 @@ const Admin = () => {
                 appearance="danger"
                 isDisabled={isDeleteInProgress}
               >
-                Delete All Signature Data
+                {t('admin.delete.title')}
               </Button>
             </Box>
           ) : (
             <Stack space="small">
-              <SectionMessage appearance="error" title="Confirmation Required">
+              <SectionMessage appearance="error" title={t('admin.delete.confirm_title')}>
                 <Text>
-                  Are you absolutely sure you want to delete ALL signature data? This will remove {statistics?.totalContracts || 0} contracts and {statistics?.totalSignatures || 0} signatures permanently.
+                  {tp('admin.delete.confirm_message', { contracts: statistics?.totalContracts || 0, signatures: statistics?.totalSignatures || 0 })}
                 </Text>
               </SectionMessage>
               <Box paddingBlockStart="space.100">
@@ -401,24 +430,24 @@ const Admin = () => {
                     isLoading={isDeleteInProgress}
                     appearance="danger"
                   >
-                    Yes, Delete Everything
+                    {t('ui.button.delete_everything')}
                   </LoadingButton>
                   <Button
                     onClick={() => setShowDeleteConfirmation(false)}
                     isDisabled={isDeleteInProgress}
                   >
-                    Cancel
+                    {t('ui.button.cancel_deletion')}
                   </Button>
                 </ButtonGroup>
               </Box>
             </Stack>
           )}
           {deleteResult && (
-            <SectionMessage appearance="confirmation" title="Deletion Complete">
+            <SectionMessage appearance="confirmation" title={t('admin.delete.summary_title')}>
               <Stack space="small">
-                <Text>Contracts deleted: {deleteResult.contractsDeleted}</Text>
-                <Text>Signatures deleted: {deleteResult.signaturesDeleted}</Text>
-                <Text>Execution time: {deleteResult.executionTimeSeconds}s</Text>
+                <Text>{tp('admin.delete.contracts_deleted', { count: deleteResult.contractsDeleted })}</Text>
+                <Text>{tp('admin.delete.signatures_deleted', { count: deleteResult.signaturesDeleted })}</Text>
+                <Text>{tp('admin.delete.execution_time', { count: deleteResult.executionTimeSeconds })}</Text>
               </Stack>
             </SectionMessage>
           )}
@@ -430,6 +459,8 @@ const Admin = () => {
 
 ForgeReconciler.render(
   <React.StrictMode>
-    <Admin />
+    <I18nProvider>
+      <Admin />
+    </I18nProvider>
   </React.StrictMode>
 );

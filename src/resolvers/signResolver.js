@@ -28,7 +28,7 @@ export async function signResolver(req) {
     const accountId = req.context.accountId;
     if (!accountId) {
       console.error('No accountId found in context');
-      return errorResponse('User not authenticated', 403);
+      return errorResponse('error.unauthorized', 403);
     }
 
     const { hash, pageId } = req.payload;
@@ -54,21 +54,30 @@ export async function signResolver(req) {
       authResult = await canUserSign(accountId, pageId, config, signatureEntity);
     } catch (e) {
       console.error('Authorization error:', e);
-      return errorResponse('Authorization check failed: ' + (e.message || e.toString()), 500);
+      return errorResponse({
+        key: 'error.auth_check_failed',
+        params: { message: e.message || e.toString() }
+      }, 500);
     }
 
     if (!authResult.allowed) {
-      return errorResponse(authResult.reason || 'Not authorized to sign', 403);
+      return errorResponse(authResult.reason || 'error.forbidden', 403);
     }
 
     const signature = await putSignature(hash, pageId, accountId);
 
     return successResponse({
       signature: serializeEntity(signature),
-      message: `Successfully signed. Total signatures: ${signature.signatures.length}`,
+      message: {
+        key: 'success.signed',
+        params: { count: signature.signatures.length }
+      },
     });
   } catch (error) {
     console.error('Error in sign resolver:', error);
-    return errorResponse(error.message || 'An unexpected error occurred', 500);
+    return errorResponse({
+      key: 'error.generic',
+      params: { message: error.message }
+    }, 500);
   }
 }

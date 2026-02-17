@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useMemo, useReducer, useCallback } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProvider, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea } from '@forge/react';
 import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
 import { MarkdownContent } from './markdown/renderToReact';
 import { isSectionVisible } from '../shared/visibilityCheck';
 
-const Signatures = ({ signatures, preFix, formatDate }) => {
+const Signatures = ({ signatures, label, formatDate }) => {
   return (
     <Box>
-      <Heading size="small">{preFix} ({signatures.length})</Heading>
+      <Heading size="small">{label} ({signatures.length})</Heading>
       <Stack space="space.100">
         {signatures.map((sig) => {
           // If sig is an object with accountId, treat as signed; if string, treat as pending
@@ -81,7 +81,21 @@ function useContentContext(context) {
   }), [pageId, spaceKey]);
 }
 
+// Simple parameter interpolation for translation strings with {variable} placeholders.
+// Forge's t() only supports (key, defaultValue) — it does not interpolate parameters.
+const interpolate = (str, params) => {
+  let result = str;
+  for (const [key, value] of Object.entries(params)) {
+    result = result.replace(`{${key}}`, String(value));
+  }
+  return result;
+};
+
 const App = () => {
+  const { ready, t } = useTranslation();
+
+  // Wrapper: translate key then interpolate {variable} placeholders
+  const tp = (key, params) => interpolate(t(key), params);
   const [signatureState, dispatchSignature] = useReducer(signatureReducer, {
     entity: null,
     isLoading: true,
@@ -252,7 +266,7 @@ const App = () => {
       setUIState(prev => ({ ...prev, isSigning: true, actionError: null }));
 
       if (!pageId || !content) {
-        setUIState(prev => ({ ...prev, isSigning: false, actionError: 'Missing required data for signing' }));
+        setUIState(prev => ({ ...prev, isSigning: false, actionError: { key: 'error.missing_fields', params: { fields: 'pageId, content' } } }));
         return;
       }
 
@@ -280,11 +294,11 @@ const App = () => {
         }
         setUIState(prev => ({ ...prev, isSigning: false, actionError: null }));
       } else {
-        setUIState(prev => ({ ...prev, isSigning: false, actionError: result.error || 'Failed to sign' }));
+        setUIState(prev => ({ ...prev, isSigning: false, actionError: result.error || 'error.generic' }));
         console.error('Failed to sign:', result.error);
       }
     } catch (error) {
-      setUIState(prev => ({ ...prev, isSigning: false, actionError: error.message || 'Error signing' }));
+      setUIState(prev => ({ ...prev, isSigning: false, actionError: error.message || 'error.generic' }));
       console.error('Error signing:', error);
     }
   };
@@ -300,7 +314,7 @@ const App = () => {
       // Assume Unix timestamp in seconds, convert to milliseconds
       date = new Date(timestamp * 1000);
     } else {
-      return 'Invalid date';
+      return t('ui.status.invalid_date');
     }
 
     const formatter = new Intl.DateTimeFormat(userState.locale, {
@@ -373,16 +387,19 @@ const App = () => {
 
   const handleEmailSigned = useCallback(() => {
     const signedIds = (signatureState.entity?.signatures || []).map(s => s.accountId);
-    handleEmailAction(signedIds, 'Signed Users');
-  }, [signatureState.entity, handleEmailAction]);
+    handleEmailAction(signedIds, t('ui.heading.signed'));
+  }, [signatureState.entity, handleEmailAction, t]);
 
   const handleEmailPending = useCallback(() => {
-    handleEmailAction(pendingSignatures, 'Pending Users');
-  }, [pendingSignatures, handleEmailAction]);
+    handleEmailAction(pendingSignatures, t('ui.heading.pending'));
+  }, [pendingSignatures, handleEmailAction, t]);
 
   const closeEmailModal = useCallback(() => {
     setEmailModal({ isOpen: false, emails: [], title: '' });
   }, []);
+
+  // Wait for translations to be ready before rendering
+  if (!ready) return null;
 
   // Wait for config to load before rendering anything
   if (!config) {
@@ -394,7 +411,7 @@ const App = () => {
     return (
       <SectionMessage
         appearance="warning"
-        title="Cannot Use for Digital Signatures"
+        title={t('macro.validation.cannot_use')}
       >
         <Stack space="space.100">
           <Text>
@@ -404,8 +421,7 @@ const App = () => {
             {validationWarning.message}
           </Text>
           <Text>
-            Please add the complete contract text in the macro configuration. The contract must be fully
-            contained in this macro.
+            {t('macro.validation.add_complete_text')}
           </Text>
         </Stack>
       </SectionMessage>
@@ -434,7 +450,7 @@ const App = () => {
                         onClick={handleEmailSigned}
                         isDisabled={emailLoading}
                       >
-                        Email signed users
+                        {t('ui.button.email_signed')}
                       </Button>
                     )}
                     {hasPendingSignatures && (
@@ -443,7 +459,7 @@ const App = () => {
                         onClick={handleEmailPending}
                         isDisabled={emailLoading}
                       >
-                        Email pending users
+                        {t('ui.button.email_pending')}
                       </Button>
                     )}
                   </Stack>
@@ -470,7 +486,7 @@ const App = () => {
             <MarkdownContent ast={ast} />
           ) : (
             <Text>
-              No content added yet. Edit the macro configuration and add content.
+              {t('macro.no_content')}
             </Text>
           )}
           
@@ -493,7 +509,7 @@ const App = () => {
                         ? signatureState.entity.signatures.slice(0, visibilityLimit)
                         : signatureState.entity.signatures
                     } 
-                    preFix="Signed" 
+                    label={t('ui.heading.signed')} 
                     formatDate={formatDate} 
                   />
                   {visibilityLimit && signatureState.entity.signatures.length > visibilityLimit && !showAllSigned && (
@@ -501,7 +517,7 @@ const App = () => {
                       appearance="link" 
                       onClick={() => setShowAllSigned(true)}
                     >
-                      Show {signatureState.entity.signatures.length - visibilityLimit} more
+                      {tp('macro.show_more', { count: signatureState.entity.signatures.length - visibilityLimit })}
                     </Button>
                   )}
                 </Stack>
@@ -509,12 +525,16 @@ const App = () => {
 
               {/* Pending signatures section */}
               {showPendingSection && hasPendingSignatures && (
-                <Signatures signatures={pendingSignatures} preFix="Pending"/>
+                <Signatures signatures={pendingSignatures} label={t('ui.heading.pending')}/>
               )}
               
               {uiState.actionError && (
-                <SectionMessage appearance="error" title="Error">
-                  <Text>{uiState.actionError}</Text>
+                <SectionMessage appearance="error">
+                  <Text>
+                    {typeof uiState.actionError === 'string'
+                      ? t(uiState.actionError)
+                      : (uiState.actionError.key && uiState.actionError.params ? tp(uiState.actionError.key, uiState.actionError.params) : t(uiState.actionError.key || 'error.generic'))}
+                  </Text>
                 </SectionMessage>
               )}
 
@@ -525,7 +545,7 @@ const App = () => {
                   isDisabled={uiState.isSigning || authState.isChecking}
                   appearance="primary"
                 >
-                  {uiState.isSigning ? 'Signing...' : 'Sign'}
+                  {uiState.isSigning ? t('ui.button.signing') : t('ui.button.sign')}
                 </Button>
               )}
             </Stack>
@@ -538,7 +558,7 @@ const App = () => {
         {emailModal.isOpen && (
           <Modal onClose={closeEmailModal}>
             <ModalHeader>
-              <ModalTitle>{emailModal.title} — Email Addresses</ModalTitle>
+              <ModalTitle>{emailModal.title} — {t('macro.email_modal.title_suffix')}</ModalTitle>
             </ModalHeader>
             <ModalBody>
               <Stack space="space.100">
@@ -547,7 +567,7 @@ const App = () => {
                   isReadOnly
                   minimumRows={4}
                 />
-                <Text>{emailModal.emails.length} email address(es)</Text>
+                <Text>{tp('macro.email_modal.count', { count: emailModal.emails.length })}</Text>
               </Stack>
             </ModalBody>
             <ModalFooter>
@@ -555,13 +575,13 @@ const App = () => {
                 <Button
                   appearance="primary"
                   onClick={() => {
-                    router.open(`mailto:${emailModal.emails.join(',')}?subject=${encodeURIComponent(panelTitle || 'Digital Signature')}`);
+                    router.open(`mailto:${emailModal.emails.join(',')}?subject=${encodeURIComponent(panelTitle || t('app.title'))}`);
                   }}
                 >
-                  Open in email client
+                  {t('ui.button.open_email_client')}
                 </Button>
                 <Button appearance="subtle" onClick={closeEmailModal}>
-                  Close
+                  {t('ui.button.close')}
                 </Button>
               </ButtonGroup>
             </ModalFooter>
@@ -573,6 +593,8 @@ const App = () => {
 };
 ForgeReconciler.render(
   <React.StrictMode>
-    <App />
+    <I18nProvider>
+      <App />
+    </I18nProvider>
   </React.StrictMode>
 );

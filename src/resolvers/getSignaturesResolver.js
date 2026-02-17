@@ -29,7 +29,6 @@ export async function getSignaturesResolver(req) {
     if (!signature) {
       return successResponse({
         signature: null,
-        message: 'No signatures found for this content',
       });
     }
 
@@ -42,10 +41,12 @@ export async function getSignaturesResolver(req) {
         lastModified: signature.lastModified instanceof Date ? signature.lastModified.toISOString() : signature.lastModified
       },
       hash,
-      message: `Found ${(signature.signatures || []).length} signatures`,
     });
   } catch (error) {
     console.error('Error in getSignatures resolver:', error);
-    return errorResponse(error.message || 'An unexpected error occurred', 500);
+    return errorResponse({
+      key: 'error.generic',
+      params: { message: error.message }
+    }, 500);
   }
 }

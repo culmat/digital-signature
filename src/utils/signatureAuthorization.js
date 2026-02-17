@@ -49,14 +49,14 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
   if (config.maxSignatures !== undefined) {
     const currentCount = signatureEntity?.signatures?.length || 0;
     if (currentCount >= config.maxSignatures) {
-      return { allowed: false, reason: "Maximum signatures reached" };
+      return { allowed: false, reason: "error.max_signatures_reached" };
     }
   }
 
   // 2. Check if user already signed
   const alreadySigned = signatureEntity?.signatures?.some(sig => sig.accountId === accountId);
   if (alreadySigned) {
-    return { allowed: false, reason: "User has already signed" };
+    return { allowed: false, reason: "error.already_signed" };
   }
 
   // 3. Petition mode (no restrictions)
@@ -80,7 +80,7 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     try {
       userGroups = await getUserGroups(accountId);
     } catch {
-      return { allowed: false, reason: "API failure (group check)" };
+      return { allowed: false, reason: "error.api_failure" };
     }
     for (const groupId of config.signerGroups) {
       if (userGroups.includes(groupId)) {
@@ -95,7 +95,7 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     try {
       hasView = await checkPagePermission(pageId, accountId, "VIEW");
     } catch {
-      return { allowed: false, reason: "API failure (permission check)" };
+      return { allowed: false, reason: "error.api_failure" };
     }
     if (hasView) {
       return { allowed: true, reason: "User has VIEW permission on page" };
@@ -106,7 +106,7 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     try {
       hasEdit = await checkPagePermission(pageId, accountId, "EDIT");
     } catch {
-      return { allowed: false, reason: "API failure (permission check)" };
+      return { allowed: false, reason: "error.api_failure" };
     }
     if (hasEdit) {
       return { allowed: true, reason: "User has EDIT permission on page" };
@@ -114,5 +114,5 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
   }
 
   // 7. Default deny
-  return { allowed: false, reason: "User does not meet any authorization criteria" };
+  return { allowed: false, reason: "error.forbidden_criteria" };
 }

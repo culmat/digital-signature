@@ -1,0 +1,199 @@
+{
+  "app": {
+    "title": "Digital Signature",
+    "admin_title": "Digital Signature Admin"
+  },
+  "ui": {
+    "button": {
+      "sign": "Sign",
+      "signing": "Signing...",
+      "confirm": "Confirm signature",
+      "cancel": "Cancel",
+      "close": "Close",
+      "show_all": "Show all",
+      "show_less": "Show less",
+      "email_signed": "Email signers",
+      "email_pending": "Email pending signers",
+      "open_email_client": "Open in email client",
+      "generate_backup": "Generate Backup",
+      "clear_backup": "Clear Backup",
+      "restore_data": "Restore Data",
+      "delete_everything": "Yes, Delete Everything",
+      "cancel_deletion": "No, Keep Data"
+    },
+    "heading": {
+      "signed": "Signed",
+      "pending": "Pending",
+      "signatures": "Signatures",
+      "statistics": "Database Statistics",
+      "backup": "Backup Data",
+      "restore": "Restore Data",
+      "danger_zone": "Danger Zone"
+    },
+    "status": {
+      "loading": "Loading...",
+      "saving": "Saving...",
+      "invalid_date": "Invalid date"
+    }
+  },
+  "macro": {
+    "no_content": "No content added yet. Open the macro settings to add your contract text.",
+    "show_more": "Show {count} more",
+    "email_modal": {
+      "title_suffix": "Email Addresses",
+      "count": "{count} email address(es)"
+    },
+    "confirm_dialog": {
+      "title": "Sign Contract",
+      "message": "Are you sure you want to sign this contract? This action cannot be undone."
+    },
+    "validation": {
+      "cannot_use": "Cannot Use for Digital Signatures",
+      "add_complete_text": "Please add the complete contract text in the macro configuration. The contract must be fully contained in this macro.",
+      "header_missing": "Heading 1 (#) missing (required as title)",
+      "multiple_headers": "Multiple Heading 1 (#) found"
+    }
+  },
+  "config": {
+    "description_prefix": "Embeds contract for signature by one or more Confluence users. See ",
+    "description_suffix": " for details.",
+    "documentation_link": "documentation",
+    "petition_mode": {
+      "title": "Petition Mode Active",
+      "description": "No restrictions configured. Any logged-in user can sign this contract."
+    },
+    "visibility_settings_signatures": "Signatures Visibility",
+    "visibility_settings_pending": "Pending Signatures Visibility",
+    "visibility_description_signatures": "Controls who can see the list of signers.",
+    "visibility_description_pending": "Controls who can see the list of pending signers.",
+    "fields": {
+      "title": {
+        "label": "Contract Title",
+        "description": "Part of the signed contract. Changing this will reset all signatures.",
+        "too_long": "Title must be {max} characters or fewer ({current}/{max})."
+      },
+      "content": {
+        "label": "Contract Content",
+        "placeholder": "Enter contract text here.\n\nSupports basic Markdown:\n# Heading\n**bold** *italic*\n- list items\n> blockquote\n```code```",
+        "description": "Plain text or limited Markdown. This is the contract content that will be signed. Changing this will reset all signatures."
+      },
+      "signers": {
+        "label": "Signers",
+        "description": "Select specific users who can sign this contract."
+      },
+      "signer_groups": {
+        "label": "Signer Groups (Group IDs)",
+        "placeholder": "Enter Atlassian group IDs, one per line\nExample: 0a89c6b3-e6dc-41af-a86b-1e012a309a30",
+        "description": "Enter Atlassian group IDs (not team IDs), one per line. Find group IDs in Atlassian Admin."
+      },
+      "inherit_viewers": {
+        "label": "Allow page viewers to sign"
+      },
+      "inherit_editors": {
+        "label": "Allow page editors to sign"
+      },
+      "max_signatures": {
+        "label": "Maximum Signatures (optional)",
+        "placeholder": "Leave empty for unlimited",
+        "description": "Maximum number of signatures allowed. Use 0 to disable signing. Leave empty for unlimited."
+      },
+      "visibility_limit": {
+        "label": "Signature Display Limit (optional)",
+        "placeholder": "Leave empty to show all",
+        "description": "Number of signatures to display initially. Leave empty to show all. Users can click 'Show more' to see hidden signatures."
+      },
+      "signatures_visible": {
+        "label": "Show list of signers",
+        "options": {
+          "always": "Always visible",
+          "signatory": "Only if user can sign",
+          "signed": "Only if user has signed"
+        }
+      },
+      "pending_visible": {
+        "label": "Show list of pending signers",
+        "options": {
+          "always": "Always visible",
+          "signatory": "Only if user can sign",
+          "signed": "Only if user has signed"
+        }
+      }
+    },
+    "button": {
+      "submit": "Submit"
+    }
+  },
+  "admin": {
+    "statistics": {
+      "metric": "Metric",
+      "value": "Value",
+      "total_contracts": "Total Contracts",
+      "active_contracts": "Active Contracts",
+      "deleted_contracts": "Deleted Contracts",
+      "total_signatures": "Total Signatures"
+    },
+    "backup": {
+      "downloaded": "Backup completed! File downloaded as {filename}",
+      "progress": "Starting backup...",
+      "chunk": "Downloading chunk at offset {offset}..."
+    },
+    "restore": {
+      "placeholder": "Paste backup data here (base64 or plain SQL)...",
+      "description": "Paste backup data below. Accepts both base64-encoded .sql.gz content (from the textarea above) or plain SQL (from decompressed .sql.gz file).",
+      "progress": "Importing data...",
+      "success": "Restore completed successfully!",
+      "error_empty": "Please paste backup data in the text area",
+      "summary": {
+        "title": "Restore Summary",
+        "new_contracts": "New contracts: {count}",
+        "updated_contracts": "Updated contracts: {count}",
+        "new_signatures": "New signatures: {count}",
+        "updated_signatures": "Updated signatures: {count}",
+        "no_changes": "No changes - all data already exists with the same values",
+        "execution_time": "Execution time: {count}s",
+        "errors": "Errors: {count}"
+      }
+    },
+    "delete": {
+      "title": "Delete All Data",
+      "description": "This will permanently delete ALL signature data from the database. This action is IRREVERSIBLE.",
+      "warning_title": "Warning: Irreversible Action",
+      "warning_description": "Deleting all signature data will permanently remove all contracts and signatures from the database. This action cannot be undone. Make sure you have created a backup before proceeding.",
+      "placeholder": "Type 'DELETE' to confirm",
+      "confirm_title": "Confirmation Required",
+      "confirm_message": "Are you absolutely sure you want to delete ALL signature data? This will remove {contracts} contracts and {signatures} signatures permanently.",
+      "success": "Successfully deleted {contracts} contracts and {signatures} signatures.",
+      "summary_title": "Deletion Complete",
+      "contracts_deleted": "Contracts deleted: {count}",
+      "signatures_deleted": "Signatures deleted: {count}",
+      "execution_time": "Execution time: {count}s"
+    },
+    "backup_description": "Export all signature data to a compressed SQL dump (base64-encoded .sql.gz)",
+    "refresh_stats": "Refresh Statistics",
+    "no_stats": "No statistics available"
+  },
+  "error": {
+    "unauthorized": "Please sign in to continue",
+    "forbidden": "You don't have permission to sign this contract",
+    "max_signatures_reached": "Maximum signatures reached",
+    "already_signed": "You've already signed this contract",
+    "api_failure": "API failure during authorization check",
+    "forbidden_criteria": "You don't meet the requirements to sign this contract",
+    "failed_load_stats": "Failed to load statistics",
+    "failed_backup": "Backup failed: {message}",
+    "failed_restore": "Restore failed: {message}",
+    "failed_delete": "Deletion failed: {message}",
+    "missing_hash": "Missing required field: hash",
+    "invalid_hash": "Invalid hash format: must be 64-character hexadecimal string",
+    "missing_fields": "Missing required field(s): {fields}",
+    "missing_account_ids": "accountIds must be a non-empty array",
+    "generic": "Something went wrong. Please try again.",
+    "auth_check_failed": "Authorization check failed: {message}",
+    "unknown_action": "Unknown action: {action}"
+  },
+  "success": {
+    "signed": "Signed successfully! This contract now has {count} signature(s).",
+    "config_saved": "Settings saved successfully!",
+    "restore_summary": "Import completed: {contracts} contracts, {signatures} signatures."
+  }
+}
