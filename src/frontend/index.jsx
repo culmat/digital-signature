@@ -503,16 +503,16 @@ const App = () => {
               {/* Signed signatures section */}
               {showSignedSection && signatureState.entity?.signatures && signatureState.entity.signatures.length > 0 && (
                 <Stack space="space.100">
-                  <Signatures 
+                  <Signatures
                     signatures={
-                      visibilityLimit && !showAllSigned
+                      visibilityLimit != null && !showAllSigned
                         ? signatureState.entity.signatures.slice(0, visibilityLimit)
                         : signatureState.entity.signatures
-                    } 
+                    }
                     label={t('ui.heading.signed')} 
                     formatDate={formatDate} 
                   />
-                  {visibilityLimit && signatureState.entity.signatures.length > visibilityLimit && !showAllSigned && (
+                  {visibilityLimit != null && signatureState.entity.signatures.length > visibilityLimit && !showAllSigned && (
                     <Button 
                       appearance="link" 
                       onClick={() => setShowAllSigned(true)}
