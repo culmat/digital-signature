@@ -1,0 +1,199 @@
+{
+  "app": {
+    "title": "電子署名",
+    "admin_title": "電子署名 管理"
+  },
+  "ui": {
+    "button": {
+      "sign": "署名する",
+      "signing": "署名中...",
+      "confirm": "署名を確認",
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "show_all": "すべて表示",
+      "show_less": "表示を減らす",
+      "email_signed": "署名者にメール",
+      "email_pending": "未署名者にメール",
+      "open_email_client": "メールクライアントで開く",
+      "generate_backup": "バックアップを作成",
+      "clear_backup": "バックアップを消去",
+      "restore_data": "データを復元",
+      "delete_everything": "はい、すべて削除します",
+      "cancel_deletion": "いいえ、データを保持します"
+    },
+    "heading": {
+      "signed": "署名済み",
+      "pending": "未署名",
+      "signatures": "署名",
+      "statistics": "データベース統計",
+      "backup": "データのバックアップ",
+      "restore": "データの復元",
+      "danger_zone": "危険な操作"
+    },
+    "status": {
+      "loading": "読み込み中...",
+      "saving": "保存中...",
+      "invalid_date": "無効な日付"
+    }
+  },
+  "macro": {
+    "no_content": "コンテンツがまだ追加されていません。マクロの設定を開いて契約文を追加してください。",
+    "show_more": "さらに {count} 件表示",
+    "email_modal": {
+      "title_suffix": "メールアドレス",
+      "count": "{count} 件のメールアドレス"
+    },
+    "confirm_dialog": {
+      "title": "契約に署名",
+      "message": "この契約に署名してよろしいですか？この操作は取り消せません。"
+    },
+    "validation": {
+      "cannot_use": "電子署名に使用できません",
+      "add_complete_text": "マクロの設定で完全な契約文を追加してください。契約はこのマクロ内に完全に含まれている必要があります。",
+      "header_missing": "見出し1（#）がありません（タイトルとして必須）",
+      "multiple_headers": "見出し1（#）が複数見つかりました"
+    }
+  },
+  "config": {
+    "description_prefix": "1人以上のConfluenceユーザーによる署名のために契約を埋め込みます。詳細は",
+    "description_suffix": "をご覧ください。",
+    "documentation_link": "ドキュメント",
+    "petition_mode": {
+      "title": "請願モードが有効です",
+      "description": "制限が設定されていません。ログイン済みのすべてのユーザーがこの契約に署名できます。"
+    },
+    "visibility_settings_signatures": "署名の表示設定",
+    "visibility_settings_pending": "未署名の表示設定",
+    "visibility_description_signatures": "署名者リストの表示対象を制御します。",
+    "visibility_description_pending": "未署名者リストの表示対象を制御します。",
+    "fields": {
+      "title": {
+        "label": "契約タイトル",
+        "description": "署名される契約の一部です。変更するとすべての署名がリセットされます。",
+        "too_long": "タイトルは {max} 文字以内にしてください（{current}/{max}）。"
+      },
+      "content": {
+        "label": "契約内容",
+        "placeholder": "契約文をここに入力してください。\n\n基本的なMarkdownに対応しています：\n# 見出し\n**太字** *斜体*\n- リスト項目\n> 引用\n```コード```",
+        "description": "プレーンテキストまたは限定的なMarkdown。これが署名される契約内容です。変更するとすべての署名がリセットされます。"
+      },
+      "signers": {
+        "label": "署名者",
+        "description": "この契約に署名できる特定のユーザーを選択してください。"
+      },
+      "signer_groups": {
+        "label": "署名者グループ（グループID）",
+        "placeholder": "AtlassianグループIDを1行に1つ入力してください\n例: 0a89c6b3-e6dc-41af-a86b-1e012a309a30",
+        "description": "AtlassianグループID（チームIDではありません）を1行に1つ入力してください。グループIDはAtlassian Adminで確認できます。"
+      },
+      "inherit_viewers": {
+        "label": "ページ閲覧者の署名を許可"
+      },
+      "inherit_editors": {
+        "label": "ページ編集者の署名を許可"
+      },
+      "max_signatures": {
+        "label": "最大署名数（任意）",
+        "placeholder": "無制限の場合は空欄",
+        "description": "許可される署名の最大数。0で署名を無効化。空欄で無制限。"
+      },
+      "visibility_limit": {
+        "label": "署名表示件数（任意）",
+        "placeholder": "すべて表示する場合は空欄",
+        "description": "最初に表示する署名の件数。空欄ですべて表示。「さらに表示」をクリックして非表示の署名を確認できます。"
+      },
+      "signatures_visible": {
+        "label": "署名者リストの表示",
+        "options": {
+          "always": "常に表示",
+          "signatory": "署名可能なユーザーのみ",
+          "signed": "署名済みのユーザーのみ"
+        }
+      },
+      "pending_visible": {
+        "label": "未署名者リストの表示",
+        "options": {
+          "always": "常に表示",
+          "signatory": "署名可能なユーザーのみ",
+          "signed": "署名済みのユーザーのみ"
+        }
+      }
+    },
+    "button": {
+      "submit": "送信"
+    }
+  },
+  "admin": {
+    "statistics": {
+      "metric": "項目",
+      "value": "値",
+      "total_contracts": "契約の合計数",
+      "active_contracts": "有効な契約",
+      "deleted_contracts": "削除された契約",
+      "total_signatures": "署名の合計数"
+    },
+    "backup": {
+      "downloaded": "バックアップが完了しました！{filename} としてダウンロードされました",
+      "progress": "バックアップを開始しています...",
+      "chunk": "オフセット {offset} のチャンクをダウンロード中..."
+    },
+    "restore": {
+      "placeholder": "バックアップデータをここに貼り付けてください（base64またはプレーンSQL）...",
+      "description": "以下にバックアップデータを貼り付けてください。base64エンコードされた .sql.gz コンテンツ（上のテキストエリアから）またはプレーンSQL（解凍された .sql.gz ファイルから）を受け付けます。",
+      "progress": "データをインポート中...",
+      "success": "復元が正常に完了しました！",
+      "error_empty": "テキストエリアにバックアップデータを貼り付けてください",
+      "summary": {
+        "title": "復元の概要",
+        "new_contracts": "新規契約: {count}",
+        "updated_contracts": "更新された契約: {count}",
+        "new_signatures": "新規署名: {count}",
+        "updated_signatures": "更新された署名: {count}",
+        "no_changes": "変更なし — すべてのデータが同じ値で既に存在します",
+        "execution_time": "実行時間: {count}秒",
+        "errors": "エラー: {count}"
+      }
+    },
+    "delete": {
+      "title": "すべてのデータを削除",
+      "description": "データベースからすべての署名データが完全に削除されます。この操作は元に戻せません。",
+      "warning_title": "警告：元に戻せない操作",
+      "warning_description": "すべての署名データを削除すると、データベースからすべての契約と署名が完全に削除されます。この操作は取り消せません。続行する前にバックアップを作成してください。",
+      "placeholder": "'DELETE' と入力して確認",
+      "confirm_title": "確認が必要です",
+      "confirm_message": "すべての署名データを削除してよろしいですか？{contracts} 件の契約と {signatures} 件の署名が完全に削除されます。",
+      "success": "{contracts} 件の契約と {signatures} 件の署名が正常に削除されました。",
+      "summary_title": "削除完了",
+      "contracts_deleted": "削除された契約: {count}",
+      "signatures_deleted": "削除された署名: {count}",
+      "execution_time": "実行時間: {count}秒"
+    },
+    "backup_description": "すべての署名データを圧縮SQLダンプ（base64エンコードされた .sql.gz）にエクスポート",
+    "refresh_stats": "統計を更新",
+    "no_stats": "統計データがありません"
+  },
+  "error": {
+    "unauthorized": "続行するにはサインインしてください",
+    "forbidden": "この契約に署名する権限がありません",
+    "max_signatures_reached": "署名の上限に達しました",
+    "already_signed": "この契約には既に署名済みです",
+    "api_failure": "認可チェック中にAPIエラーが発生しました",
+    "forbidden_criteria": "この契約に署名するための要件を満たしていません",
+    "failed_load_stats": "統計の読み込みに失敗しました",
+    "failed_backup": "バックアップに失敗しました: {message}",
+    "failed_restore": "復元に失敗しました: {message}",
+    "failed_delete": "削除に失敗しました: {message}",
+    "missing_hash": "必須フィールドが不足しています: hash",
+    "invalid_hash": "無効なハッシュ形式: 64文字の16進数文字列である必要があります",
+    "missing_fields": "必須フィールドが不足しています: {fields}",
+    "missing_account_ids": "accountIds は空でない配列である必要があります",
+    "generic": "問題が発生しました。もう一度お試しください。",
+    "auth_check_failed": "認可チェックに失敗しました: {message}",
+    "unknown_action": "不明なアクション: {action}"
+  },
+  "success": {
+    "signed": "署名が完了しました！この契約の署名数は {count} 件になりました。",
+    "config_saved": "設定が正常に保存されました！",
+    "restore_summary": "インポートが完了しました: 契約 {contracts} 件、署名 {signatures} 件。"
+  }
+}

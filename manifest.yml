@@ -54,6 +54,8 @@ translations:
       path: src/i18n/de.json
     - key: fr-FR
       path: src/i18n/fr.json
+    - key: ja-JP
+      path: src/i18n/ja.json
   fallback:
     default: en-US
 app:
