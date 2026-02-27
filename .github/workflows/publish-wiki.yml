@@ -13,6 +13,7 @@ jobs:
         with:
           repository: culmat/digital-signature.wiki
           path: wiki
+          persist-credentials: false
 
       - name: Check out culm.at site
         uses: actions/checkout@v4
