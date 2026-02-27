@@ -39,6 +39,8 @@ jobs:
           TMPL=main/.github/pandoc-template.html
           FILTER=main/.github/wiki-links.lua
 
+          mkdir -p "$SITE/digital-signature"
+
           for md in "$WIKI"/*.md; do
             base=$(basename "$md" .md)
             if [ "$base" = "Home" ]; then
