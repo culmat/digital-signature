@@ -11,10 +11,14 @@ import ForgeReconciler, {
   TextArea,
   ButtonGroup,
   DynamicTable,
+  xcss,
   useTranslation,
   I18nProvider
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
+
+const rightAlignStyle = xcss({ textAlign: 'right' });
+const statsTableStyle = xcss({ width: 'fit-content' });
 
 // Simple parameter interpolation for translation strings with {variable} placeholders.
 // Forge's t() only supports (key, defaultValue) — it does not interpolate parameters.
@@ -235,7 +239,7 @@ const Admin = () => {
   const statisticsTableHead = {
     cells: [
       { key: 'metric', content: t('admin.statistics.metric') },
-      { key: 'value', content: t('admin.statistics.value') }
+      { key: 'value', content: <Box xcss={rightAlignStyle}>{t('admin.statistics.value')}</Box> }
     ]
   };
 
@@ -244,28 +248,28 @@ const Admin = () => {
       key: 'total-contracts',
       cells: [
         { key: 'metric', content: t('admin.statistics.total_contracts') },
-        { key: 'value', content: statistics.totalContracts }
+        { key: 'value', content: <Box xcss={rightAlignStyle}>{statistics.totalContracts}</Box> }
       ]
     },
     {
       key: 'active-contracts',
       cells: [
         { key: 'metric', content: t('admin.statistics.active_contracts') },
-        { key: 'value', content: statistics.activeContracts }
+        { key: 'value', content: <Box xcss={rightAlignStyle}>{statistics.activeContracts}</Box> }
       ]
     },
     {
       key: 'deleted-contracts',
       cells: [
         { key: 'metric', content: t('admin.statistics.deleted_contracts') },
-        { key: 'value', content: statistics.deletedContracts }
+        { key: 'value', content: <Box xcss={rightAlignStyle}>{statistics.deletedContracts}</Box> }
       ]
     },
     {
       key: 'total-signatures',
       cells: [
         { key: 'metric', content: t('admin.statistics.total_signatures') },
-        { key: 'value', content: statistics.totalSignatures }
+        { key: 'value', content: <Box xcss={rightAlignStyle}>{statistics.totalSignatures}</Box> }
       ]
     }
   ] : [];
@@ -291,10 +295,12 @@ const Admin = () => {
             <Text>{t('ui.status.loading')}</Text>
           ) : statistics ? (
             <Stack space="small">
-              <DynamicTable
-                head={statisticsTableHead}
-                rows={statisticsTableRows}
-              />
+              <Box xcss={statsTableStyle}>
+                <DynamicTable
+                  head={statisticsTableHead}
+                  rows={statisticsTableRows}
+                />
+              </Box>
               <Box paddingBlockStart="space.100">
                 <Button onClick={loadStatistics}>{t('admin.refresh_stats')}</Button>
               </Box>
