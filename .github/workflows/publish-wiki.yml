@@ -8,6 +8,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out main repo (for templates)
+        uses: actions/checkout@v4
+        with:
+          path: main
+
       - name: Check out wiki
         uses: actions/checkout@v4
         with:
@@ -31,8 +36,8 @@ jobs:
         run: |
           WIKI=wiki
           SITE=site
-          TMPL=.github/pandoc-template.html
-          FILTER=.github/wiki-links.lua
+          TMPL=main/.github/pandoc-template.html
+          FILTER=main/.github/wiki-links.lua
 
           for md in "$WIKI"/*.md; do
             base=$(basename "$md" .md)
