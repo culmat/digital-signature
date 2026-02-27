@@ -436,14 +436,14 @@ const App = () => {
       <Box xcss={headerStyles}>
         <Inline spread="space-between" alignBlock="center">
           <Heading size="small">{panelTitle}</Heading>
-          {hasSignatures && (
+          {(hasSignatures || hasPendingSignatures) && (
             <Popup
               isOpen={emailPopupOpen}
               onClose={() => setEmailPopupOpen(false)}
               placement="bottom-end"
               content={() => (
                 <Box xcss={xcss({ padding: 'space.100' })}>
-                  <Stack space="space.050">
+                  <Stack space="space.050" alignInline="start">
                     {hasSignatures && (
                       <Button
                         appearance="subtle"
