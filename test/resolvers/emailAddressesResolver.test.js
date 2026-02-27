@@ -56,7 +56,7 @@ describe('emailAddressesResolver', () => {
       { accountId: 'user-2', email: 'b@test.com', displayName: 'User B' },
     ];
     mockGetEmailAddresses.mockResolvedValue(mockUsers);
-    mockBuildMailtoUrl.mockReturnValue('mailto:a@test.com,b@test.com?subject=Test%20Subject');
+    mockBuildMailtoUrl.mockReturnValue(null); // Multiple emails return null (Forge limitation)
 
     const req = { payload: { accountIds: ['user-1', 'user-2'], subject: 'Test Subject' } };
     const result = await emailAddressesResolver(req);
@@ -66,7 +66,7 @@ describe('emailAddressesResolver', () => {
     expect(result).toEqual({
       success: true,
       users: mockUsers,
-      mailto: 'mailto:a@test.com,b@test.com?subject=Test%20Subject',
+      mailto: null,
     });
   });
 

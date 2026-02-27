@@ -78,19 +78,24 @@ describe('emailService', () => {
       expect(buildMailtoUrl([], 'Subject')).toBeNull();
     });
 
-    it('builds mailto url with subject', () => {
-      const url = buildMailtoUrl(['a@test.com', 'b@test.com'], 'My Subject');
-      expect(url).toBe('mailto:a@test.com,b@test.com?subject=My%20Subject');
+    it('builds mailto url for single email', () => {
+      const url = buildMailtoUrl(['a@test.com'], 'My Subject');
+      expect(url).toBe('mailto:a@test.com?subject=My%20Subject');
     });
 
-    it('filters out falsy emails', () => {
-      const url = buildMailtoUrl(['a@test.com', null, '', 'b@test.com'], 'Hi');
-      expect(url).toBe('mailto:a@test.com,b@test.com?subject=Hi');
+    it('returns null for multiple emails (Forge limitation)', () => {
+      const url = buildMailtoUrl(['a@test.com', 'b@test.com'], 'My Subject');
+      expect(url).toBeNull();
+    });
+
+    it('filters out falsy emails before checking count', () => {
+      const url = buildMailtoUrl(['a@test.com', null, ''], 'Hi');
+      expect(url).toBe('mailto:a@test.com?subject=Hi');
     });
 
     it('returns null when url exceeds 2000 characters', () => {
-      const longEmails = Array.from({ length: 200 }, (_, i) => `very-long-email-address-${i}@example-domain.com`);
-      const url = buildMailtoUrl(longEmails, 'Subject');
+      const longEmail = 'a'.repeat(2000) + '@example.com';
+      const url = buildMailtoUrl([longEmail], 'Subject');
       expect(url).toBeNull();
     });
   });
