@@ -1,0 +1,64 @@
+name: Publish wiki to culm.at
+
+on:
+  gollum: # fires when any wiki page is created or updated
+  workflow_dispatch: # allow manual runs
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out wiki
+        uses: actions/checkout@v4
+        with:
+          repository: culmat/digital-signature.wiki
+          path: wiki
+
+      - name: Check out culm.at site
+        uses: actions/checkout@v4
+        with:
+          repository: culmat/culm-at.github.io
+          path: site
+          token: ${{ secrets.SITE_DEPLOY_TOKEN }}
+
+      - name: Install pandoc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pandoc
+
+      - name: Convert wiki pages to HTML
+        run: |
+          WIKI=wiki
+          SITE=site
+          TMPL=.github/pandoc-template.html
+          FILTER=.github/wiki-links.lua
+
+          for md in "$WIKI"/*.md; do
+            base=$(basename "$md" .md)
+            if [ "$base" = "Home" ]; then
+              out="$SITE/digital-signature/index.html"
+            else
+              slug=$(echo "$base" | tr '[:upper:]' '[:lower:]')
+              out="$SITE/digital-signature/${slug}.html"
+            fi
+            title=$(echo "$base" | tr '-' ' ')
+            pandoc "$md" \
+              --template "$TMPL" \
+              --lua-filter "$FILTER" \
+              --metadata title="$title" \
+              -o "$out"
+            echo "converted: $(basename $out)"
+          done
+
+      - name: Commit and push
+        run: |
+          cd site
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add digital-signature/
+          if git diff --cached --quiet; then
+            echo "no changes to publish"
+          else
+            git commit -m "publish wiki [skip ci]"
+            git push
+          fi
