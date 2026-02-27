@@ -112,6 +112,9 @@ const App = () => {
     locale: DEFAULT_LOCALE,
   });
 
+  // null = context not yet loaded, true = licensed (or non-production env), false = inactive in production
+  const [licensed, setLicensed] = useState(null);
+
   const [uiState, setUIState] = useState({
     isSigning: false,
     actionError: null,
@@ -175,6 +178,12 @@ const App = () => {
           accountId: context.accountId,
           locale: context.locale || DEFAULT_LOCALE,
         });
+        // Forge always returns license: null in dev/staging — the --license flag has no effect
+        // on view.getContext(). Only enforce in production where Atlassian Marketplace injects
+        // { active: true } for valid/trial licenses, or null/{ active: false } for inactive.
+        setLicensed(
+          context.environmentType !== 'PRODUCTION' || context.license?.active === true
+        );
       } catch (error) {
         console.error('Error loading current user:', error);
       }
@@ -407,6 +416,16 @@ const App = () => {
     return <Spinner />;
   }
 
+  // If the Forge license is explicitly inactive, show a friendly notice.
+  // licensed === null means context is still loading — the spinner above covers that.
+  if (licensed === false) {
+    return (
+      <SectionMessage appearance="warning" title={t('license.inactive_title')}>
+        <Text>{t('license.inactive_message')}</Text>
+      </SectionMessage>
+    );
+  }
+
   // If validation fails (insufficient content), show warning instead of the macro
   if (validationWarning) {
     return (
@@ -430,7 +449,7 @@ const App = () => {
   }
 
   return (
-    <Box 
+    <Box
       xcss={containerStyles}
     >
       {/* Panel Header */}

@@ -196,5 +196,9 @@
     "signed": "Signé avec succès ! Ce contrat compte maintenant {count} signature(s).",
     "config_saved": "Paramètres enregistrés avec succès !",
     "restore_summary": "Importation terminée : {contracts} contrats, {signatures} signatures."
+  },
+  "license": {
+    "inactive_title": "Licence requise",
+    "inactive_message": "Cette application nécessite une licence Marketplace active. Veuillez contacter votre administrateur Confluence pour activer la licence de l'application Digital Signature."
   }
 }

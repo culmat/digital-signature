@@ -196,5 +196,9 @@
     "signed": "署名が完了しました！この契約の署名数は {count} 件になりました。",
     "config_saved": "設定が正常に保存されました！",
     "restore_summary": "インポートが完了しました: 契約 {contracts} 件、署名 {signatures} 件。"
+  },
+  "license": {
+    "inactive_title": "ライセンスが必要です",
+    "inactive_message": "このアプリを使用するには、有効なMarketplaceライセンスが必要です。Confluenceの管理者にDigital Signatureアプリのライセンスを有効化するよう連絡してください。"
   }
 }

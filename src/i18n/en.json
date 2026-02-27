@@ -196,5 +196,9 @@
     "signed": "Signed successfully! This contract now has {count} signature(s).",
     "config_saved": "Settings saved successfully!",
     "restore_summary": "Import completed: {contracts} contracts, {signatures} signatures."
+  },
+  "license": {
+    "inactive_title": "License Required",
+    "inactive_message": "This app requires an active Marketplace license. Please ask your Confluence administrator to activate the license for the Digital Signature app."
   }
 }

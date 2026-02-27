@@ -128,6 +128,10 @@ export async function handler(payload) {
         || payload?.config
         || {};
 
+    // Note: Forge does not inject license info into the adfExport function context.
+    // License enforcement for exports is not possible at this layer — the macro render
+    // panel (index.jsx) already gates access for users viewing the page.
+
     const content = config?.content || '';
     const title = config?.title || '';
     const configuredSigners = config?.signers || [];
