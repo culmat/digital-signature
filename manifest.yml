@@ -12,7 +12,7 @@ modules:
         viewportSize: max
         render: native
         title:
-          i18n: config.fields.title.label
+          i18n: app.title
       adfExport:
         function: adfExportFunction
   confluence:globalSettings:
