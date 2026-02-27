@@ -41,7 +41,8 @@
     "show_more": "Afficher {count} de plus",
     "email_modal": {
       "title_suffix": "Adresses e-mail",
-      "count": "{count} adresse(s) e-mail"
+      "instruction": "Sélectionnez et copiez les adresses e-mail ci-dessous :",
+      "use_semicolon": "Utiliser des points-virgules au lieu de virgules"
     },
     "confirm_dialog": {
       "title": "Signer le contrat",

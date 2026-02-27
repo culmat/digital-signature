@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useReducer, useCallback } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProvider, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProvider, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea, Toggle, Label } from '@forge/react';
 import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
 import { MarkdownContent } from './markdown/renderToReact';
 import { isSectionVisible } from '../shared/visibilityCheck';
@@ -120,6 +120,7 @@ const App = () => {
   const [showAllSigned, setShowAllSigned] = useState(false);
   const [emailPopupOpen, setEmailPopupOpen] = useState(false);
   const [emailModal, setEmailModal] = useState({ isOpen: false, emails: [], title: '' });
+  const [emailSeparator, setEmailSeparator] = useState(','); // ',' or ';'
   const [emailLoading, setEmailLoading] = useState(false);
 
   const config = useConfig();
@@ -561,29 +562,31 @@ const App = () => {
               <ModalTitle>{emailModal.title} — {t('macro.email_modal.title_suffix')}</ModalTitle>
             </ModalHeader>
             <ModalBody>
-              <Stack space="space.100">
+              <Stack space="space.200">
+                <Text><Strong>{t('macro.email_modal.instruction')}</Strong></Text>
                 <TextArea
-                  value={emailModal.emails.join(', ')}
+                  value={emailModal.emails.join(emailSeparator === ';' ? '; ' : ', ')}
                   isReadOnly
                   minimumRows={4}
                 />
-                <Text>{tp('macro.email_modal.count', { count: emailModal.emails.length })}</Text>
               </Stack>
             </ModalBody>
             <ModalFooter>
-              <ButtonGroup>
-                <Button
-                  appearance="primary"
-                  onClick={() => {
-                    router.open(`mailto:${emailModal.emails.join(',')}?subject=${encodeURIComponent(title || t('app.title'))}`);
-                  }}
-                >
-                  {t('ui.button.open_email_client')}
-                </Button>
-                <Button appearance="subtle" onClick={closeEmailModal}>
+              <Inline space="space.200" spread="space-between">
+                <Inline space="space.100">
+                  <Toggle
+                    id="separator-toggle"
+                    isChecked={emailSeparator === ';'}
+                    onChange={() => setEmailSeparator(emailSeparator === ',' ? ';' : ',')}
+                  />
+                  <Label htmlFor="separator-toggle">
+                    {t('macro.email_modal.use_semicolon')}
+                  </Label>
+                </Inline>
+                <Button appearance="primary" onClick={closeEmailModal}>
                   {t('ui.button.close')}
                 </Button>
-              </ButtonGroup>
+              </Inline>
             </ModalFooter>
           </Modal>
         )}

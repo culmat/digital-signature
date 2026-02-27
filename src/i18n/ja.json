@@ -41,7 +41,8 @@
     "show_more": "さらに {count} 件表示",
     "email_modal": {
       "title_suffix": "メールアドレス",
-      "count": "{count} 件のメールアドレス"
+      "instruction": "以下のメールアドレスを選択してコピーしてください：",
+      "use_semicolon": "カンマの代わりにセミコロンを使用"
     },
     "confirm_dialog": {
       "title": "契約に署名",

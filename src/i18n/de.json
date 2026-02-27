@@ -41,7 +41,8 @@
     "show_more": "{count} weitere anzeigen",
     "email_modal": {
       "title_suffix": "E-Mail-Adressen",
-      "count": "{count} E-Mail-Adresse(n)"
+      "instruction": "Wählen Sie die E-Mail-Adressen aus und kopieren Sie sie:",
+      "use_semicolon": "Semikolons statt Kommas verwenden"
     },
     "confirm_dialog": {
       "title": "Vertrag unterschreiben",

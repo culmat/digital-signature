@@ -41,7 +41,8 @@
     "show_more": "Show {count} more",
     "email_modal": {
       "title_suffix": "Email Addresses",
-      "count": "{count} email address(es)"
+      "instruction": "Select and copy the email addresses below:",
+      "use_semicolon": "Use semicolons instead of commas"
     },
     "confirm_dialog": {
       "title": "Sign Contract",

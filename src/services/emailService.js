@@ -41,7 +41,11 @@ async function fetchUserEmail(accountId) {
 export function buildMailtoUrl(emailAddresses, subject) {
   const validEmails = emailAddresses.filter(Boolean);
   if (validEmails.length === 0) return null;
+  
+  // Forge router.open() only supports single-recipient mailto links
+  // For multiple recipients, return null to trigger the email modal
+  if (validEmails.length > 1) return null;
 
-  const mailto = `mailto:${validEmails.join(',')}?subject=${encodeURIComponent(subject)}`;
+  const mailto = `mailto:${validEmails[0]}?subject=${encodeURIComponent(subject)}`;
   return mailto.length <= 2000 ? mailto : null;
 }
