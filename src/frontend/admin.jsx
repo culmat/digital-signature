@@ -52,6 +52,7 @@ const Admin = () => {
   const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
   const [deleteResult, setDeleteResult] = useState(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteAllEnabled, setDeleteAllEnabled] = useState(false);
 
   useEffect(() => {
     loadStatistics();
@@ -75,6 +76,7 @@ const Admin = () => {
           deletedContracts: response.deletedContracts,
           totalSignatures: response.totalSignatures
         });
+        setDeleteAllEnabled(response.deleteAllEnabled === true);
       } else {
         setError(response.error || 'error.failed_load_stats');
       }
@@ -404,6 +406,7 @@ const Admin = () => {
         </Stack>
       </Box>
 
+      {deleteAllEnabled && (
       <Box paddingBlock="space.200">
         <Stack space="small">
           <Heading size="medium">{t('ui.heading.danger_zone')}</Heading>
@@ -459,6 +462,7 @@ const Admin = () => {
           )}
         </Stack>
       </Box>
+      )}
     </Stack>
   );
 };

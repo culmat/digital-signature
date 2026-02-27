@@ -73,10 +73,14 @@ async function handleImport(req) {
 async function handleGetStatistics() {
   const stats = await getStatistics();
 
-  return successResponse(stats);
+  return successResponse({ ...stats, deleteAllEnabled: process.env.ENABLE_DELETE_ALL === 'true' });
 }
 
 async function handleDeleteAll() {
+  if (process.env.ENABLE_DELETE_ALL !== 'true') {
+    return errorResponse('error.delete_not_enabled', 403);
+  }
+
   console.log('Starting deletion of all signature data');
 
   const result = await deleteAllData();
