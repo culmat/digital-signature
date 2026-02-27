@@ -45,7 +45,7 @@ test.describe('Visibility Controls', () => {
     const signedAccountId = generateRandomAccountId();
     const unsignedAccountId = generateRandomAccountId();
     const macroConfig = {
-      panelTitle: 'Visibility Test - Signed IF_SIGNATORY',
+      title: 'Visibility Test - Signed IF_SIGNATORY',
       content: 'Only signatories can see who signed.',
       signers: [signedAccountId, unsignedAccountId],
       signaturesVisible: 'IF_SIGNATORY',
@@ -80,7 +80,7 @@ test.describe('Visibility Controls', () => {
 
     const fakeSignerAccountId = generateRandomAccountId();
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Visibility Test - Signed IF_SIGNED',
+      title: 'Visibility Test - Signed IF_SIGNED',
       content: 'Only users who signed can see the list.',
       signaturesVisible: 'IF_SIGNED',
     });
@@ -93,7 +93,7 @@ test.describe('Visibility Controls', () => {
     const fixtureSQL = generateFixtureWithOneSignature(
       testPage.id,
       fakeSignerAccountId,
-      { panelTitle: 'Visibility Test - Signed IF_SIGNED', content: 'Only users who signed can see the list.' }
+      { title: 'Visibility Test - Signed IF_SIGNED', content: 'Only users who signed can see the list.' }
     );
     await setupFixtures(page, fixtureSQL);
 
@@ -114,7 +114,7 @@ test.describe('Visibility Controls', () => {
 
     const fakeSignerAccountId = generateRandomAccountId();
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Visibility Test - Pending IF_SIGNATORY',
+      title: 'Visibility Test - Pending IF_SIGNATORY',
       content: 'Only signatories can see the pending list.',
       signers: [fakeSignerAccountId],
       pendingVisible: 'IF_SIGNATORY',
@@ -137,7 +137,7 @@ test.describe('Visibility Controls', () => {
 
     const fakeSignerAccountId = generateRandomAccountId();
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Visibility Test - Pending IF_SIGNED',
+      title: 'Visibility Test - Pending IF_SIGNED',
       content: 'Only users who signed can see pending.',
       signers: [fakeSignerAccountId],
       pendingVisible: 'IF_SIGNED',
@@ -161,7 +161,7 @@ test.describe('Visibility Controls', () => {
     const signedAccountId = generateRandomAccountId();
     const unsignedAccountId = generateRandomAccountId();
     const macroConfig = {
-      panelTitle: 'Visibility Test - Default',
+      title: 'Visibility Test - Default',
       content: 'Both sections should be visible by default.',
       signers: [signedAccountId, unsignedAccountId],
     };
@@ -193,7 +193,7 @@ test.describe('Visibility Controls', () => {
     await page.goto(`${BASE_URL}/wiki`);
 
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Visibility Test - Reveal After Sign',
+      title: 'Visibility Test - Reveal After Sign',
       content: 'Signed list appears after signing.',
       signaturesVisible: 'IF_SIGNED',
     });
@@ -221,7 +221,7 @@ test.describe('Visibility Controls', () => {
 
     const signerIds = Array.from({ length: 5 }, () => generateRandomAccountId());
     const macroConfig = {
-      panelTitle: 'Visibility Test - Limit',
+      title: 'Visibility Test - Limit',
       content: 'Only two signatures shown initially.',
       visibilityLimit: 2,
     };
@@ -265,7 +265,7 @@ test.describe('Visibility Controls', () => {
 
     const signerIds = Array.from({ length: 3 }, () => generateRandomAccountId());
     const macroConfig = {
-      panelTitle: 'Visibility Test - Zero Limit',
+      title: 'Visibility Test - Zero Limit',
       content: 'No signatures shown initially.',
       visibilityLimit: 0,
     };
@@ -307,7 +307,7 @@ test.describe('Visibility Controls', () => {
 
     const signerIds = Array.from({ length: 5 }, () => generateRandomAccountId());
     const macroConfig = {
-      panelTitle: 'Visibility Test - No Limit',
+      title: 'Visibility Test - No Limit',
       content: 'All signatures shown immediately.',
     };
     const storageBody = generateMacroStorageFormat(macroConfig);

@@ -51,7 +51,7 @@ test.describe('Authorization - Negative Cases', () => {
     await page.goto(`${BASE_URL}/wiki`);
 
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Group-Restricted Contract',
+      title: 'Group-Restricted Contract',
       content: 'Only members of the configured group can sign.',
       signerGroups: [TEST_EMPTY_GROUP_ID],
     });
@@ -75,7 +75,7 @@ test.describe('Authorization - Negative Cases', () => {
 
     const fakeAccountId = '557058:00000000-0000-0000-0000-000000000000';
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Named-Signer Contract',
+      title: 'Named-Signer Contract',
       content: 'Only the specified signer can sign.',
       signers: [fakeAccountId],
     });
@@ -98,7 +98,7 @@ test.describe('Authorization - Negative Cases', () => {
     await page.goto(`${BASE_URL}/wiki`);
 
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Petition Contract',
+      title: 'Petition Contract',
       content: 'Open for all to sign once.',
     });
     const title = `E2E-Auth-AlreadySigned-${Date.now()}`;
@@ -123,7 +123,7 @@ test.describe('Authorization - Negative Cases', () => {
 
     const maxSigs = 2;
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Max Signatures Contract',
+      title: 'Max Signatures Contract',
       content: 'Maximum 2 signatures allowed.',
       maxSignatures: maxSigs,
     });
@@ -137,7 +137,7 @@ test.describe('Authorization - Negative Cases', () => {
       testPage.id,
       fakeSigners,
       {
-        panelTitle: 'Max Signatures Contract',
+        title: 'Max Signatures Contract',
         content: 'Maximum 2 signatures allowed.',
       }
     );
@@ -167,7 +167,7 @@ test.describe('Authorization - Negative Cases', () => {
     console.log(`Other user: ${otherUser.displayName} (${otherUser.accountId})`);
 
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Inherit Editors Test',
+      title: 'Inherit Editors Test',
       content: 'Only page editors may sign this document.',
       inheritEditors: true,
     });
@@ -214,7 +214,7 @@ test.describe('Authorization - Negative Cases', () => {
     }
 
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Inherit Viewers Test',
+      title: 'Inherit Viewers Test',
       content: 'Any page viewer may sign this document.',
       inheritViewers: true,
     });

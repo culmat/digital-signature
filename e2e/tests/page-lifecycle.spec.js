@@ -50,7 +50,7 @@ test.describe('Page Lifecycle Events', () => {
 
     // Create test page with digital signature macro
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Lifecycle Test Contract',
+      title: 'Lifecycle Test Contract',
       content: 'Test contract for page lifecycle event verification.',
     });
     const title = `Lifecycle-Test-${Date.now()}`;

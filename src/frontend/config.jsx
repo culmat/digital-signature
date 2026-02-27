@@ -43,7 +43,7 @@ const Config = () => {
   // Wrapper: translate key then interpolate {variable} placeholders
   const tp = (key, params) => interpolate(t(key), params);
   // Panel title state
-  const [panelTitle, setPanelTitle] = useState('');
+  const [title, setTitle] = useState('');
 
   // Contract content state (markdown)
   const [content, setContent] = useState('');
@@ -63,7 +63,7 @@ const Config = () => {
 
   // Initialize form fields from existing config
   useEffect(() => {
-    setPanelTitle(config?.panelTitle || '');
+    setTitle(config?.title || '');
     setContent(config?.content || '');
 
     // Extract account IDs from signers (config stores full user objects)
@@ -98,7 +98,7 @@ const Config = () => {
 
   // Title validation: max 200 characters
   const TITLE_MAX_LENGTH = 200;
-  const titleTooLong = panelTitle.length > TITLE_MAX_LENGTH;
+  const titleTooLong = title.length > TITLE_MAX_LENGTH;
 
   // Handle form submission
   const handleSubmit = () => {
@@ -123,7 +123,7 @@ const Config = () => {
     );
     
     submit({
-      panelTitle,
+      title,
       content,
       signers: signerIds,
       signerGroups: groupIds,
@@ -146,14 +146,14 @@ const Config = () => {
       </Text>
 
       {/* Contract Title */}
-      <Label labelFor="panelTitle">{t('config.fields.title.label')}</Label>
+      <Label labelFor="title">{t('config.fields.title.label')}</Label>
       <Textfield
-        id="panelTitle"
-        value={panelTitle}
-        onChange={(e) => setPanelTitle(e.target.value)}
+        id="title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
       />
       {titleTooLong
-        ? <ErrorMessage>{tp('config.fields.title.too_long', { max: TITLE_MAX_LENGTH, current: panelTitle.length })}</ErrorMessage>
+        ? <ErrorMessage>{tp('config.fields.title.too_long', { max: TITLE_MAX_LENGTH, current: title.length })}</ErrorMessage>
         : <Text>{t('config.fields.title.description')}</Text>
       }
 

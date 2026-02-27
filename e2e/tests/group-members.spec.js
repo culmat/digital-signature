@@ -26,7 +26,7 @@ function formatExpectedTimestamp(date) {
 let createdPageId = null;
 
 const CONTRACT_CONFIG = {
-  panelTitle: 'Group Members Contract',
+  title: 'Group Members Contract',
   content: 'This contract tests signatures from real group members.',
 };
 

@@ -35,7 +35,7 @@ test.describe('Digital Signature Macro', () => {
 
     // Generate and create test page with digital signature macro
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'E2E Test Contract',
+      title: 'E2E Test Contract',
       content: 'I hereby agree to the **terms and conditions** of this E2E test contract.',
     });
     const title = `E2E-Test-${Date.now()}`;
@@ -66,7 +66,7 @@ test.describe('Digital Signature Macro', () => {
     // Title at the max allowed length (200 characters)
     const longTitle = 'A'.repeat(200);
     const storageBody = generateMacroStorageFormat({
-      panelTitle: longTitle,
+      title: longTitle,
       content: 'Contract with a long title for validation boundary testing.',
     });
     const title = `E2E-LongTitle-${Date.now()}`;

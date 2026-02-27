@@ -22,7 +22,7 @@ Migrated P2 macros arrive in Connect-like storage format. The Forge app must acc
 
 | Server parameter | Forge config field | Transformation |
 |------------------|--------------------|----------------|
-| `title` | `panelTitle` | Direct copy |
+| `title` | `title` | Direct copy |
 | `signers` | `signers` | Usernames → account IDs (via CMA user mapping) |
 | `signerGroups` | `signerGroups` | Group names → group IDs (via CMA group mapping) |
 | `inheritSigners` | `inheritViewers` + `inheritEditors` | Enum split: `none` → both false, `readers only` → viewers true, `writers only` → editors true, `readers and writers` → both true |
@@ -79,7 +79,7 @@ Two tables:
 
 ### Hash Compatibility
 
-The legacy hash formula `SHA-256(pageId:title:body)` is identical to the Forge formula `SHA-256(pageId:panelTitle:content)` — same algorithm, same input pattern, different field names. Hashes are portable as-is.
+The legacy hash formula `SHA-256(pageId:title:body)` is identical to the Forge formula `SHA-256(pageId:title:content)` — same algorithm, same input pattern. Hashes are portable as-is.
 
 ### Data Transformations Required
 
@@ -144,7 +144,6 @@ Update the Forge app (`digital-signature`):
    - Handles duplicates gracefully (idempotent import)
 
 2. Update the macro renderer to accept legacy parameter names:
-   - When the config contains `title` instead of `panelTitle`, treat it as legacy format
    - Apply the parameter mapping table above
    - On first user edit, the config is saved in Forge format (automatic conversion)
 

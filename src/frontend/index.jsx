@@ -126,7 +126,7 @@ const App = () => {
   const context = useProductContext();
   const { pageId } = useContentContext(context);
 
-  const panelTitle = config?.panelTitle || '';
+  const title = config?.title || '';
   const content = config?.content || '';
   const configuredSigners = config?.signers || [];
   const visibilityLimit = config?.visibilityLimit;
@@ -203,7 +203,7 @@ const App = () => {
         const result = await getSignatures(
           invoke,
           pageId,
-          panelTitle,
+          title,
           content
         );
 
@@ -221,7 +221,7 @@ const App = () => {
     };
 
     loadSignatures();
-  }, [content, pageId, panelTitle, validationWarning]);
+  }, [content, pageId, title, validationWarning]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -236,7 +236,7 @@ const App = () => {
         const result = await checkAuthorization(
           invoke,
           pageId,
-          panelTitle,
+          title,
           content
         );
 
@@ -259,7 +259,7 @@ const App = () => {
     };
 
     checkAuth();
-  }, [signatureState.entity, content, panelTitle, userState.accountId, pageId, validationWarning]);
+  }, [signatureState.entity, content, title, userState.accountId, pageId, validationWarning]);
 
   const handleSign = async () => {
     try {
@@ -274,7 +274,7 @@ const App = () => {
       const result = await signDocument(
         invoke,
         pageId,
-        panelTitle,
+        title,
         content
       );
 
@@ -282,7 +282,7 @@ const App = () => {
         dispatchSignature({ type: 'UPDATE_AFTER_SIGN', payload: result.signature });
         console.log(result.message);
 
-        const authResult = await checkAuthorization(invoke, pageId, panelTitle, content);
+        const authResult = await checkAuthorization(invoke, pageId, title, content);
         if (authResult.success) {
           dispatchAuth({
             type: 'SET_STATUS',
@@ -358,7 +358,7 @@ const App = () => {
     try {
       const result = await invoke('getEmailAddresses', {
         accountIds,
-        subject: panelTitle || 'Digital Signature',
+        subject: title || 'Digital Signature',
       });
 
       if (!result.success) {
@@ -383,7 +383,7 @@ const App = () => {
     } finally {
       setEmailLoading(false);
     }
-  }, [panelTitle]);
+  }, [title]);
 
   const handleEmailSigned = useCallback(() => {
     const signedIds = (signatureState.entity?.signatures || []).map(s => s.accountId);
@@ -435,7 +435,7 @@ const App = () => {
       {/* Panel Header */}
       <Box xcss={headerStyles}>
         <Inline spread="space-between" alignBlock="center">
-          <Heading size="small">{panelTitle}</Heading>
+          <Heading size="small">{title}</Heading>
           {(hasSignatures || hasPendingSignatures) && (
             <Popup
               isOpen={emailPopupOpen}
@@ -575,7 +575,7 @@ const App = () => {
                 <Button
                   appearance="primary"
                   onClick={() => {
-                    router.open(`mailto:${emailModal.emails.join(',')}?subject=${encodeURIComponent(panelTitle || t('app.title'))}`);
+                    router.open(`mailto:${emailModal.emails.join(',')}?subject=${encodeURIComponent(title || t('app.title'))}`);
                   }}
                 >
                   {t('ui.button.open_email_client')}

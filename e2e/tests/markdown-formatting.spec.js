@@ -74,7 +74,7 @@ test.describe('Markdown Formatting', () => {
 
     // Generate and create test page with comprehensive markdown content
     const storageBody = generateMacroStorageFormat({
-      panelTitle: 'Markdown Formatting Test',
+      title: 'Markdown Formatting Test',
       content: MARKDOWN_CONTENT,
     });
     const title = `E2E-Markdown-${Date.now()}`;
@@ -157,7 +157,7 @@ test.describe('Markdown Formatting', () => {
     if (!testPageId) {
       await page.goto(`${BASE_URL}/wiki`);
       const storageBody = generateMacroStorageFormat({
-        panelTitle: 'Export Test',
+        title: 'Export Test',
         content: MARKDOWN_CONTENT,
       });
       const title = `E2E-Export-${Date.now()}`;

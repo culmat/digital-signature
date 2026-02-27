@@ -15,8 +15,8 @@ import { getSignature } from './storage/signatureStore';
  * Computes SHA-256 hash for content lookup.
  * Backend version using Node.js crypto module.
  */
-function computeHash(pageId, panelTitle, content) {
-    const hashInput = `${pageId}:${panelTitle}:${content}`;
+function computeHash(pageId, title, content) {
+    const hashInput = `${pageId}:${title}:${content}`;
     return createHash('sha256').update(hashInput).digest('hex');
 }
 
@@ -129,7 +129,7 @@ export async function handler(payload) {
         || {};
 
     const content = config?.content || '';
-    const panelTitle = config?.panelTitle || '';
+    const title = config?.title || '';
     const configuredSigners = config?.signers || [];
     const pageId = payload?.context?.content?.id;
 
@@ -156,13 +156,13 @@ export async function handler(payload) {
         const adf = renderToADF(ast);
 
         // Prepend the panel title as a heading
-        if (panelTitle) {
+        if (title) {
             const titleHeading = {
                 type: 'heading',
                 attrs: { level: 2 },
                 content: [{
                     type: 'text',
-                    text: panelTitle,
+                    text: title,
                 }],
             };
             adf.content.unshift(titleHeading);
@@ -171,7 +171,7 @@ export async function handler(payload) {
         // Fetch and append signatures if pageId is available
         if (pageId) {
             try {
-                const hash = computeHash(pageId, panelTitle, content);
+                const hash = computeHash(pageId, title, content);
                 const signatureEntity = await getSignature(hash);
                 const signatures = signatureEntity?.signatures || [];
 

@@ -48,13 +48,13 @@ function formatTimestamp(date) {
  * @param {string} pageId - The Confluence page ID
  * @param {string} signerAccountId - Account ID of the existing signer
  * @param {object} [config] - Macro configuration
- * @param {string} [config.panelTitle] - Contract title
+ * @param {string} [config.title] - Contract title
  * @param {string} [config.content] - Raw markdown content
  * @returns {string} SQL INSERT statements
  */
 function generateFixtureWithOneSignature(pageId, signerAccountId, config = {}) {
-  const { panelTitle = 'Test Contract', content = SAMPLE_CONTRACT_TEXT } = config;
-  const hash = computeConfigHash(pageId, { panelTitle, content });
+  const { title = 'Test Contract', content = SAMPLE_CONTRACT_TEXT } = config;
+  const hash = computeConfigHash(pageId, { title, content });
 
   // Timestamps
   const createdAt = formatTimestamp(new Date(Date.now() - 7200000)); // 2 hours ago
@@ -62,7 +62,7 @@ function generateFixtureWithOneSignature(pageId, signerAccountId, config = {}) {
 
   return `-- Test fixture: Contract with one signature
 -- Hash: ${hash}
--- Page: ${pageId} - ${panelTitle}
+-- Page: ${pageId} - ${title}
 
 INSERT INTO contract (hash, pageId, createdAt, deletedAt) VALUES
 ('${hash}', ${pageId}, '${createdAt}', NULL)
@@ -85,20 +85,20 @@ ON DUPLICATE KEY UPDATE
  * @param {string} pageId - The Confluence page ID
  * @param {string[]} signerAccountIds - Array of account IDs
  * @param {object} [config] - Macro configuration
- * @param {string} [config.panelTitle] - Contract title
+ * @param {string} [config.title] - Contract title
  * @param {string} [config.content] - Raw markdown content
  * @returns {string} SQL INSERT statements
  */
 function generateFixtureWithMultipleSignatures(pageId, signerAccountIds, config = {}) {
-  const { panelTitle = 'Test Contract', content = SAMPLE_CONTRACT_TEXT } = config;
-  const hash = computeConfigHash(pageId, { panelTitle, content });
+  const { title = 'Test Contract', content = SAMPLE_CONTRACT_TEXT } = config;
+  const hash = computeConfigHash(pageId, { title, content });
 
   const createdAt = formatTimestamp(new Date(Date.now() - 7200000)); // 2 hours ago
 
   // Contract INSERT
   let sql = `-- Test fixture: Contract with ${signerAccountIds.length} signatures
 -- Hash: ${hash}
--- Page: ${pageId} - ${panelTitle}
+-- Page: ${pageId} - ${title}
 
 INSERT INTO contract (hash, pageId, createdAt, deletedAt) VALUES
 ('${hash}', ${pageId}, '${createdAt}', NULL)
@@ -129,7 +129,7 @@ ON DUPLICATE KEY UPDATE signedAt = LEAST(signedAt, VALUES(signedAt));
  * The macro is now config-based (not bodied), so content is stored in guest-params.
  *
  * @param {object} [config] - Macro configuration
- * @param {string} [config.panelTitle='Test Contract'] - Panel title
+ * @param {string} [config.title='Test Contract'] - Panel title
  * @param {string} [config.content=''] - Markdown content
  * @param {string[]} [config.signers=[]] - Array of account IDs
  * @param {string[]} [config.signerGroups=[]] - Array of group IDs
@@ -141,7 +141,7 @@ ON DUPLICATE KEY UPDATE signedAt = LEAST(signedAt, VALUES(signedAt));
  * @returns {string} Storage format XML
  */
 function generateMacroStorageFormat(config = {}) {
-  const { panelTitle = 'Test Contract', content = '', signers = [], signerGroups = [], maxSignatures, inheritViewers = false, inheritEditors = false, signaturesVisible, pendingVisible, visibilityLimit } = config;
+  const { title = 'Test Contract', content = '', signers = [], signerGroups = [], maxSignatures, inheritViewers = false, inheritEditors = false, signaturesVisible, pendingVisible, visibilityLimit } = config;
   const localId = randomUUID();
   const extensionKey = `${APP_ID}/${FORGE_ENV_ID}/static/${MACRO_KEY}`;
   const extensionId = `ari:cloud:ecosystem::extension/${extensionKey}`;
@@ -179,7 +179,7 @@ function generateMacroStorageFormat(config = {}) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  return `<ac:adf-extension><ac:adf-node type="extension"><ac:adf-attribute key="extension-key">${extensionKey}</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="parameters"><ac:adf-parameter key="local-id">${localId}</ac:adf-parameter><ac:adf-parameter key="extension-id">${extensionId}</ac:adf-parameter><ac:adf-parameter key="extension-title">digital-signature (Development)</ac:adf-parameter><ac:adf-parameter key="forge-environment">DEVELOPMENT</ac:adf-parameter><ac:adf-parameter key="render">native</ac:adf-parameter><ac:adf-parameter key="guest-params"><ac:adf-parameter key="panel-title">${panelTitle}</ac:adf-parameter><ac:adf-parameter key="content">${escapedContent}</ac:adf-parameter><ac:adf-parameter key="signers">${signersParams}</ac:adf-parameter><ac:adf-parameter key="signer-groups">${signerGroupsParams}</ac:adf-parameter><ac:adf-parameter key="inherit-viewers" type="boolean">${inheritViewers}</ac:adf-parameter><ac:adf-parameter key="inherit-editors" type="boolean">${inheritEditors}</ac:adf-parameter>${maxSignaturesParam}${signaturesVisibleParam}${pendingVisibleParam}${visibilityLimitParam}</ac:adf-parameter></ac:adf-attribute><ac:adf-attribute key="text">digital-signature (Development)</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">${localId}</ac:adf-attribute></ac:adf-node></ac:adf-extension>`;
+  return `<ac:adf-extension><ac:adf-node type="extension"><ac:adf-attribute key="extension-key">${extensionKey}</ac:adf-attribute><ac:adf-attribute key="extension-type">com.atlassian.ecosystem</ac:adf-attribute><ac:adf-attribute key="parameters"><ac:adf-parameter key="local-id">${localId}</ac:adf-parameter><ac:adf-parameter key="extension-id">${extensionId}</ac:adf-parameter><ac:adf-parameter key="extension-title">digital-signature (Development)</ac:adf-parameter><ac:adf-parameter key="forge-environment">DEVELOPMENT</ac:adf-parameter><ac:adf-parameter key="render">native</ac:adf-parameter><ac:adf-parameter key="guest-params"><ac:adf-parameter key="title">${title}</ac:adf-parameter><ac:adf-parameter key="content">${escapedContent}</ac:adf-parameter><ac:adf-parameter key="signers">${signersParams}</ac:adf-parameter><ac:adf-parameter key="signer-groups">${signerGroupsParams}</ac:adf-parameter><ac:adf-parameter key="inherit-viewers" type="boolean">${inheritViewers}</ac:adf-parameter><ac:adf-parameter key="inherit-editors" type="boolean">${inheritEditors}</ac:adf-parameter>${maxSignaturesParam}${signaturesVisibleParam}${pendingVisibleParam}${visibilityLimitParam}</ac:adf-parameter></ac:adf-attribute><ac:adf-attribute key="text">digital-signature (Development)</ac:adf-attribute><ac:adf-attribute key="layout">default</ac:adf-attribute><ac:adf-attribute key="local-id">${localId}</ac:adf-attribute></ac:adf-node></ac:adf-extension>`;
 }
 
 module.exports = {

@@ -3,9 +3,9 @@
  *
  * This module provides signature management for the React frontend components.
  *
- * Hash formula: SHA-256(pageId:panelTitle:content)
+ * Hash formula: SHA-256(pageId:title:content)
  * - pageId: Confluence page ID
- * - panelTitle: Contract title from macro config
+ * - title: Contract title from macro config
  * - content: Raw markdown content from macro config (user's exact input)
  */
 
@@ -19,7 +19,7 @@ import { computeHash } from '../../utils/hash.js';
  *
  * @param {object} invoke - Forge bridge invoke function
  * @param {string} pageId - Confluence page ID
- * @param {string} panelTitle - Contract title from macro config
+ * @param {string} title - Contract title from macro config
  * @param {string} content - Raw markdown content from macro config
  * @returns {Promise<{success: boolean, signature?: object, message?: string, error?: string}>}
  *
@@ -27,15 +27,15 @@ import { computeHash } from '../../utils/hash.js';
  * import { invoke } from '@forge/bridge';
  * import { signDocument } from './utils/signatureClient';
  *
- * const result = await signDocument(invoke, pageId, panelTitle, content);
+ * const result = await signDocument(invoke, pageId, title, content);
  * if (result.success) {
  *   console.log(result.message);
  * }
  */
-export async function signDocument(invoke, pageId, panelTitle, content) {
+export async function signDocument(invoke, pageId, title, content) {
     try {
         // Compute hash client-side using raw content (not transformed)
-        const hash = await computeHash(pageId, panelTitle, content);
+        const hash = await computeHash(pageId, title, content);
 
         // Send only hash and pageId to server
         const result = await invoke('sign', { hash, pageId });
@@ -65,7 +65,7 @@ export async function signDocument(invoke, pageId, panelTitle, content) {
  *
  * @param {object} invoke - Forge bridge invoke function
  * @param {string} pageId - Confluence page ID
- * @param {string} panelTitle - Contract title from macro config
+ * @param {string} title - Contract title from macro config
  * @param {string} content - Raw markdown content from macro config
  * @returns {Promise<{success: boolean, signature?: object, hash?: string, error?: string}>}
  *
@@ -73,15 +73,15 @@ export async function signDocument(invoke, pageId, panelTitle, content) {
  * import { invoke } from '@forge/bridge';
  * import { getSignatures } from './utils/signatureClient';
  *
- * const result = await getSignatures(invoke, pageId, panelTitle, content);
+ * const result = await getSignatures(invoke, pageId, title, content);
  * if (result.success && result.signature) {
  *   console.log(`Found ${result.signature.signatures.length} signatures`);
  * }
  */
-export async function getSignatures(invoke, pageId, panelTitle, content) {
+export async function getSignatures(invoke, pageId, title, content) {
     try {
         // Compute hash client-side using raw content (not transformed)
-        const hash = await computeHash(pageId, panelTitle, content);
+        const hash = await computeHash(pageId, title, content);
 
         // Send only hash to server
         const result = await invoke('getSignatures', { hash });
@@ -101,7 +101,7 @@ export async function getSignatures(invoke, pageId, panelTitle, content) {
  *
  * @param {object} invoke - Forge bridge invoke function
  * @param {string} pageId - Confluence page ID
- * @param {string} panelTitle - Contract title from macro config
+ * @param {string} title - Contract title from macro config
  * @param {string} content - Raw markdown content from macro config
  * @returns {Promise<{success: boolean, allowed?: boolean, reason?: string, error?: string}>}
  *
@@ -109,15 +109,15 @@ export async function getSignatures(invoke, pageId, panelTitle, content) {
  * import { invoke } from '@forge/bridge';
  * import { checkAuthorization } from './utils/signatureClient';
  *
- * const result = await checkAuthorization(invoke, pageId, panelTitle, content);
+ * const result = await checkAuthorization(invoke, pageId, title, content);
  * if (result.success && result.allowed) {
  *   console.log('User can sign:', result.reason);
  * }
  */
-export async function checkAuthorization(invoke, pageId, panelTitle, content) {
+export async function checkAuthorization(invoke, pageId, title, content) {
     try {
         // Compute hash client-side using raw content (not transformed)
-        const hash = await computeHash(pageId, panelTitle, content);
+        const hash = await computeHash(pageId, title, content);
 
         // Send hash and pageId to server
         const result = await invoke('checkAuthorization', { hash, pageId });

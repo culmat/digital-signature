@@ -15,7 +15,7 @@ let createdPageId = null;
 
 // Contract configuration for the test
 const CONTRACT_CONFIG = {
-  panelTitle: 'Offboarded Users Contract',
+  title: 'Offboarded Users Contract',
   content: 'This contract was signed by team members who have since left the organization.',
 };
 

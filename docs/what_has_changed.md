@@ -14,6 +14,7 @@ These features work the same way in Cloud:
 - **Signature visibility controls** — You can control who sees the signed and pending lists (always, if signatory, if signed).
 - **Markdown content** — The document body supports markdown formatting.
 - **Languages** — English, German, French, and Japanese are supported.
+- **Content integrity** — Each document is identified by a SHA-256 hash of its content. If the content changes, a new signature round starts.
 
 ## What's New in Cloud
 
@@ -21,7 +22,6 @@ These features work the same way in Cloud:
 - **PDF and Word export** — Signature panels are included when exporting Confluence pages to PDF or Word.
 - **Page lifecycle handling** — When a page is trashed, signatures are soft-deleted. When a page is permanently deleted, signatures are removed.
 - **Email links** — You can email signers or pending signers directly from the macro, with a fallback for large recipient lists.
-- **Content integrity** — Each document is identified by a SHA-256 hash of its content. If the content changes, a new signature round starts.
 
 ## What's Been Removed
 
@@ -40,7 +40,7 @@ If you are re-creating macros manually, note these parameter changes:
 
 | Server parameter | Cloud equivalent | Notes |
 |-----------------|-----------------|-------|
-| `title` | `panelTitle` | Renamed |
+| `title` | `title` | Unchanged |
 | `signers` | `signers` | Server uses usernames, Cloud uses account IDs |
 | `signerGroups` | `signerGroups` | Server uses group names, Cloud uses group IDs |
 | `inheritSigners` (enum: none / readers only / writers only / readers and writers) | `inheritViewers` + `inheritEditors` (two booleans) | Split into two separate toggles. "readers only" = inheritViewers on. "writers only" = inheritEditors on. "readers and writers" = both on. |
