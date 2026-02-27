@@ -58,9 +58,9 @@ The Marketplace listing requires visual assets.
 - Do not use domains that could be confused with Atlassian (e.g., `atlassian.yourdomain.com`)
 
 **Action items:**
-- [ ] Create app logo
-- [ ] Write listing description
-- [ ] Take screenshots of the macro (signing view, config panel, admin page)
+- [X] Create app logo
+- [X] Write listing description
+- [X] Take screenshots of the macro (signing view, config panel, admin page)
 - [ ] Record a short demo video (optional but recommended)
 
 ## Step 3: Prepare Documentation
@@ -75,8 +75,8 @@ Your listing must reference documentation describing how to set up and use the a
 Host the documentation at a public URL (e.g., a dedicated Confluence space, a docs site, or a GitHub wiki).
 
 **Action items:**
-- [ ] Write user-facing documentation
-- [ ] Host at a stable public URL
+- [X] Write user-facing documentation
+- [X] Host at a stable public URL
 
 ## Step 4: Enable Licensing in the Manifest
 
