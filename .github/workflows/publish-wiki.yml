@@ -18,7 +18,7 @@ jobs:
       - name: Check out culm.at site
         uses: actions/checkout@v4
         with:
-          repository: culmat/culm-at.github.io
+          repository: culm-at/culm-at.github.io
           path: site
           token: ${{ secrets.SITE_DEPLOY_TOKEN }}
 
