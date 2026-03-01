@@ -29,6 +29,11 @@ modules:
       events:
         - avi:confluence:trashed:page
         - avi:confluence:deleted:page
+  migration:
+    - key: app-data-migration-listener
+      function: migrationHandler
+      events:
+        - avi:app-data-uploaded
   function:
     - key: resolver
       handler: index.handler
@@ -36,6 +41,9 @@ modules:
       handler: adfExport.handler
     - key: pageLifecycleHandler
       handler: pageLifecycleHandler.handler
+    - key: migrationHandler
+      handler: src/migration/index.handler
+      timeoutSeconds: 900
   sql:
     - key: db
       engine: mysql

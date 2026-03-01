@@ -3,6 +3,7 @@ import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProv
 import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
 import { MarkdownContent } from './markdown/renderToReact';
 import { isSectionVisible } from '../shared/visibilityCheck';
+import { normalizeLegacyConfig } from '../shared/normalizeLegacyConfig';
 
 const Signatures = ({ signatures, label, formatDate }) => {
   return (
@@ -126,7 +127,7 @@ const App = () => {
   const [emailSeparator, setEmailSeparator] = useState(','); // ',' or ';'
   const [emailLoading, setEmailLoading] = useState(false);
 
-  const config = useConfig();
+  const config = normalizeLegacyConfig(useConfig());
   const context = useProductContext();
   const { pageId } = useContentContext(context);
 

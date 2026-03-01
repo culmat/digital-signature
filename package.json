@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@forge/bridge": "5.8.0",
+    "@forge/migrations": "^2.0.18",
     "@forge/react": "11.7.0",
     "@forge/resolver": "1.7.1",
     "@forge/sql": "^3.0.2",
