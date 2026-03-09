@@ -23,8 +23,6 @@ function serializeEntity(entity) {
 
 export async function signResolver(req) {
   try {
-    console.log('Forge context:', JSON.stringify(req.context, null, 2));
-    
     const accountId = req.context.accountId;
     if (!accountId) {
       console.error('No accountId found in context');
