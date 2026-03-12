@@ -13,8 +13,9 @@ Two things migrate:
 
 | | Server/DC | Cloud (Forge) |
 |---|---|---|
-| Plugin/App key | `com.baloise.confluence.digital-signature` | `bab5617e-dc42-4ca8-ad38-947c826fe58c` |
-| Macro key | `digital-signature` | `digital-signature-confluence-cloud-culmat` |
+| Marketplace app key | `com.baloise.confluence.digital-signature` | `com.baloise.confluence.digital-signature` |
+| Forge app ID | — | `bab5617e-dc42-4ca8-ad38-947c826fe58c` |
+| Macro key | `digital-signature` | `digital-signature` |
 | Marketplace listing | [1217404](https://marketplace.atlassian.com/apps/1217404/digital-signature) | same listing |
 
 ---

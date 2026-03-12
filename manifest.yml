@@ -1,6 +1,6 @@
 modules:
   macro:
-    - key: digital-signature-confluence-cloud-culmat
+    - key: digital-signature
       resource: main
       render: native
       resolver:
@@ -42,7 +42,7 @@ modules:
     - key: pageLifecycleHandler
       handler: pageLifecycleHandler.handler
     - key: migrationHandler
-      handler: src/migration/index.handler
+      handler: migrationHandler.handler
       timeoutSeconds: 900
   sql:
     - key: db

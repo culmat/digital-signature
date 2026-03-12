@@ -1,6 +1,6 @@
 /**
  * Parse manifest.yml to extract app configuration.
- * Avoids hardcoding app IDs and macro keys in test code.
+ * Avoids duplicating canonical app IDs and macro keys in test code.
  */
 
 const fs = require('fs');
@@ -48,7 +48,7 @@ function getAppId() {
 
 /**
  * Get the first macro key from manifest.yml.
- * @returns {string} Macro key (e.g., "digital-signature-confluence-cloud-culmat")
+ * @returns {string} Macro key (e.g., "digital-signature")
  */
 function getMacroKey() {
   const manifest = loadManifest();

@@ -12,9 +12,10 @@ Atlassian provides a programmatic mapping via `getServerToForgeMacroMapping()`. 
 
 | Component | Server (P2) | Forge Cloud |
 |-----------|-------------|-------------|
-| Plugin/App Key | `com.baloise.confluence.digital-signature` | `bab5617e-dc42-4ca8-ad38-947c826fe58c` |
+| Marketplace App Key | `com.baloise.confluence.digital-signature` | `com.baloise.confluence.digital-signature` |
+| Forge App ID | — | `bab5617e-dc42-4ca8-ad38-947c826fe58c` |
 | Macro Name | `signature` | `digital-signature` (title) |
-| Macro Key | `digital-signature` | `digital-signature-confluence-cloud-culmat` |
+| Macro Key | `digital-signature` | `digital-signature` |
 
 ## Macro Parameter Mapping
 
@@ -122,9 +123,9 @@ Update the Server plugin (`digital-signature-legacy`):
    |--------|-------|
    | `getForgeAppId()` | `UUID.fromString("bab5617e-dc42-4ca8-ad38-947c826fe58c")` |
    | `getForgeEnvironmentName()` | `PRODUCTION` |
-   | `getCloudAppKey()` | Marketplace app key (TBD) |
+   | `getCloudAppKey()` | `com.baloise.confluence.digital-signature` |
    | `getServerAppKey()` | `com.baloise.confluence.digital-signature` |
-   | `getServerToForgeMacroMapping()` | `{"digital-signature": "digital-signature-confluence-cloud-culmat"}` |
+   | `getServerToForgeMacroMapping()` | `{"digital-signature": "digital-signature"}` |
 
 3. Implement `onStartAppMigration()`:
    - Iterate all Bandana keys matching `signature.*`
@@ -186,9 +187,8 @@ Document the complete migration contract:
 
 ## Open Questions
 
-1. **Marketplace app key** — The `getCloudAppKey()` value depends on the Marketplace listing (TBD).
-2. **Data access scopes** — Which `getDataAccessScopes()` values are needed for Bandana read access during export.
-3. **Group ID mapping** — Confirm that CMA provides group name → group ID mappings, or whether a separate lookup is needed.
+1. **Data access scopes** — Which `getDataAccessScopes()` values are needed for Bandana read access during export.
+2. **Group ID mapping** — Confirm that CMA provides group name → group ID mappings, or whether a separate lookup is needed.
 
 ## Resources
 
