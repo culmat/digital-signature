@@ -43,7 +43,6 @@ modules:
       handler: pageLifecycleHandler.handler
     - key: migrationHandler
       handler: migrationHandler.handler
-      timeoutSeconds: 900
   sql:
     - key: db
       engine: mysql
