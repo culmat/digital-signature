@@ -50,7 +50,15 @@ async function checkPagePermission(pageId, accountId, operation) {
     "Failed to check page permissions"
   );
   if (!data || !data.restrictions || !data.restrictions.user) return true;
-  return data.restrictions.user.results.some(u => u.accountId === accountId);
+
+  const userResults = data.restrictions.user?.results || [];
+  const groupResults = data.restrictions.group?.results || [];
+
+  // Empty restriction lists mean the page is unrestricted for this operation —
+  // all users with space access have this permission, so allow.
+  if (userResults.length === 0 && groupResults.length === 0) return true;
+
+  return userResults.some(u => u.accountId === accountId);
 }
 
 // Main authorization function

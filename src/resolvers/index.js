@@ -2,6 +2,7 @@ import Resolver from '@forge/resolver';
 import { signResolver } from './signResolver';
 import { getSignaturesResolver } from './getSignaturesResolver';
 import { checkAuthorizationResolver } from './checkAuthorizationResolver';
+import { getPendingSignersResolver } from './getPendingSignersResolver';
 import { adminDataResolver } from './adminDataResolver';
 import { emailAddressesResolver } from './emailAddressesResolver';
 import { runSchemaMigrations } from '../storage/migrations/schema';
@@ -48,6 +49,7 @@ function wrapResolver(resolverFn) {
 resolver.define('sign', wrapResolver(signResolver));
 resolver.define('getSignatures', wrapResolver(getSignaturesResolver));
 resolver.define('checkAuthorization', wrapResolver(checkAuthorizationResolver));
+resolver.define('getPendingSigners', wrapResolver(getPendingSignersResolver));
 resolver.define('adminData', wrapResolver(adminDataResolver));
 resolver.define('getEmailAddresses', wrapResolver(emailAddressesResolver));
 

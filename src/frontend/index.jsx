@@ -133,10 +133,13 @@ const App = () => {
 
   const title = config?.title || '';
   const content = config?.content || '';
-  const configuredSigners = config?.signers || [];
   const visibilityLimit = config?.visibilityLimit;
   const signaturesVisible = config?.signaturesVisible;
   const pendingVisible = config?.pendingVisible;
+
+  // Async state for pending signers — resolved server-side to include groups and
+  // page permissions (inheritViewers / inheritEditors), not just named signers.
+  const [pendingState, setPendingState] = useState({ accountIds: [], isLoading: false });
 
   // Parse markdown content to AST for rendering
   const ast = useMemo(() => parseAndSanitize(content), [content]);
@@ -335,22 +338,48 @@ const App = () => {
     return formatter.format(date);
   };
 
-  // Calculate pending signatures (Phase 1: Named signers only)
-  const calculatePendingSignatures = () => {
-    // If no configured signers, petition mode - anyone can sign
-    if (configuredSigners.length === 0) {
-      return [];
-    }
+  // Fetch pending signers from the backend whenever signatures or config change.
+  // The resolver resolves group members and page permission users server-side so that
+  // inheritViewers and inheritEditors are reflected in the pending list.
+  // Config is read server-side from req.context.extension.config (not sent in payload)
+  // to avoid unstable object references from useConfig() causing an infinite effect loop.
+  useEffect(() => {
+    const fetchPendingSigners = async () => {
+      // Need pageId before we can calculate
+      if (!pageId) return;
 
-    const signedAccountIds = new Set(
-      (signatureState.entity?.signatures || []).map(sig => sig.accountId)
-    );
+      // No point fetching if content is invalid (macro not fully configured)
+      if (!content || validationWarning) {
+        setPendingState({ accountIds: [], isLoading: false });
+        return;
+      }
 
-    // Pending = configured signers minus those who already signed
-    return configuredSigners.filter(accountId => !signedAccountIds.has(accountId));
-  };
+      setPendingState(prev => ({ ...prev, isLoading: true }));
 
-  const pendingSignatures = calculatePendingSignatures();
+      try {
+        const signedAccountIds = (signatureState.entity?.signatures || []).map(s => s.accountId);
+
+        const result = await invoke('getPendingSigners', {
+          pageId,
+          signedAccountIds,
+        });
+
+        if (result.success) {
+          setPendingState({ accountIds: result.pending || [], isLoading: false });
+        } else {
+          console.error('Failed to fetch pending signers:', result.error);
+          setPendingState({ accountIds: [], isLoading: false });
+        }
+      } catch (error) {
+        console.error('Error fetching pending signers:', error);
+        setPendingState({ accountIds: [], isLoading: false });
+      }
+    };
+
+    fetchPendingSigners();
+  }, [pageId, signatureState.entity, content, validationWarning]);
+
+  const pendingSignatures = pendingState.accountIds;
   const hasPendingSignatures = pendingSignatures.length > 0;
   const hasSignatures = signatureState.entity?.signatures?.length > 0;
 
