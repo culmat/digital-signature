@@ -43,9 +43,24 @@ async function getAllAuthorizedUsers(pageId, config) {
   }
 
   // 3. Add page viewers (if inheritViewers enabled)
+  // NOTE: In Confluence, EDIT permission implies VIEW permission.
+  // When inheritEditors is false, we must exclude users with EDIT permission
+  // to ensure only VIEW-only users can sign via inheritViewers.
   if (config.inheritViewers) {
     const viewers = await getPageViewers(pageId);
-    viewers.forEach(accountId => authorizedUsers.add(accountId));
+    if (!config.inheritEditors) {
+      // Exclude users with EDIT permission
+      const editors = await getPageEditors(pageId);
+      const editorsSet = new Set(editors);
+      viewers.forEach(accountId => {
+        if (!editorsSet.has(accountId)) {
+          authorizedUsers.add(accountId);
+        }
+      });
+    } else {
+      // inheritEditors is enabled, so all viewers (including editors) can sign
+      viewers.forEach(accountId => authorizedUsers.add(accountId));
+    }
   }
 
   // 4. Add page editors (if inheritEditors enabled)

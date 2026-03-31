@@ -9,6 +9,16 @@
 // - signatureEntity: object (current signature state)
 //
 // Returns: { allowed: boolean, reason: string }
+//
+// IMPORTANT: Confluence Permission Model
+// In Confluence, EDIT permission automatically grants VIEW permission (you can't edit 
+// what you can't see). The restriction API endpoints reflect this:
+// - /restriction/byOperation/read returns users with VIEW permission (including editors)
+// - /restriction/byOperation/update returns users with EDIT permission
+//
+// Therefore, when inheritViewers is enabled but inheritEditors is disabled, we must
+// explicitly check and exclude users with EDIT permission to ensure only VIEW-only
+// users can sign via the inheritViewers setting.
 
 import api, { route } from "@forge/api";
 
@@ -98,7 +108,25 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
       return { allowed: false, reason: "error.api_failure" };
     }
     if (hasView) {
-      return { allowed: true, reason: "User has VIEW permission on page" };
+      // If inheritEditors is disabled, exclude users with EDIT permission
+      // (EDIT implies VIEW in Confluence, but we want VIEW-only users)
+      if (!config.inheritEditors) {
+        let hasEdit;
+        try {
+          hasEdit = await checkPagePermission(pageId, accountId, "EDIT");
+        } catch {
+          return { allowed: false, reason: "error.api_failure" };
+        }
+        if (hasEdit) {
+          // User has EDIT permission but inheritEditors is false
+          // Fall through to check other authorization criteria
+        } else {
+          return { allowed: true, reason: "User has VIEW permission on page" };
+        }
+      } else {
+        // inheritEditors is also enabled, so VIEW permission is sufficient
+        return { allowed: true, reason: "User has VIEW permission on page" };
+      }
     }
   }
   if (config.inheritEditors) {

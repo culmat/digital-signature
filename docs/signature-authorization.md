@@ -76,11 +76,25 @@ if (config.signerGroups && config.signerGroups.length > 0) {
 ```
 
 ### 5. Check Inherited Page Permissions
+
+**Important**: In Confluence, EDIT permission automatically grants VIEW permission (you can't edit what you can't see). To ensure `inheritViewers` only allows VIEW-only users and not editors, we must explicitly exclude users with EDIT permission when `inheritEditors` is false.
+
 ```javascript
 if (config.inheritViewers) {
   const hasViewPermission = await checkPagePermission(pageId, currentUserAccountId, 'VIEW');
   if (hasViewPermission) {
-    return ALLOW; // User has VIEW permission on the page
+    // If inheritEditors is disabled, exclude users with EDIT permission
+    if (!config.inheritEditors) {
+      const hasEditPermission = await checkPagePermission(pageId, currentUserAccountId, 'EDIT');
+      if (hasEditPermission) {
+        // User has EDIT, but inheritEditors is false - continue checking other criteria
+      } else {
+        return ALLOW; // User has VIEW-only permission
+      }
+    } else {
+      // inheritEditors is also enabled, so VIEW permission is sufficient
+      return ALLOW; // User has VIEW permission on the page
+    }
   }
 }
 
@@ -193,10 +207,23 @@ async function canUserSign(currentUserAccountId, pageId, config, signatureEntity
   if (config.inheritViewers) {
     const hasViewPermission = await checkPagePermission(pageId, currentUserAccountId, 'VIEW');
     if (hasViewPermission) {
-      return {
-        allowed: true,
-        reason: 'User has VIEW permission on page'
-      };
+      // Exclude users with EDIT permission when inheritEditors is false
+      if (!config.inheritEditors) {
+        const hasEditPermission = await checkPagePermission(pageId, currentUserAccountId, 'EDIT');
+        if (hasEditPermission) {
+          // User has EDIT but inheritEditors is false - continue checking
+        } else {
+          return {
+            allowed: true,
+            reason: 'User has VIEW permission on page'
+          };
+        }
+      } else {
+        return {
+          allowed: true,
+          reason: 'User has VIEW permission on page'
+        };
+      }
     }
   }
 
