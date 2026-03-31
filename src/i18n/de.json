@@ -88,10 +88,12 @@
         "description": "Geben Sie Atlassian Gruppen-IDs (nicht Team-IDs) ein, eine pro Zeile. Gruppen-IDs finden Sie in der Atlassian Verwaltung."
       },
       "inherit_viewers": {
-        "label": "Seitenbetrachtern das Unterschreiben erlauben"
+        "label": "Seitenbetrachtern das Unterschreiben erlauben",
+        "description": "Jeder der die Seite sehen kann, darf unterschreiben. Ideal um die Seite zu schützen und jeden Freigeschalteten automatisch zur Unterzeichnenden zu machen. Schließt Seitenbearbeiter nicht ein — nutzen Sie die Option unten, um diese separat hinzuzufügen."
       },
       "inherit_editors": {
-        "label": "Seitenbearbeitern das Unterschreiben erlauben"
+        "label": "Seitenbearbeitern das Unterschreiben erlauben",
+        "description": "Jeder der die Seite bearbeiten kann, darf unterschreiben. Eine Komfortfunktion, da Bearbeiter sowieso die Signaturoptionen ändern können. Besonders in Kombination mit der obigen Betrachter-Option nützlich, um sich selbst oder das verwaltende Team zu den Unterzeichnenden hinzuzufügen."
       },
       "max_signatures": {
         "label": "Maximale Anzahl an Unterschriften (optional)",

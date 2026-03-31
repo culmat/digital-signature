@@ -88,10 +88,12 @@
         "description": "Enter Atlassian group IDs (not team IDs), one per line. Find group IDs in Atlassian Admin."
       },
       "inherit_viewers": {
-        "label": "Allow page viewers to sign"
+        "label": "Allow page viewers to sign",
+        "description": "Any user with view permission on the page can sign. Useful for restricting the page and having every authorized viewer automatically become a signer. Does not include page editors — use the editor option below to add them separately."
       },
       "inherit_editors": {
-        "label": "Allow page editors to sign"
+        "label": "Allow page editors to sign",
+        "description": "Any user with edit permission on the page can sign. This is a convenience option since editors can already change the signature settings. Especially useful in combination with the viewer option above to also include yourself or the team managing the page as signers."
       },
       "max_signatures": {
         "label": "Maximum Signatures (optional)",

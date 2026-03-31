@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ForgeReconciler, { useConfig, useTranslation, I18nProvider, Button, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup, ErrorMessage } from '@forge/react';
+import ForgeReconciler, { useConfig, useTranslation, I18nProvider, Button, HelperMessage, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup, ErrorMessage } from '@forge/react';
 import { view } from '@forge/bridge';
 
 // Simple parameter interpolation for translation strings with {variable} placeholders.
@@ -200,6 +200,7 @@ const Config = () => {
         isChecked={inheritViewers}
         onChange={(e) => setInheritViewers(e.target.checked)}
       />
+      <HelperMessage>{t('config.fields.inherit_viewers.description')}</HelperMessage>
       
       <Checkbox
         id="inheritEditors"
@@ -207,6 +208,7 @@ const Config = () => {
         isChecked={inheritEditors}
         onChange={(e) => setInheritEditors(e.target.checked)}
       />
+      <HelperMessage>{t('config.fields.inherit_editors.description')}</HelperMessage>
       
       {/* Max Signatures */}
       <Label labelFor="maxSignatures">{t('config.fields.max_signatures.label')}</Label>

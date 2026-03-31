@@ -88,10 +88,12 @@
         "description": "Entrez les IDs de groupe Atlassian (pas les IDs d'équipe), un par ligne. Trouvez les IDs de groupe dans l'administration Atlassian."
       },
       "inherit_viewers": {
-        "label": "Autoriser les spectateurs de la page à signer"
+        "label": "Autoriser les spectateurs de la page à signer",
+        "description": "Tout utilisateur ayant le droit de consulter la page peut signer. Idéal pour restreindre la page et ajouter automatiquement chaque lecteur autorisé comme signataire. N'inclut pas les éditeurs — utilisez l'option ci-dessous pour les ajouter séparément."
       },
       "inherit_editors": {
-        "label": "Autoriser les éditeurs de la page à signer"
+        "label": "Autoriser les éditeurs de la page à signer",
+        "description": "Tout utilisateur ayant le droit de modifier la page peut signer. C'est une option de confort, car les éditeurs peuvent déjà modifier les paramètres de signature. Particulièrement utile en combinaison avec l'option spectateurs ci-dessus pour inclure vous-même ou l'équipe gérant la page parmi les signataires."
       },
       "max_signatures": {
         "label": "Nombre maximum de signatures (optionnel)",
