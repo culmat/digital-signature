@@ -20,6 +20,9 @@ const SIGNATURES_LABEL = 'signatures';
 /** CMA namespace for Confluence user → Cloud account ID mapping */
 const USER_NAMESPACE = 'identity:user';
 
+/** Prefix required by CMA Mappings API for Confluence user keys */
+const USER_KEY_PREFIX = 'confluence.userkey/';
+
 /** Maximum server IDs per getMappingById call */
 const MAPPING_BATCH_SIZE = 100;
 
@@ -46,12 +49,16 @@ export async function handler(event, _context) {
   }
 
   // 3. Batch-resolve usernames → Cloud account IDs (max 100 per call)
+  //    CMA requires prefixed keys: "confluence.userkey/<username>"
   const usernameToAccountId = {};
   const usernames = [...allUsernames];
   for (let i = 0; i < usernames.length; i += MAPPING_BATCH_SIZE) {
     const batch = usernames.slice(i, i + MAPPING_BATCH_SIZE);
-    const { result } = await migration.getMappingById(transferId, USER_NAMESPACE, batch);
-    Object.assign(usernameToAccountId, result);
+    const prefixedBatch = batch.map(u => `${USER_KEY_PREFIX}${u}`);
+    const { result } = await migration.getMappingById(transferId, USER_NAMESPACE, prefixedBatch);
+    for (const [prefixedKey, accountId] of Object.entries(result)) {
+      usernameToAccountId[prefixedKey.replace(USER_KEY_PREFIX, '')] = accountId;
+    }
   }
 
   let contractsInserted = 0;

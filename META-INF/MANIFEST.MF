@@ -1,0 +1,37 @@
+Manifest-Version: 1.0
+Atlassian-Build-Date: 2026-03-28T14:08:41+0100
+Atlassian-Plugin-Key: com.baloise.confluence.digital-signature
+Bnd-LastModified: 1774703324704
+Build-Jdk-Spec: 21
+Bundle-Description: This is the com.baloise.confluence:digital-signature
+  plugin for		Atlassian Confluence.
+Bundle-DocURL: http://www.baloise.ch/
+Bundle-ManifestVersion: 2
+Bundle-Name: digital-signature
+Bundle-SymbolicName: com.baloise.confluence.digital-signature
+Bundle-Vendor: Baloise
+Bundle-Version: 10.1.0
+Created-By: Apache Maven Bundle Plugin 5.1.9
+DynamicImport-Package: com.google.gson,com.google.gson.*
+Import-Package: com.google.gson;resolution:=optional,com.atlassian.banda
+ na,com.atlassian.confluence.content.render.xhtml,com.atlassian.confluen
+ ce.core,com.atlassian.confluence.macro,com.atlassian.confluence.pages,c
+ om.atlassian.confluence.renderer.radeox.macros,com.atlassian.confluence
+ .security,com.atlassian.confluence.setup,com.atlassian.confluence.setup
+ .bandana,com.atlassian.confluence.setup.settings,com.atlassian.confluen
+ ce.spaces,com.atlassian.confluence.user,com.atlassian.confluence.util.v
+ elocity,com.atlassian.mail,com.atlassian.mail.server,com.atlassian.plug
+ in.spring.scanner.annotation.component,com.atlassian.plugin.spring.scan
+ ner.annotation.export,com.atlassian.plugin.spring.scanner.annotation.im
+ ports,com.atlassian.sal.api.message,com.atlassian.sal.api.user,com.atla
+ ssian.user,com.atlassian.user.search.page,com.atlassian.velocity.htmlsa
+ fe,jakarta.ws.rs,jakarta.ws.rs.core,java.awt,java.awt.datatransfer,java
+ .awt.geom,java.awt.image,java.io,java.lang,java.lang.annotation,java.la
+ ng.invoke,java.lang.reflect,java.net,java.nio.charset,java.nio.file,jav
+ a.security,java.text,java.util,java.util.concurrent,java.util.function,
+ java.util.regex,java.util.stream,java.util.zip,javax.imageio,javax.swin
+ g,javax.swing.plaf,org.apache.commons.codec.digest,org.slf4j,com.sun.ma
+ il.imap,com.sun.mail.smtp,com.sun.mail.pop3
+Spring-Context: *
+Tool: Bnd-6.3.1.202206071316
+
