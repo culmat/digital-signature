@@ -1,0 +1,7 @@
+section: digital-signature
+title: Digital Signature for Confluence
+items:
+  - slug: index
+    title: Home
+  - slug: installation
+    title: Installation
