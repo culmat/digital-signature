@@ -8,9 +8,9 @@
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.atlassian.com/v1/forge/mcp"]
     },
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest", "--cdp-endpoint", "http://127.0.0.1:9223"]
+    "shared-browser": {
+      "type": "http",
+      "url": "http://localhost:8931"
     }
   }
 }
