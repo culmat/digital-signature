@@ -64,6 +64,15 @@ if (!fs.existsSync(SITE_DIR)) {
   process.exit(1);
 }
 
+// Strip YAML frontmatter (--- ... ---) before writing to the wiki.
+// GitHub Wiki renders frontmatter as plain text instead of ignoring it.
+function stripFrontmatter(content) {
+  if (!content.startsWith("---")) return content;
+  const end = content.indexOf("\n---", 3);
+  if (end === -1) return content;
+  return content.slice(end + 4).replace(/^\n/, "");
+}
+
 // --- Copy site/ → wiki ---
 
 const siteFiles = fs
@@ -73,7 +82,8 @@ const siteFiles = fs
 for (const siteFile of siteFiles) {
   const src = path.join(SITE_DIR, siteFile);
   const dst = path.join(resolvedWikiDir, wikiName(siteFile));
-  fs.copyFileSync(src, dst);
+  const content = fs.readFileSync(src, "utf8");
+  fs.writeFileSync(dst, stripFrontmatter(content), "utf8");
   console.log(`copied: ${siteFile} → ${path.basename(dst)}`);
 }
 
