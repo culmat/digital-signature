@@ -5,3 +5,17 @@ items:
     title: Home
   - slug: installation
     title: Installation
+  - slug: using-the-macro
+    title: Using the Macro
+  - slug: admin-dashboard
+    title: Admin Dashboard
+  - slug: how-it-works
+    title: How it works
+  - slug: migrating-from-server
+    title: Migrating from Server / Data Center
+  - slug: trust-center
+    title: Trust Center
+  - slug: privacy-policy
+    title: Privacy Policy
+  - slug: terms
+    title: Terms
