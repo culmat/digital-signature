@@ -29,11 +29,11 @@ modules:
       events:
         - avi:confluence:trashed:page
         - avi:confluence:deleted:page
-  migration:
-    - key: app-data-migration-listener
+    - key: migration-trigger
       function: migrationHandler
       events:
-        - avi:app-data-uploaded
+        - avi:ecosystem.migration:triggered:listener
+        - avi:ecosystem.migration:uploaded:app_data
   function:
     - key: resolver
       handler: index.handler

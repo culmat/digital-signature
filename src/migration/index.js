@@ -1,9 +1,13 @@
 /**
  * CMA App Data Migration Handler (i0052)
  *
- * Triggered by `avi:app-data-uploaded` when the Confluence Cloud Migration
- * Assistant has finished uploading the JSONL.gz payload exported by the
- * legacy Server/DC plugin (DigitalSignatureMigrationListener).
+ * Triggered by `avi:ecosystem.migration:uploaded:app_data` when the
+ * Confluence Cloud Migration Assistant has finished uploading the JSONL.gz
+ * payload exported by the legacy Server/DC plugin
+ * (DigitalSignatureMigrationListener).
+ *
+ * Also receives `avi:ecosystem.migration:triggered:listener` when the
+ * server-side listener is activated (acknowledged but no processing needed).
  *
  * Reads each contract line, resolves server usernames to Cloud account IDs
  * via the CMA Mappings API, and inserts rows into the `contract` and
@@ -27,7 +31,15 @@ const USER_KEY_PREFIX = 'confluence.userkey/';
 const MAPPING_BATCH_SIZE = 100;
 
 export async function handler(event, _context) {
-  const { key, label, messageId, transferId } = event;
+  const { eventType, key, label, messageId, transferId } = event;
+
+  console.log(`[migration] Event received: ${eventType} transferId=${transferId} label=${label}`);
+
+  // Only process app-data-uploaded events; acknowledge others
+  if (eventType !== 'avi:ecosystem.migration:uploaded:app_data') {
+    console.log(`[migration] Acknowledged non-data event: ${eventType}`);
+    return;
+  }
 
   // Ignore payloads not produced by this plugin
   if (label !== SIGNATURES_LABEL) {
@@ -55,7 +67,9 @@ export async function handler(event, _context) {
   for (let i = 0; i < usernames.length; i += MAPPING_BATCH_SIZE) {
     const batch = usernames.slice(i, i + MAPPING_BATCH_SIZE);
     const prefixedBatch = batch.map(u => `${USER_KEY_PREFIX}${u}`);
-    const { result } = await migration.getMappingById(transferId, USER_NAMESPACE, prefixedBatch);
+    const mappingResponse = await migration.getMappingById(transferId, USER_NAMESPACE, prefixedBatch);
+    console.log(`[migration] Mapping response keys: ${JSON.stringify(Object.keys(mappingResponse || {}))}`);
+    const result = mappingResponse?.result || mappingResponse || {};
     for (const [prefixedKey, accountId] of Object.entries(result)) {
       usernameToAccountId[prefixedKey.replace(USER_KEY_PREFIX, '')] = accountId;
     }
