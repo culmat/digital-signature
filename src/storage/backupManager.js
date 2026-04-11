@@ -7,9 +7,9 @@ const MAX_CHUNK_SIZE = 10000;
 export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
   const startTime = Date.now();
 
-  if (limit > MAX_CHUNK_SIZE) {
-    limit = MAX_CHUNK_SIZE;
-  }
+  // Validate and sanitize pagination parameters to prevent injection
+  offset = Math.max(0, Math.floor(Number(offset)) || 0);
+  limit = Math.min(MAX_CHUNK_SIZE, Math.max(1, Math.floor(Number(limit)) || DEFAULT_CHUNK_SIZE));
 
   try {
     const stats = await getStatistics();
@@ -27,8 +27,8 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
       SELECT hash, pageId, createdAt, deletedAt
       FROM contract
       ORDER BY hash
-      LIMIT ${limit} OFFSET ${offset}
-    `).execute();
+      LIMIT ? OFFSET ?
+    `).bindParams(limit, offset).execute();
 
     const contracts = contractsResult?.rows || contractsResult || [];
 
@@ -42,8 +42,8 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
       SELECT contractHash, accountId, signedAt
       FROM signature
       ORDER BY contractHash, accountId
-      LIMIT ${limit} OFFSET ${offset}
-    `).execute();
+      LIMIT ? OFFSET ?
+    `).bindParams(limit, offset).execute();
 
     const signatures = signaturesResult?.rows || signaturesResult || [];
 
@@ -92,6 +92,50 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
   }
 }
 
+// Allowlist of SQL statement patterns permitted during import.
+// Only INSERT INTO the two known tables and SET FOREIGN_KEY_CHECKS are allowed.
+const ALLOWED_STATEMENT_PATTERNS = [
+  /^\s*INSERT\s+INTO\s+contract\s*\(/i,
+  /^\s*INSERT\s+INTO\s+signature\s*\(/i,
+  /^\s*SET\s+FOREIGN_KEY_CHECKS\s*=\s*[01]\s*;?\s*$/i,
+];
+
+/**
+ * Validates that a SQL statement matches one of the allowed import patterns.
+ * Rejects any DDL (DROP, ALTER, CREATE), DML (UPDATE, DELETE), or other
+ * unexpected statements to prevent arbitrary SQL execution.
+ */
+function isAllowedStatement(statement) {
+  return ALLOWED_STATEMENT_PATTERNS.some(pattern => pattern.test(statement));
+}
+
+/**
+ * Accumulates insert/update counts from an executeRaw result into the summary.
+ * For INSERT ... ON DUPLICATE KEY UPDATE:
+ * - affectedRows = 1 per insert, 2 per update
+ * - changedRows = rows actually changed (0 if data is same)
+ */
+function accumulateImportCounts(summary, statement, result) {
+  const resultData = result?.rows || result;
+  const affectedRows = resultData?.affectedRows || 0;
+  const changedRows = resultData?.changedRows || 0;
+
+  const isContract = /^\s*INSERT\s+INTO\s+contract\s*\(/i.test(statement);
+  const isSignature = /^\s*INSERT\s+INTO\s+signature\s*\(/i.test(statement);
+
+  if (!isContract && !isSignature) return;
+
+  const insertedKey = isContract ? 'contractsInserted' : 'signaturesInserted';
+  const updatedKey = isContract ? 'contractsUpdated' : 'signaturesUpdated';
+
+  if (changedRows > 0) {
+    summary[updatedKey] += changedRows;
+    summary[insertedKey] += Math.max(0, affectedRows - (changedRows * 2));
+  } else if (affectedRows > 0) {
+    summary[insertedKey] += affectedRows;
+  }
+}
+
 export async function importData(inputData) {
   try {
     let sqlDump;
@@ -124,56 +168,54 @@ export async function importData(inputData) {
       signaturesInserted: 0,
       signaturesUpdated: 0,
       executionTimeSeconds: 0,
+      rejectedStatements: 0,
       errors: []
     };
 
     const startTime = Date.now();
 
-    for (const statement of statements) {
-      try {
-        if (statement.trim().startsWith('--') ||
-            statement.trim().startsWith('SET ') ||
-            statement.trim().length === 0) {
+    // Wrap import in a transaction for atomicity
+    await sql.executeRaw('BEGIN');
+
+    try {
+      for (const statement of statements) {
+        const trimmed = statement.trim();
+
+        // Skip comments and empty lines
+        if (trimmed.startsWith('--') || trimmed.length === 0) {
           continue;
         }
 
-        const result = await sql.executeRaw(statement);
-
-        // Handle both response formats: {rows: UpdateQueryResponse} or UpdateQueryResponse
-        const resultData = result?.rows || result;
-        const affectedRows = resultData?.affectedRows || 0;
-        const changedRows = resultData?.changedRows || 0;
-
-        // For INSERT ... ON DUPLICATE KEY UPDATE:
-        // - affectedRows = number of rows affected (1 per insert, 2 per update)
-        // - changedRows = number of rows actually changed (0 if data is same)
-        // - insertId = 0 (not useful for multi-row inserts)
-
-        if (statement.includes('INSERT INTO contract')) {
-          // If changedRows > 0, some rows were updated with different data
-          // If changedRows = 0 but affectedRows > 0, rows were inserted or updated with same data
-          if (changedRows > 0) {
-            summary.contractsUpdated += changedRows;
-            summary.contractsInserted += Math.max(0, affectedRows - (changedRows * 2));
-          } else if (affectedRows > 0) {
-            // All rows were new inserts (affectedRows = 1 per insert)
-            summary.contractsInserted += affectedRows;
-          }
-        } else if (statement.includes('INSERT INTO signature')) {
-          if (changedRows > 0) {
-            summary.signaturesUpdated += changedRows;
-            summary.signaturesInserted += Math.max(0, affectedRows - (changedRows * 2));
-          } else if (affectedRows > 0) {
-            summary.signaturesInserted += affectedRows;
-          }
+        // Validate statement against allowlist before execution
+        if (!isAllowedStatement(trimmed)) {
+          console.warn('Rejected disallowed SQL statement during import:', trimmed.substring(0, 80));
+          summary.rejectedStatements++;
+          summary.errors.push({
+            statement: trimmed.substring(0, 100) + (trimmed.length > 100 ? '...' : ''),
+            error: 'Statement not in allowlist — only INSERT INTO contract/signature permitted'
+          });
+          continue;
         }
-      } catch (error) {
-        console.error('Error executing statement:', statement, error);
-        summary.errors.push({
-          statement: statement.substring(0, 100) + '...',
-          error: error.message
-        });
+
+        try {
+          const result = await sql.executeRaw(trimmed);
+          accumulateImportCounts(summary, trimmed, result);
+        } catch (error) {
+          console.error('Error executing statement:', trimmed.substring(0, 80), error);
+          summary.errors.push({
+            statement: trimmed.substring(0, 100) + (trimmed.length > 100 ? '...' : ''),
+            error: error.message
+          });
+        }
       }
+
+      // Commit transaction on success
+      await sql.executeRaw('COMMIT');
+    } catch (txError) {
+      // Rollback on any unexpected error
+      console.error('Import transaction failed, rolling back:', txError);
+      await sql.executeRaw('ROLLBACK');
+      throw txError;
     }
 
     summary.executionTimeSeconds = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
@@ -265,11 +307,25 @@ function generateMetadataComments(stats) {
 -- Total Signatures: ${stats.totalSignatures}`;
 }
 
+/**
+ * Escapes a string for safe inclusion in a SQL literal.
+ * Replaces characters that could break out of single-quoted strings.
+ */
+function escapeSqlString(str) {
+  if (str === null || str === undefined) return null;
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\0/g, '\\0');
+}
+
 function generateContractInserts(contracts) {
   const values = contracts.map(c => {
-    const createdAt = formatTimestamp(c.createdAt);
-    const deletedAt = c.deletedAt ? `'${formatTimestamp(c.deletedAt)}'` : 'NULL';
-    return `('${c.hash}', ${c.pageId}, '${createdAt}', ${deletedAt})`;
+    const hash = escapeSqlString(c.hash);
+    const pageId = Number(c.pageId);
+    const createdAt = escapeSqlString(formatTimestamp(c.createdAt));
+    const deletedAt = c.deletedAt ? `'${escapeSqlString(formatTimestamp(c.deletedAt))}'` : 'NULL';
+    return `('${hash}', ${pageId}, '${createdAt}', ${deletedAt})`;
   });
 
   return `INSERT INTO contract (hash, pageId, createdAt, deletedAt) VALUES
@@ -282,8 +338,10 @@ ON DUPLICATE KEY UPDATE
 
 function generateSignatureInserts(signatures) {
   const values = signatures.map(s => {
-    const signedAt = formatTimestamp(s.signedAt);
-    return `('${s.contractHash}', '${s.accountId}', '${signedAt}')`;
+    const contractHash = escapeSqlString(s.contractHash);
+    const accountId = escapeSqlString(s.accountId);
+    const signedAt = escapeSqlString(formatTimestamp(s.signedAt));
+    return `('${contractHash}', '${accountId}', '${signedAt}')`;
   });
 
   return `INSERT INTO signature (contractHash, accountId, signedAt) VALUES

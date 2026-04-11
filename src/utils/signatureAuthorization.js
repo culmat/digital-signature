@@ -49,7 +49,7 @@ async function checkPagePermission(pageId, accountId, operation) {
     route`/wiki/rest/api/content/${pageId}/restriction/byOperation/${op}`,
     "Failed to check page permissions"
   );
-  if (!data || !data.restrictions || !data.restrictions.user) return true;
+  if (!data || !data.restrictions) return true;
 
   const userResults = data.restrictions.user?.results || [];
   const groupResults = data.restrictions.group?.results || [];
@@ -58,7 +58,20 @@ async function checkPagePermission(pageId, accountId, operation) {
   // all users with space access have this permission, so allow.
   if (userResults.length === 0 && groupResults.length === 0) return true;
 
-  return userResults.some(u => u.accountId === accountId);
+  // Check if user is directly listed in restrictions
+  if (userResults.some(u => u.accountId === accountId)) return true;
+
+  // Check if user is a member of any group listed in restrictions.
+  // Without this, users who have permission via group-based page restrictions
+  // would be incorrectly denied (matching getPendingSignersResolver logic).
+  if (groupResults.length > 0) {
+    const userGroups = await getUserGroups(accountId);
+    for (const group of groupResults) {
+      if (group.id && userGroups.includes(group.id)) return true;
+    }
+  }
+
+  return false;
 }
 
 // Main authorization function

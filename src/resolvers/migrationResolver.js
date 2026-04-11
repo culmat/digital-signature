@@ -9,6 +9,7 @@ import api, { route } from '@forge/api';
 import { FORGE_APP_ID, CONFLUENCE_MACRO_KEY } from '../shared/appIdentifiers';
 import { hasLegacyMacros, convertPageBody } from '../services/macroConversionService';
 import { successResponse, errorResponse } from '../utils/responseHelper';
+import { isConfluenceAdmin } from '../utils/adminAuth';
 
 /** Pages per CQL search request */
 const CQL_PAGE_SIZE = 50;
@@ -19,12 +20,21 @@ const CONVERT_BATCH_SIZE = 5;
 /** Delay between page updates to avoid rate limiting (ms) */
 const UPDATE_DELAY_MS = 200;
 
+/** Strict pattern for Confluence space keys */
+const SPACE_KEY_PATTERN = /^[A-Za-z0-9_~]+$/;
+
 export async function migrationResolver(req) {
   const { context, payload } = req;
   const accountId = context.accountId;
 
   if (!accountId) {
     return errorResponse('error.unauthorized', 401);
+  }
+
+  const isAdmin = await isConfluenceAdmin(accountId);
+  if (!isAdmin) {
+    console.warn(`Non-admin user ${accountId} attempted to access migration`);
+    return errorResponse('error.forbidden', 403);
   }
 
   try {
@@ -48,6 +58,11 @@ export async function migrationResolver(req) {
  */
 async function handleScan(payload) {
   const { spaceKey } = payload;
+
+  // Validate spaceKey to prevent CQL injection
+  if (spaceKey && !SPACE_KEY_PATTERN.test(spaceKey)) {
+    return errorResponse({ key: 'error.invalid_space_key' }, 400);
+  }
 
   const spaceCql = spaceKey ? ` AND space="${spaceKey}"` : '';
   const cql = `type=page${spaceCql} AND (macro="signature" OR macro="digital-signature")`;
