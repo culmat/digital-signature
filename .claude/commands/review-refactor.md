@@ -107,4 +107,6 @@ Produce a Markdown report with this structure:
 
 Be context-aware: if two functions look similar but serve intentionally different purposes (e.g., different auth contexts, different validation rules), explain WHY they are similar rather than blindly flagging them. Only flag genuinely consolidatable code.
 
-Do NOT make any code changes — this is a read-only review.
+## Apply changes
+
+After completing the review, implement all fixes from the "Warnings" section and any quick-win items from "Info / Opportunities". Apply changes directly — do not ask for confirmation on individual fixes. Run `npx vitest run` after all changes to verify nothing is broken.

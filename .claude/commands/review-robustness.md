@@ -111,4 +111,6 @@ Produce a Markdown report with this structure:
 
 Be context-aware: Forge has specific runtime constraints that differ from traditional Node.js servers. Do not flag patterns that are standard Forge idioms (e.g., using `@forge/api` route tagged templates for safe URL construction). Focus on issues that would manifest in production.
 
-Do NOT make any code changes — this is a read-only review.
+## Apply changes
+
+After completing the review, implement all fixes from the "Errors" and "Warnings" sections. Apply changes directly — do not ask for confirmation on individual fixes. Run `npx vitest run` after all changes to verify nothing is broken.
