@@ -1,10 +1,17 @@
 # Review Refactoring Opportunities
 
-You are a senior JavaScript architect reviewing this Forge app codebase for refactoring opportunities. Produce a structured findings report.
+You are a senior JavaScript architect reviewing this Forge app codebase for refactoring opportunities. Produce a structured findings report, then apply fixes.
+
+## Baseline metrics
+
+Before making any changes, capture baseline code quality metrics. Save the output for comparison later.
+
+1. Run `npx eslint src/**/* 2>&1 | tail -5` — record the error and warning counts
+2. Run `npx vitest run 2>&1 | tail -5` — record the test count and pass/fail status
 
 ## Setup
 
-Before reviewing, load Forge backend guidance for context:
+Load Forge backend guidance for context:
 
 1. Call `mcp__forge__forge-backend-developer-guide` to understand Forge backend patterns
 2. Read `AGENTS.md` for project conventions and guardrails
@@ -109,4 +116,28 @@ Be context-aware: if two functions look similar but serve intentionally differen
 
 ## Apply changes
 
-After completing the review, implement all fixes from the "Warnings" section and any quick-win items from "Info / Opportunities". Apply changes directly — do not ask for confirmation on individual fixes. Run `npx vitest run` after all changes to verify nothing is broken.
+After completing the review, implement all fixes from the "Warnings" section and any quick-win items from "Info / Opportunities". Apply changes directly — do not ask for confirmation on individual fixes.
+
+## Post-refactoring verification
+
+After all changes are applied:
+
+1. Run `npx eslint src/**/* 2>&1 | tail -5` — must have zero errors (warnings are acceptable if pre-existing)
+2. Run `npx vitest run 2>&1 | tail -5` — all tests must pass, count must be >= baseline
+
+## Metrics comparison
+
+End the review with a before/after comparison table:
+
+```
+### Code Metrics — Before vs After
+
+| Metric                  | Before | After | Delta |
+|-------------------------|--------|-------|-------|
+| ESLint errors           |        |       |       |
+| ESLint warnings         |        |       |       |
+| Test count              |        |       |       |
+| Tests passing           |        |       |       |
+```
+
+If ESLint errors increased or tests fail, fix the issues before finishing.
