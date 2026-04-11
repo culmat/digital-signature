@@ -78,6 +78,7 @@ permissions:
     - read:confluence-user
     - read:confluence-content.all
     - read:confluence-content.summary
+    - search:confluence
     - write:confluence-content
     - storage:app
     - read:user:confluence

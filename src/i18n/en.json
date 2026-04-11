@@ -171,6 +171,25 @@
       "signatures_deleted": "Signatures deleted: {count}",
       "execution_time": "Execution time: {count}s"
     },
+    "migration": {
+      "title": "Migration Tools",
+      "description": "Post-CMA migration tool. Converts Server-format signature macros to Forge ADF format. Page history is preserved — all changes can be reverted via Confluence page versioning.",
+      "env_id_label": "Forge Environment ID: {envId}",
+      "env_id_missing": "Could not detect Forge environment ID. Migration tools require the environment context.",
+      "space_placeholder": "Space key (leave empty to scan all spaces)",
+      "scan_button": "Scan for Legacy Macros",
+      "scan_result": "Found {pages} pages with {macros} legacy macros",
+      "scan_empty": "No pages with legacy Server macros found.",
+      "convert_button": "Convert All",
+      "convert_progress": "Converting page {current} of {total}...",
+      "convert_complete_title": "Conversion Complete",
+      "convert_complete": "{converted} converted, {skipped} skipped, {errors} errors",
+      "table_page_id": "Page ID",
+      "table_title": "Title",
+      "table_space": "Space",
+      "table_macros": "Macros",
+      "table_status": "Status"
+    },
     "backup_description": "Export all signature data to a compressed SQL dump (base64-encoded .sql.gz)",
     "refresh_stats": "Refresh Statistics",
     "no_stats": "No statistics available"

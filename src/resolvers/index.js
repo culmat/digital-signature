@@ -5,6 +5,7 @@ import { checkAuthorizationResolver } from './checkAuthorizationResolver';
 import { getPendingSignersResolver } from './getPendingSignersResolver';
 import { adminDataResolver } from './adminDataResolver';
 import { emailAddressesResolver } from './emailAddressesResolver';
+import { migrationResolver } from './migrationResolver';
 import { runSchemaMigrations } from '../storage/migrations/schema';
 
 const resolver = new Resolver();
@@ -52,6 +53,7 @@ resolver.define('checkAuthorization', wrapResolver(checkAuthorizationResolver));
 resolver.define('getPendingSigners', wrapResolver(getPendingSignersResolver));
 resolver.define('adminData', wrapResolver(adminDataResolver));
 resolver.define('getEmailAddresses', wrapResolver(emailAddressesResolver));
+resolver.define('migrationData', wrapResolver(migrationResolver));
 
 // Admin resolver to manually trigger migrations
 resolver.define('runMigrations', async () => {

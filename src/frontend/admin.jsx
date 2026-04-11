@@ -15,7 +15,7 @@ import ForgeReconciler, {
   useTranslation,
   I18nProvider
 } from '@forge/react';
-import { invoke } from '@forge/bridge';
+import { invoke, view } from '@forge/bridge';
 
 const rightAlignStyle = xcss({ textAlign: 'right' });
 const statsTableStyle = xcss({ width: 'fit-content' });
@@ -54,8 +54,28 @@ const Admin = () => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteAllEnabled, setDeleteAllEnabled] = useState(false);
 
+  // Migration tools state — collapsed by default, expand on click
+  const [showMigration, setShowMigration] = useState(false);
+  const [migrationEnvId, setMigrationEnvId] = useState(null);
+  const [migrationSpaceKey, setMigrationSpaceKey] = useState('');
+  const [scanResult, setScanResult] = useState(null);
+  const [isScanInProgress, setIsScanInProgress] = useState(false);
+  const [isConvertInProgress, setIsConvertInProgress] = useState(false);
+  const [convertProgress, setConvertProgress] = useState(0);
+  const [convertResults, setConvertResults] = useState([]);
+  const [convertStats, setConvertStats] = useState(null);
+
   useEffect(() => {
     loadStatistics();
+    // Fetch environment ID for migration tools
+    (async () => {
+      try {
+        const ctx = await view.getContext();
+        setMigrationEnvId(ctx?.environmentId || null);
+      } catch (e) {
+        // Ignore
+      }
+    })();
   }, []);
 
   const loadStatistics = async () => {
@@ -402,6 +422,193 @@ const Admin = () => {
                 )}
               </Stack>
             </SectionMessage>
+          )}
+        </Stack>
+      </Box>
+
+      <Box paddingBlock="space.200">
+        <Stack space="small">
+          <Button
+            appearance="subtle"
+            onClick={() => setShowMigration(!showMigration)}
+          >
+            {showMigration ? '▼' : '▶'} {t('admin.migration.title')}
+          </Button>
+
+          {showMigration && (
+          <Stack space="small">
+          <SectionMessage appearance="warning" title={t('admin.migration.title')}>
+            <Text>{t('admin.migration.description')}</Text>
+          </SectionMessage>
+
+          {migrationEnvId ? (
+            <Text>{tp('admin.migration.env_id_label', { envId: migrationEnvId })}</Text>
+          ) : (
+            <SectionMessage appearance="error">
+              <Text>{t('admin.migration.env_id_missing')}</Text>
+            </SectionMessage>
+          )}
+
+          {migrationEnvId && (
+            <Stack space="small">
+              <TextArea
+                value={migrationSpaceKey}
+                onChange={(e) => setMigrationSpaceKey(e.target.value)}
+                placeholder={t('admin.migration.space_placeholder')}
+                maxHeight="32px"
+              />
+
+              <Box paddingBlockStart="space.100">
+                <LoadingButton
+                  onClick={async () => {
+                    setIsScanInProgress(true);
+                    setScanResult(null);
+                    setConvertResults([]);
+                    setConvertStats(null);
+                    setError(null);
+                    try {
+                      const response = await invoke('migrationData', {
+                        action: 'migrationScan',
+                        spaceKey: migrationSpaceKey.trim() || undefined,
+                      });
+                      if (response.success) {
+                        setScanResult(response);
+                      } else {
+                        setError(response.error?.message || response.error || 'Scan failed');
+                      }
+                    } catch (e) {
+                      setError(e.message);
+                    } finally {
+                      setIsScanInProgress(false);
+                    }
+                  }}
+                  isLoading={isScanInProgress}
+                  isDisabled={isConvertInProgress}
+                >
+                  {t('admin.migration.scan_button')}
+                </LoadingButton>
+              </Box>
+
+              {scanResult && (
+                <Stack space="small">
+                  {scanResult.totalPages > 0 ? (
+                    <>
+                      <SectionMessage appearance="information">
+                        <Text>{tp('admin.migration.scan_result', { pages: scanResult.totalPages, macros: scanResult.totalMacros })}</Text>
+                      </SectionMessage>
+                      <DynamicTable
+                        head={{
+                          cells: [
+                            { key: 'id', content: t('admin.migration.table_page_id') },
+                            { key: 'title', content: t('admin.migration.table_title') },
+                            { key: 'space', content: t('admin.migration.table_space') },
+                            { key: 'macros', content: t('admin.migration.table_macros') },
+                          ],
+                        }}
+                        rows={scanResult.pages.map((p) => ({
+                          key: p.id,
+                          cells: [
+                            { key: 'id', content: p.id },
+                            { key: 'title', content: p.title },
+                            { key: 'space', content: p.spaceKey },
+                            { key: 'macros', content: String(p.macroCount) },
+                          ],
+                        }))}
+                      />
+                      <Box paddingBlockStart="space.100">
+                        <LoadingButton
+                          onClick={async () => {
+                            setIsConvertInProgress(true);
+                            setConvertProgress(0);
+                            setConvertResults([]);
+                            setConvertStats(null);
+                            const pageIds = scanResult.pages.map(p => p.id);
+                            let offset = 0;
+                            let allResults = [];
+                            let totalStats = { processed: 0, converted: 0, skipped: 0, errors: 0 };
+                            let completed = false;
+
+                            while (!completed) {
+                              try {
+                                const response = await invoke('migrationData', {
+                                  action: 'migrationConvert',
+                                  pageIds,
+                                  offset,
+                                  envId: migrationEnvId,
+                                });
+                                if (response.success) {
+                                  const d = response;
+                                  allResults = [...allResults, ...d.results];
+                                  totalStats.processed += d.stats.processed;
+                                  totalStats.converted += d.stats.converted;
+                                  totalStats.skipped += d.stats.skipped;
+                                  totalStats.errors += d.stats.errors;
+                                  offset = d.offset;
+                                  completed = d.completed;
+                                  setConvertProgress(offset / pageIds.length);
+                                  setConvertResults(allResults);
+                                } else {
+                                  setError(response.error?.message || 'Convert failed');
+                                  break;
+                                }
+                              } catch (e) {
+                                setError(e.message);
+                                break;
+                              }
+                            }
+                            setConvertStats(totalStats);
+                            setIsConvertInProgress(false);
+                          }}
+                          isLoading={isConvertInProgress}
+                          appearance="primary"
+                        >
+                          {t('admin.migration.convert_button')}
+                        </LoadingButton>
+                      </Box>
+
+                      {isConvertInProgress && (
+                        <Stack space="small">
+                          <ProgressBar value={convertProgress} />
+                          <Text>{tp('admin.migration.convert_progress', { current: convertResults.length, total: scanResult.totalPages })}</Text>
+                        </Stack>
+                      )}
+
+                      {convertStats && (
+                        <SectionMessage appearance="confirmation" title={t('admin.migration.convert_complete_title')}>
+                          <Text>{tp('admin.migration.convert_complete', { converted: convertStats.converted, skipped: convertStats.skipped, errors: convertStats.errors })}</Text>
+                        </SectionMessage>
+                      )}
+
+                      {convertResults.length > 0 && (
+                        <DynamicTable
+                          head={{
+                            cells: [
+                              { key: 'title', content: t('admin.migration.table_title') },
+                              { key: 'status', content: t('admin.migration.table_status') },
+                              { key: 'macros', content: t('admin.migration.table_macros') },
+                            ],
+                          }}
+                          rows={convertResults.map((r) => ({
+                            key: r.pageId,
+                            cells: [
+                              { key: 'title', content: r.title || r.pageId },
+                              { key: 'status', content: r.status },
+                              { key: 'macros', content: String(r.macroCount || 0) },
+                            ],
+                          }))}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <SectionMessage appearance="confirmation">
+                      <Text>{t('admin.migration.scan_empty')}</Text>
+                    </SectionMessage>
+                  )}
+                </Stack>
+              )}
+            </Stack>
+          )}
+          </Stack>
           )}
         </Stack>
       </Box>
