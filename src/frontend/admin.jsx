@@ -11,24 +11,21 @@ import ForgeReconciler, {
   TextArea,
   ButtonGroup,
   DynamicTable,
+  Tabs,
+  Tab,
+  TabList,
+  TabPanel,
   xcss,
   useTranslation,
   I18nProvider
 } from '@forge/react';
 import { invoke, view } from '@forge/bridge';
+import { interpolate } from './utils/i18n';
 
 const rightAlignStyle = xcss({ textAlign: 'right' });
 const statsTableStyle = xcss({ width: 'fit-content' });
-
-// Simple parameter interpolation for translation strings with {variable} placeholders.
-// Forge's t() only supports (key, defaultValue) — it does not interpolate parameters.
-const interpolate = (str, params) => {
-  let result = str;
-  for (const [key, value] of Object.entries(params)) {
-    result = result.replace(`{${key}}`, String(value));
-  }
-  return result;
-};
+// TabPanel renders no top padding — add it manually.
+const tabPanelStyle = xcss({ paddingTop: 'space.100' });
 
 const Admin = () => {
   const { ready, t } = useTranslation();
@@ -54,8 +51,7 @@ const Admin = () => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteAllEnabled, setDeleteAllEnabled] = useState(false);
 
-  // Migration tools state — collapsed by default, expand on click
-  const [showMigration, setShowMigration] = useState(false);
+  // Migration tools state
   const [migrationEnvId, setMigrationEnvId] = useState(null);
   const [migrationSpaceKey, setMigrationSpaceKey] = useState('');
   const [scanResult, setScanResult] = useState(null);
@@ -297,7 +293,7 @@ const Admin = () => {
   ] : [];
 
   return (
-    <Stack space="medium">
+    <Stack space="space.300">
       <Heading size="large">{t('app.admin_title')}</Heading>
 
       {error && (
@@ -310,366 +306,356 @@ const Admin = () => {
         </SectionMessage>
       )}
 
-      <Box paddingBlock="space.200">
-        <Stack space="small">
-          <Heading size="medium">{t('ui.heading.statistics')}</Heading>
-          {loading ? (
-            <Text>{t('ui.status.loading')}</Text>
-          ) : statistics ? (
-            <Stack space="small">
-              <Box xcss={statsTableStyle}>
-                <DynamicTable
-                  head={statisticsTableHead}
-                  rows={statisticsTableRows}
-                />
-              </Box>
-              <Box paddingBlockStart="space.100">
-                <Button onClick={loadStatistics}>{t('admin.refresh_stats')}</Button>
-              </Box>
-            </Stack>
-          ) : (
-            <Text>{t('admin.no_stats')}</Text>
-          )}
-        </Stack>
-      </Box>
+      <Tabs id="admin-tabs">
+        <TabList>
+          <Tab>{t('admin.tabs.statistics')}</Tab>
+          <Tab>{t('admin.tabs.backup_restore')}</Tab>
+          <Tab>{t('admin.tabs.migration')}</Tab>
+          {deleteAllEnabled && <Tab>{t('admin.tabs.danger_zone')}</Tab>}
+        </TabList>
 
-      <Box paddingBlock="space.200">
-        <Stack space="small">
-          <Heading size="medium">{t('ui.heading.backup')}</Heading>
-          <Text>{t('admin.backup_description')}</Text>
-          <Box paddingBlockStart="space.100">
-            <LoadingButton
-              onClick={handleBackup}
-              isLoading={isBackupInProgress}
-              isDisabled={isBackupInProgress || backupData.length > 0}
-            >
-              {t('ui.button.generate_backup')}
-            </LoadingButton>
-          </Box>
-          {backupStatus && <Text>{backupStatus}</Text>}
-          {isBackupInProgress && backupProgress > 0 && (
-            <ProgressBar value={backupProgress / 100} />
-          )}
-          {backupData && (
-            <Stack space="small">
-              <TextArea
-                value={backupData}
-                isReadOnly={true}
-                minimumRows={10}
-              />
-              <Box paddingBlockStart="space.100">
-                <Button onClick={handleClearBackup}>{t('ui.button.clear_backup')}</Button>
-              </Box>
+        {/* Statistics Tab */}
+        <TabPanel>
+          <Box xcss={tabPanelStyle}>
+            <Stack space="space.200">
+              {loading ? (
+                <Text>{t('ui.status.loading')}</Text>
+              ) : statistics ? (
+                <Stack space="space.100">
+                  <Box xcss={statsTableStyle}>
+                    <DynamicTable
+                      head={statisticsTableHead}
+                      rows={statisticsTableRows}
+                    />
+                  </Box>
+                  <Button onClick={loadStatistics}>{t('admin.refresh_stats')}</Button>
+                </Stack>
+              ) : (
+                <Text>{t('admin.no_stats')}</Text>
+              )}
             </Stack>
-          )}
-        </Stack>
-      </Box>
-
-      <Box paddingBlock="space.200">
-        <Stack space="small">
-          <Heading size="medium">{t('ui.heading.restore')}</Heading>
-          <Text>
-            {t('admin.restore.description')}
-          </Text>
-          <TextArea
-            value={restoreData}
-            onChange={(e) => setRestoreData(e.target.value)}
-            placeholder={t('admin.restore.placeholder')}
-            minimumRows={10}
-            isDisabled={isRestoreInProgress}
-          />
-          <Box paddingBlockStart="space.100">
-            <ButtonGroup>
-              <LoadingButton
-                onClick={handleRestore}
-                isLoading={isRestoreInProgress}
-                isDisabled={isRestoreInProgress || !restoreData.trim()}
-                appearance="primary"
-              >
-                {t('ui.button.restore_data')}
-              </LoadingButton>
-              <Button
-                onClick={() => setRestoreData('')}
-                isDisabled={isRestoreInProgress}
-              >
-                {t('ui.button.close')}
-              </Button>
-            </ButtonGroup>
           </Box>
-          {restoreStatus && <Text>{restoreStatus}</Text>}
-          {restoreResult && (
-            <SectionMessage appearance="confirmation" title={t('admin.restore.summary.title')}>
-              <Stack space="small">
-                {restoreResult.contractsInserted > 0 && (
-                  <Text>{tp('admin.restore.summary.new_contracts', { count: restoreResult.contractsInserted })}</Text>
+        </TabPanel>
+
+        {/* Backup & Restore Tab */}
+        <TabPanel>
+          <Box xcss={tabPanelStyle}>
+            <Stack space="space.300">
+              {/* Backup section */}
+              <Stack space="space.100">
+                <Heading size="medium">{t('ui.heading.backup')}</Heading>
+                <Text>{t('admin.backup_description')}</Text>
+                <LoadingButton
+                  onClick={handleBackup}
+                  isLoading={isBackupInProgress}
+                  isDisabled={isBackupInProgress || backupData.length > 0}
+                >
+                  {t('ui.button.generate_backup')}
+                </LoadingButton>
+                {backupStatus && <Text>{backupStatus}</Text>}
+                {isBackupInProgress && backupProgress > 0 && (
+                  <ProgressBar value={backupProgress / 100} />
                 )}
-                {restoreResult.contractsUpdated > 0 && (
-                  <Text>{tp('admin.restore.summary.updated_contracts', { count: restoreResult.contractsUpdated })}</Text>
-                )}
-                {restoreResult.signaturesInserted > 0 && (
-                  <Text>{tp('admin.restore.summary.new_signatures', { count: restoreResult.signaturesInserted })}</Text>
-                )}
-                {restoreResult.signaturesUpdated > 0 && (
-                  <Text>{tp('admin.restore.summary.updated_signatures', { count: restoreResult.signaturesUpdated })}</Text>
-                )}
-                {restoreResult.contractsInserted === 0 && restoreResult.contractsUpdated === 0 &&
-                 restoreResult.signaturesInserted === 0 && restoreResult.signaturesUpdated === 0 && (
-                  <Text>{t('admin.restore.summary.no_changes')}</Text>
-                )}
-                <Text>{tp('admin.restore.summary.execution_time', { count: restoreResult.executionTimeSeconds })}</Text>
-                {restoreResult.errors && restoreResult.errors.length > 0 && (
-                  <Text>{tp('admin.restore.summary.errors', { count: restoreResult.errors.length })}</Text>
+                {backupData && (
+                  <Stack space="space.100">
+                    <TextArea
+                      value={backupData}
+                      isReadOnly={true}
+                      minimumRows={10}
+                    />
+                    <Button onClick={handleClearBackup}>{t('ui.button.clear_backup')}</Button>
+                  </Stack>
                 )}
               </Stack>
-            </SectionMessage>
-          )}
-        </Stack>
-      </Box>
 
-      <Box paddingBlock="space.200">
-        <Stack space="small">
-          <Button
-            appearance="subtle"
-            onClick={() => setShowMigration(!showMigration)}
-          >
-            {showMigration ? '▼' : '▶'} {t('admin.migration.title')}
-          </Button>
+              {/* Restore section */}
+              <Stack space="space.100">
+                <Heading size="medium">{t('ui.heading.restore')}</Heading>
+                <Text>{t('admin.restore.description')}</Text>
+                <TextArea
+                  value={restoreData}
+                  onChange={(e) => setRestoreData(e.target.value)}
+                  placeholder={t('admin.restore.placeholder')}
+                  minimumRows={10}
+                  isDisabled={isRestoreInProgress}
+                />
+                <ButtonGroup>
+                  <LoadingButton
+                    onClick={handleRestore}
+                    isLoading={isRestoreInProgress}
+                    isDisabled={isRestoreInProgress || !restoreData.trim()}
+                    appearance="primary"
+                  >
+                    {t('ui.button.restore_data')}
+                  </LoadingButton>
+                  <Button
+                    onClick={() => setRestoreData('')}
+                    isDisabled={isRestoreInProgress}
+                  >
+                    {t('ui.button.close')}
+                  </Button>
+                </ButtonGroup>
+                {restoreStatus && <Text>{restoreStatus}</Text>}
+                {restoreResult && (
+                  <SectionMessage appearance="confirmation" title={t('admin.restore.summary.title')}>
+                    <Stack space="space.100">
+                      {restoreResult.contractsInserted > 0 && (
+                        <Text>{tp('admin.restore.summary.new_contracts', { count: restoreResult.contractsInserted })}</Text>
+                      )}
+                      {restoreResult.contractsUpdated > 0 && (
+                        <Text>{tp('admin.restore.summary.updated_contracts', { count: restoreResult.contractsUpdated })}</Text>
+                      )}
+                      {restoreResult.signaturesInserted > 0 && (
+                        <Text>{tp('admin.restore.summary.new_signatures', { count: restoreResult.signaturesInserted })}</Text>
+                      )}
+                      {restoreResult.signaturesUpdated > 0 && (
+                        <Text>{tp('admin.restore.summary.updated_signatures', { count: restoreResult.signaturesUpdated })}</Text>
+                      )}
+                      {restoreResult.contractsInserted === 0 && restoreResult.contractsUpdated === 0 &&
+                       restoreResult.signaturesInserted === 0 && restoreResult.signaturesUpdated === 0 && (
+                        <Text>{t('admin.restore.summary.no_changes')}</Text>
+                      )}
+                      <Text>{tp('admin.restore.summary.execution_time', { count: restoreResult.executionTimeSeconds })}</Text>
+                      {restoreResult.errors && restoreResult.errors.length > 0 && (
+                        <Text>{tp('admin.restore.summary.errors', { count: restoreResult.errors.length })}</Text>
+                      )}
+                    </Stack>
+                  </SectionMessage>
+                )}
+              </Stack>
+            </Stack>
+          </Box>
+        </TabPanel>
 
-          {showMigration && (
-          <Stack space="small">
-          <SectionMessage appearance="warning" title={t('admin.migration.title')}>
-            <Text>{t('admin.migration.description')}</Text>
-          </SectionMessage>
+        {/* Migration Tab */}
+        <TabPanel>
+          <Box xcss={tabPanelStyle}>
+            <Stack space="space.200">
+              <SectionMessage appearance="warning" title={t('admin.migration.title')}>
+                <Text>{t('admin.migration.description')}</Text>
+              </SectionMessage>
 
-          {migrationEnvId ? (
-            <Text>{tp('admin.migration.env_id_label', { envId: migrationEnvId })}</Text>
-          ) : (
-            <SectionMessage appearance="error">
-              <Text>{t('admin.migration.env_id_missing')}</Text>
-            </SectionMessage>
-          )}
+              {migrationEnvId ? (
+                <Text>{tp('admin.migration.env_id_label', { envId: migrationEnvId })}</Text>
+              ) : (
+                <SectionMessage appearance="error">
+                  <Text>{t('admin.migration.env_id_missing')}</Text>
+                </SectionMessage>
+              )}
 
-          {migrationEnvId && (
-            <Stack space="small">
-              <TextArea
-                value={migrationSpaceKey}
-                onChange={(e) => setMigrationSpaceKey(e.target.value)}
-                placeholder={t('admin.migration.space_placeholder')}
-                maxHeight="32px"
-              />
+              {migrationEnvId && (
+                <Stack space="space.100">
+                  <TextArea
+                    value={migrationSpaceKey}
+                    onChange={(e) => setMigrationSpaceKey(e.target.value)}
+                    placeholder={t('admin.migration.space_placeholder')}
+                    maxHeight="32px"
+                  />
 
-              <Box paddingBlockStart="space.100">
-                <LoadingButton
-                  onClick={async () => {
-                    setIsScanInProgress(true);
-                    setScanResult(null);
-                    setConvertResults([]);
-                    setConvertStats(null);
-                    setError(null);
-                    try {
-                      const response = await invoke('migrationData', {
-                        action: 'migrationScan',
-                        spaceKey: migrationSpaceKey.trim() || undefined,
-                      });
-                      if (response.success) {
-                        setScanResult(response);
-                      } else {
-                        setError(response.error?.message || response.error || 'Scan failed');
+                  <LoadingButton
+                    onClick={async () => {
+                      setIsScanInProgress(true);
+                      setScanResult(null);
+                      setConvertResults([]);
+                      setConvertStats(null);
+                      setError(null);
+                      try {
+                        const response = await invoke('migrationData', {
+                          action: 'migrationScan',
+                          spaceKey: migrationSpaceKey.trim() || undefined,
+                        });
+                        if (response.success) {
+                          setScanResult(response);
+                        } else {
+                          setError(response.error?.message || response.error || 'Scan failed');
+                        }
+                      } catch (e) {
+                        setError(e.message);
+                      } finally {
+                        setIsScanInProgress(false);
                       }
-                    } catch (e) {
-                      setError(e.message);
-                    } finally {
-                      setIsScanInProgress(false);
-                    }
-                  }}
-                  isLoading={isScanInProgress}
-                  isDisabled={isConvertInProgress}
-                >
-                  {t('admin.migration.scan_button')}
-                </LoadingButton>
-              </Box>
+                    }}
+                    isLoading={isScanInProgress}
+                    isDisabled={isConvertInProgress}
+                  >
+                    {t('admin.migration.scan_button')}
+                  </LoadingButton>
 
-              {scanResult && (
-                <Stack space="small">
-                  {scanResult.totalPages > 0 ? (
-                    <>
-                      <SectionMessage appearance="information">
-                        <Text>{tp('admin.migration.scan_result', { pages: scanResult.totalPages, macros: scanResult.totalMacros })}</Text>
-                      </SectionMessage>
-                      <DynamicTable
-                        head={{
-                          cells: [
-                            { key: 'id', content: t('admin.migration.table_page_id') },
-                            { key: 'title', content: t('admin.migration.table_title') },
-                            { key: 'space', content: t('admin.migration.table_space') },
-                            { key: 'macros', content: t('admin.migration.table_macros') },
-                          ],
-                        }}
-                        rows={scanResult.pages.map((p) => ({
-                          key: p.id,
-                          cells: [
-                            { key: 'id', content: p.id },
-                            { key: 'title', content: p.title },
-                            { key: 'space', content: p.spaceKey },
-                            { key: 'macros', content: String(p.macroCount) },
-                          ],
-                        }))}
-                      />
-                      <Box paddingBlockStart="space.100">
-                        <LoadingButton
-                          onClick={async () => {
-                            setIsConvertInProgress(true);
-                            setConvertProgress(0);
-                            setConvertResults([]);
-                            setConvertStats(null);
-                            const pageIds = scanResult.pages.map(p => p.id);
-                            let offset = 0;
-                            let allResults = [];
-                            let totalStats = { processed: 0, converted: 0, skipped: 0, errors: 0 };
-                            let completed = false;
+                  {scanResult && (
+                    <Stack space="space.100">
+                      {scanResult.totalPages > 0 ? (
+                        <>
+                          <SectionMessage appearance="information">
+                            <Text>{tp('admin.migration.scan_result', { pages: scanResult.totalPages, macros: scanResult.totalMacros })}</Text>
+                          </SectionMessage>
+                          <DynamicTable
+                            head={{
+                              cells: [
+                                { key: 'id', content: t('admin.migration.table_page_id') },
+                                { key: 'title', content: t('admin.migration.table_title') },
+                                { key: 'space', content: t('admin.migration.table_space') },
+                                { key: 'macros', content: t('admin.migration.table_macros') },
+                              ],
+                            }}
+                            rows={scanResult.pages.map((p) => ({
+                              key: p.id,
+                              cells: [
+                                { key: 'id', content: p.id },
+                                { key: 'title', content: p.title },
+                                { key: 'space', content: p.spaceKey },
+                                { key: 'macros', content: String(p.macroCount) },
+                              ],
+                            }))}
+                          />
+                          <LoadingButton
+                            onClick={async () => {
+                              setIsConvertInProgress(true);
+                              setConvertProgress(0);
+                              setConvertResults([]);
+                              setConvertStats(null);
+                              const pageIds = scanResult.pages.map(p => p.id);
+                              let offset = 0;
+                              let allResults = [];
+                              let totalStats = { processed: 0, converted: 0, skipped: 0, errors: 0 };
+                              let completed = false;
 
-                            while (!completed) {
-                              try {
-                                const response = await invoke('migrationData', {
-                                  action: 'migrationConvert',
-                                  pageIds,
-                                  offset,
-                                  envId: migrationEnvId,
-                                });
-                                if (response.success) {
-                                  const d = response;
-                                  allResults = [...allResults, ...d.results];
-                                  totalStats.processed += d.stats.processed;
-                                  totalStats.converted += d.stats.converted;
-                                  totalStats.skipped += d.stats.skipped;
-                                  totalStats.errors += d.stats.errors;
-                                  offset = d.offset;
-                                  completed = d.completed;
-                                  setConvertProgress(offset / pageIds.length);
-                                  setConvertResults(allResults);
-                                } else {
-                                  setError(response.error?.message || 'Convert failed');
+                              while (!completed) {
+                                try {
+                                  const response = await invoke('migrationData', {
+                                    action: 'migrationConvert',
+                                    pageIds,
+                                    offset,
+                                    envId: migrationEnvId,
+                                  });
+                                  if (response.success) {
+                                    const d = response;
+                                    allResults = [...allResults, ...d.results];
+                                    totalStats.processed += d.stats.processed;
+                                    totalStats.converted += d.stats.converted;
+                                    totalStats.skipped += d.stats.skipped;
+                                    totalStats.errors += d.stats.errors;
+                                    offset = d.offset;
+                                    completed = d.completed;
+                                    setConvertProgress(offset / pageIds.length);
+                                    setConvertResults(allResults);
+                                  } else {
+                                    setError(response.error?.message || 'Convert failed');
+                                    break;
+                                  }
+                                } catch (e) {
+                                  setError(e.message);
                                   break;
                                 }
-                              } catch (e) {
-                                setError(e.message);
-                                break;
                               }
-                            }
-                            setConvertStats(totalStats);
-                            setIsConvertInProgress(false);
-                          }}
-                          isLoading={isConvertInProgress}
-                          appearance="primary"
-                        >
-                          {t('admin.migration.convert_button')}
-                        </LoadingButton>
-                      </Box>
+                              setConvertStats(totalStats);
+                              setIsConvertInProgress(false);
+                            }}
+                            isLoading={isConvertInProgress}
+                            appearance="primary"
+                          >
+                            {t('admin.migration.convert_button')}
+                          </LoadingButton>
 
-                      {isConvertInProgress && (
-                        <Stack space="small">
-                          <ProgressBar value={convertProgress} />
-                          <Text>{tp('admin.migration.convert_progress', { current: convertResults.length, total: scanResult.totalPages })}</Text>
-                        </Stack>
-                      )}
+                          {isConvertInProgress && (
+                            <Stack space="space.100">
+                              <ProgressBar value={convertProgress} />
+                              <Text>{tp('admin.migration.convert_progress', { current: convertResults.length, total: scanResult.totalPages })}</Text>
+                            </Stack>
+                          )}
 
-                      {convertStats && (
-                        <SectionMessage appearance="confirmation" title={t('admin.migration.convert_complete_title')}>
-                          <Text>{tp('admin.migration.convert_complete', { converted: convertStats.converted, skipped: convertStats.skipped, errors: convertStats.errors })}</Text>
+                          {convertStats && (
+                            <SectionMessage appearance="confirmation" title={t('admin.migration.convert_complete_title')}>
+                              <Text>{tp('admin.migration.convert_complete', { converted: convertStats.converted, skipped: convertStats.skipped, errors: convertStats.errors })}</Text>
+                            </SectionMessage>
+                          )}
+
+                          {convertResults.length > 0 && (
+                            <DynamicTable
+                              head={{
+                                cells: [
+                                  { key: 'title', content: t('admin.migration.table_title') },
+                                  { key: 'status', content: t('admin.migration.table_status') },
+                                  { key: 'macros', content: t('admin.migration.table_macros') },
+                                ],
+                              }}
+                              rows={convertResults.map((r) => ({
+                                key: r.pageId,
+                                cells: [
+                                  { key: 'title', content: r.title || r.pageId },
+                                  { key: 'status', content: r.status },
+                                  { key: 'macros', content: String(r.macroCount || 0) },
+                                ],
+                              }))}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <SectionMessage appearance="confirmation">
+                          <Text>{t('admin.migration.scan_empty')}</Text>
                         </SectionMessage>
                       )}
-
-                      {convertResults.length > 0 && (
-                        <DynamicTable
-                          head={{
-                            cells: [
-                              { key: 'title', content: t('admin.migration.table_title') },
-                              { key: 'status', content: t('admin.migration.table_status') },
-                              { key: 'macros', content: t('admin.migration.table_macros') },
-                            ],
-                          }}
-                          rows={convertResults.map((r) => ({
-                            key: r.pageId,
-                            cells: [
-                              { key: 'title', content: r.title || r.pageId },
-                              { key: 'status', content: r.status },
-                              { key: 'macros', content: String(r.macroCount || 0) },
-                            ],
-                          }))}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <SectionMessage appearance="confirmation">
-                      <Text>{t('admin.migration.scan_empty')}</Text>
-                    </SectionMessage>
+                    </Stack>
                   )}
                 </Stack>
               )}
             </Stack>
-          )}
-          </Stack>
-          )}
-        </Stack>
-      </Box>
+          </Box>
+        </TabPanel>
 
-      {deleteAllEnabled && (
-      <Box paddingBlock="space.200">
-        <Stack space="small">
-          <Heading size="medium">{t('ui.heading.danger_zone')}</Heading>
-          <SectionMessage appearance="warning" title={t('admin.delete.warning_title')}>
-            <Text>
-              {t('admin.delete.warning_description')}
-            </Text>
-          </SectionMessage>
-          {!showDeleteConfirmation ? (
-            <Box paddingBlockStart="space.100">
-              <Button
-                onClick={() => setShowDeleteConfirmation(true)}
-                appearance="danger"
-                isDisabled={isDeleteInProgress}
-              >
-                {t('admin.delete.title')}
-              </Button>
-            </Box>
-          ) : (
-            <Stack space="small">
-              <SectionMessage appearance="error" title={t('admin.delete.confirm_title')}>
-                <Text>
-                  {tp('admin.delete.confirm_message', { contracts: statistics?.totalContracts || 0, signatures: statistics?.totalSignatures || 0 })}
-                </Text>
-              </SectionMessage>
-              <Box paddingBlockStart="space.100">
-                <ButtonGroup>
-                  <LoadingButton
-                    onClick={handleDeleteAll}
-                    isLoading={isDeleteInProgress}
-                    appearance="danger"
-                  >
-                    {t('ui.button.delete_everything')}
-                  </LoadingButton>
+        {/* Danger Zone Tab (only rendered when enabled) */}
+        {deleteAllEnabled && (
+          <TabPanel>
+            <Box xcss={tabPanelStyle}>
+              <Stack space="space.200">
+                <SectionMessage appearance="warning" title={t('admin.delete.warning_title')}>
+                  <Text>{t('admin.delete.warning_description')}</Text>
+                </SectionMessage>
+                {!showDeleteConfirmation ? (
                   <Button
-                    onClick={() => setShowDeleteConfirmation(false)}
+                    onClick={() => setShowDeleteConfirmation(true)}
+                    appearance="danger"
                     isDisabled={isDeleteInProgress}
                   >
-                    {t('ui.button.cancel_deletion')}
+                    {t('admin.delete.title')}
                   </Button>
-                </ButtonGroup>
-              </Box>
-            </Stack>
-          )}
-          {deleteResult && (
-            <SectionMessage appearance="confirmation" title={t('admin.delete.summary_title')}>
-              <Stack space="small">
-                <Text>{tp('admin.delete.contracts_deleted', { count: deleteResult.contractsDeleted })}</Text>
-                <Text>{tp('admin.delete.signatures_deleted', { count: deleteResult.signaturesDeleted })}</Text>
-                <Text>{tp('admin.delete.execution_time', { count: deleteResult.executionTimeSeconds })}</Text>
+                ) : (
+                  <Stack space="space.100">
+                    <SectionMessage appearance="error" title={t('admin.delete.confirm_title')}>
+                      <Text>
+                        {tp('admin.delete.confirm_message', { contracts: statistics?.totalContracts || 0, signatures: statistics?.totalSignatures || 0 })}
+                      </Text>
+                    </SectionMessage>
+                    <ButtonGroup>
+                      <LoadingButton
+                        onClick={handleDeleteAll}
+                        isLoading={isDeleteInProgress}
+                        appearance="danger"
+                      >
+                        {t('ui.button.delete_everything')}
+                      </LoadingButton>
+                      <Button
+                        onClick={() => setShowDeleteConfirmation(false)}
+                        isDisabled={isDeleteInProgress}
+                      >
+                        {t('ui.button.cancel_deletion')}
+                      </Button>
+                    </ButtonGroup>
+                  </Stack>
+                )}
+                {deleteResult && (
+                  <SectionMessage appearance="confirmation" title={t('admin.delete.summary_title')}>
+                    <Stack space="space.100">
+                      <Text>{tp('admin.delete.contracts_deleted', { count: deleteResult.contractsDeleted })}</Text>
+                      <Text>{tp('admin.delete.signatures_deleted', { count: deleteResult.signaturesDeleted })}</Text>
+                      <Text>{tp('admin.delete.execution_time', { count: deleteResult.executionTimeSeconds })}</Text>
+                    </Stack>
+                  </SectionMessage>
+                )}
               </Stack>
-            </SectionMessage>
-          )}
-        </Stack>
-      </Box>
-      )}
+            </Box>
+          </TabPanel>
+        )}
+      </Tabs>
     </Stack>
   );
 };

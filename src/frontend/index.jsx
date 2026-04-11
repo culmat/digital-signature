@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo, useReducer, useCallback } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProvider, Box, Heading, Text, Button, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea, Toggle, Label } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProvider, Box, Heading, Text, Button, LoadingButton, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Tooltip, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea, Toggle, Label } from '@forge/react';
 import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
 import { MarkdownContent } from './markdown/renderToReact';
 import { isSectionVisible } from '../shared/visibilityCheck';
 import { normalizeLegacyConfig } from '../shared/normalizeLegacyConfig';
+import { interpolate } from './utils/i18n';
 
 const Signatures = ({ signatures, label, formatDate }) => {
   return (
@@ -44,6 +45,34 @@ import { signDocument, getSignatures, checkAuthorization } from './utils/signatu
 
 const DEFAULT_LOCALE = 'en-GB';
 
+// Module-scope styles — avoid recreating on every render
+const containerStyles = xcss({
+  backgroundColor: 'elevation.surface.raised',
+  boxShadow: 'elevation.shadow.raised',
+  padding: 'space.0',
+  borderRadius: 'border.radius',
+  marginTop: 'space.100',
+  marginBottom: 'space.100',
+  borderWidth: 'border.width',
+  borderStyle: 'solid',
+  borderColor: 'color.border',
+});
+
+const headerStyles = xcss({
+  backgroundColor: 'color.background.neutral',
+  padding: 'space.150',
+  borderTopLeftRadius: 'border.radius',
+  borderTopRightRadius: 'border.radius',
+});
+
+const contentWrapperStyles = xcss({
+  padding: 'space.200',
+});
+
+const popupContentStyles = xcss({
+  padding: 'space.100',
+});
+
 function signatureReducer(state, action) {
   switch (action.type) {
     case 'SET_ENTITY':
@@ -82,16 +111,6 @@ function useContentContext(context) {
   }), [pageId, spaceKey]);
 }
 
-// Simple parameter interpolation for translation strings with {variable} placeholders.
-// Forge's t() only supports (key, defaultValue) — it does not interpolate parameters.
-const interpolate = (str, params) => {
-  let result = str;
-  for (const [key, value] of Object.entries(params)) {
-    result = result.replace(`{${key}}`, String(value));
-  }
-  return result;
-};
-
 const App = () => {
   const { ready, t } = useTranslation();
 
@@ -122,6 +141,7 @@ const App = () => {
   });
 
   const [showAllSigned, setShowAllSigned] = useState(false);
+  const [signSuccess, setSignSuccess] = useState(null);
   const [emailPopupOpen, setEmailPopupOpen] = useState(false);
   const [emailModal, setEmailModal] = useState({ isOpen: false, emails: [], title: '' });
   const [emailSeparator, setEmailSeparator] = useState(','); // ',' or ';'
@@ -147,32 +167,6 @@ const App = () => {
   // Validate content
   const validationWarning = validateMarkdownContent(content);
   
-  // Styles for the container box with elevation
-  const containerStyles = xcss({
-    backgroundColor: 'elevation.surface.raised',
-    boxShadow: 'elevation.shadow.raised',
-    padding: 'space.0',
-    borderRadius: 'border.radius',
-    marginTop: 'space.100',
-    marginBottom: 'space.100',
-    borderWidth: 'border.width',
-    borderStyle: 'solid',
-    borderColor: 'color.border',
-  });
-
-  // Styles for the header section
-  const headerStyles = xcss({
-    backgroundColor: 'color.background.neutral',
-    padding: 'space.150',
-    borderTopLeftRadius: 'border.radius',
-    borderTopRightRadius: 'border.radius',
-  });
-
-  // Styles for the content wrapper
-  const contentWrapperStyles = xcss({
-    padding: 'space.200',
-  });
-
   // Load current user's accountId on mount using view.getContext()
   useEffect(() => {
     async function fetchUser() {
@@ -294,7 +288,10 @@ const App = () => {
 
       if (result.success) {
         dispatchSignature({ type: 'UPDATE_AFTER_SIGN', payload: result.signature });
-        console.log(result.message);
+
+        const signatureCount = result.signature?.signatures?.length || 0;
+        setSignSuccess(tp('success.signed', { count: signatureCount }));
+        setTimeout(() => setSignSuccess(null), 5000);
 
         const authResult = await checkAuthorization(invoke, pageId, title, content);
         if (authResult.success) {
@@ -492,7 +489,7 @@ const App = () => {
               onClose={() => setEmailPopupOpen(false)}
               placement="bottom-end"
               content={() => (
-                <Box xcss={xcss({ padding: 'space.100' })}>
+                <Box xcss={popupContentStyles}>
                   <Stack space="space.050" alignInline="start">
                     {hasSignatures && (
                       <Button
@@ -516,12 +513,14 @@ const App = () => {
                 </Box>
               )}
               trigger={() => (
-                <Button
-                  appearance="subtle"
-                  iconBefore="email"
-                  onClick={() => setEmailPopupOpen(!emailPopupOpen)}
-                  isDisabled={emailLoading}
-                />
+                <Tooltip content={t('macro.email_modal.title_suffix')}>
+                  <Button
+                    appearance="subtle"
+                    iconBefore="email"
+                    onClick={() => setEmailPopupOpen(!emailPopupOpen)}
+                    isDisabled={emailLoading}
+                  />
+                </Tooltip>
               )}
             />
           )}
@@ -562,22 +561,43 @@ const App = () => {
                     label={t('ui.heading.signed')} 
                     formatDate={formatDate} 
                   />
-                  {visibilityLimit != null && signatureState.entity.signatures.length > visibilityLimit && !showAllSigned && (
-                    <Button 
-                      appearance="link" 
-                      onClick={() => setShowAllSigned(true)}
-                    >
-                      {tp('macro.show_more', { count: signatureState.entity.signatures.length - visibilityLimit })}
-                    </Button>
+                  {visibilityLimit != null && signatureState.entity.signatures.length > visibilityLimit && (
+                    showAllSigned ? (
+                      <Button
+                        appearance="link"
+                        onClick={() => setShowAllSigned(false)}
+                      >
+                        {t('ui.button.show_less')}
+                      </Button>
+                    ) : (
+                      <Button
+                        appearance="link"
+                        onClick={() => setShowAllSigned(true)}
+                      >
+                        {tp('macro.show_more', { count: signatureState.entity.signatures.length - visibilityLimit })}
+                      </Button>
+                    )
                   )}
                 </Stack>
               )}
 
               {/* Pending signatures section */}
-              {showPendingSection && hasPendingSignatures && (
+              {showPendingSection && pendingState.isLoading && (
+                <Inline space="space.100" alignBlock="center">
+                  <Spinner size="small" />
+                  <Text>{t('ui.heading.pending')}</Text>
+                </Inline>
+              )}
+              {showPendingSection && !pendingState.isLoading && hasPendingSignatures && (
                 <Signatures signatures={pendingSignatures} label={t('ui.heading.pending')}/>
               )}
               
+              {signSuccess && (
+                <SectionMessage appearance="confirmation">
+                  <Text>{signSuccess}</Text>
+                </SectionMessage>
+              )}
+
               {uiState.actionError && (
                 <SectionMessage appearance="error">
                   <Text>
@@ -590,13 +610,14 @@ const App = () => {
 
               {/* Sign button - show only if authorized */}
               {content && userState.accountId && authState.status?.allowed && (
-                <Button
+                <LoadingButton
                   onClick={handleSign}
-                  isDisabled={uiState.isSigning || authState.isChecking}
+                  isLoading={uiState.isSigning}
+                  isDisabled={authState.isChecking}
                   appearance="primary"
                 >
-                  {uiState.isSigning ? t('ui.button.signing') : t('ui.button.sign')}
-                </Button>
+                  {t('ui.button.sign')}
+                </LoadingButton>
               )}
             </Stack>
           )}

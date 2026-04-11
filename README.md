@@ -10,7 +10,6 @@ Allows confluence users to write contracts in a confluence macro which can be si
 - white list users who can sign
 - report when and by whom the contract was signed
 - easily send email to signers of the contract
-- receive notifications, when your contract has been signed
 
 ## Privacy Policy
 
@@ -21,7 +20,7 @@ Allows confluence users to write contracts in a confluence macro which can be si
 
 ## Installation & Usage
 
-Install via [Atlassian Marketplace](https://marketplace.atlassian.com/plugins/tbd).
+Install via [Atlassian Marketplace](https://marketplace.atlassian.com/apps/1217404/digital-signature-for-confluence).
 
 We hope you love the plugin, trust us and find the license fee fair. If not you can [install and run](https://github.com/culmat/digital-signature/blob/main/DEVELOPMENT.md) it on your own under the terms of the AGPL license without a fee. Don't forget to make [pull requests](https://github.com/culmat/digital-signature/pulls) for your contributions. Sharing is caring ❤️.
 
@@ -34,7 +33,7 @@ the [Wiki...](https://github.com/culmat/digital-signature/wiki/Signature-Macro-U
 
 Digital-signature is written for Confluence Cloud. In fact it's a complete rewrite of https://github.com/baloise/digital-signature/ which is the version for server ( and data center) Confluence instances.
 
-TBD : implement & describe migration
+Signature data can be migrated from Server/DC to Cloud using the Atlassian Cloud Migration Assistant. See the [migration guide](https://culm.at/digital-signature/migrating-from-server/) for details.
 
 ## Feature overview
 

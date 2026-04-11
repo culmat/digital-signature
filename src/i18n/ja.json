@@ -80,7 +80,8 @@
       },
       "signers": {
         "label": "署名者",
-        "description": "この契約に署名できる特定のユーザーを選択してください。"
+        "placeholder": "ユーザー名で検索",
+        "description": "この契約に署名できる個々のユーザーを選択してください。チームはここではサポートされていません。グループベースの署名には、下の署名者グループを使用してください。"
       },
       "signer_groups": {
         "label": "署名者グループ（グループID）",
@@ -109,16 +110,16 @@
         "label": "署名者リストの表示",
         "options": {
           "always": "常に表示",
-          "signatory": "署名可能なユーザーのみ",
-          "signed": "署名済みのユーザーのみ"
+          "signatory": "承認された署名者にのみ表示",
+          "signed": "署名後にのみ表示"
         }
       },
       "pending_visible": {
         "label": "未署名者リストの表示",
         "options": {
           "always": "常に表示",
-          "signatory": "署名可能なユーザーのみ",
-          "signed": "署名済みのユーザーのみ"
+          "signatory": "承認された署名者にのみ表示",
+          "signed": "署名後にのみ表示"
         }
       }
     },
@@ -127,6 +128,12 @@
     }
   },
   "admin": {
+    "tabs": {
+      "statistics": "統計",
+      "backup_restore": "バックアップと復元",
+      "migration": "移行",
+      "danger_zone": "危険ゾーン"
+    },
     "statistics": {
       "metric": "項目",
       "value": "値",

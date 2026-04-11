@@ -80,7 +80,8 @@
       },
       "signers": {
         "label": "Unterzeichner",
-        "description": "Wählen Sie bestimmte Benutzer aus, die diesen Vertrag unterschreiben können."
+        "placeholder": "Nach Benutzern suchen",
+        "description": "Einzelne Benutzer auswählen, die diesen Vertrag unterschreiben dürfen. Teams werden hier nicht unterstützt — verwenden Sie die Unterzeichnergruppen unten für gruppenbasierte Berechtigung."
       },
       "signer_groups": {
         "label": "Unterzeichnergruppen (Gruppen-IDs)",
@@ -109,16 +110,16 @@
         "label": "Liste der Unterzeichner anzeigen",
         "options": {
           "always": "Immer sichtbar",
-          "signatory": "Nur wenn Benutzer unterschreiben kann",
-          "signed": "Nur wenn Benutzer unterschrieben hat"
+          "signatory": "Nur für berechtigte Unterzeichner sichtbar",
+          "signed": "Nur nach Unterzeichnung sichtbar"
         }
       },
       "pending_visible": {
         "label": "Liste der ausstehenden Unterzeichner anzeigen",
         "options": {
           "always": "Immer sichtbar",
-          "signatory": "Nur wenn Benutzer unterschreiben kann",
-          "signed": "Nur wenn Benutzer unterschrieben hat"
+          "signatory": "Nur für berechtigte Unterzeichner sichtbar",
+          "signed": "Nur nach Unterzeichnung sichtbar"
         }
       }
     },
@@ -127,6 +128,12 @@
     }
   },
   "admin": {
+    "tabs": {
+      "statistics": "Statistiken",
+      "backup_restore": "Sicherung & Wiederherstellung",
+      "migration": "Migration",
+      "danger_zone": "Gefahrenzone"
+    },
     "statistics": {
       "metric": "Metrik",
       "value": "Wert",

@@ -80,7 +80,8 @@
       },
       "signers": {
         "label": "Signers",
-        "description": "Select specific users who can sign this contract."
+        "placeholder": "Search for users by name",
+        "description": "Select individual users who can sign this contract. Teams are not supported here — use Signer Groups below for group-based signing."
       },
       "signer_groups": {
         "label": "Signer Groups (Group IDs)",
@@ -109,16 +110,16 @@
         "label": "Show list of signers",
         "options": {
           "always": "Always visible",
-          "signatory": "Only if user can sign",
-          "signed": "Only if user has signed"
+          "signatory": "Only visible to authorized signers",
+          "signed": "Only visible after signing"
         }
       },
       "pending_visible": {
         "label": "Show list of pending signers",
         "options": {
           "always": "Always visible",
-          "signatory": "Only if user can sign",
-          "signed": "Only if user has signed"
+          "signatory": "Only visible to authorized signers",
+          "signed": "Only visible after signing"
         }
       }
     },
@@ -127,6 +128,12 @@
     }
   },
   "admin": {
+    "tabs": {
+      "statistics": "Statistics",
+      "backup_restore": "Backup & Restore",
+      "migration": "Migration",
+      "danger_zone": "Danger Zone"
+    },
     "statistics": {
       "metric": "Metric",
       "value": "Value",

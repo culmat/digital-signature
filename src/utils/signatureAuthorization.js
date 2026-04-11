@@ -84,12 +84,12 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     !config.inheritViewers &&
     !config.inheritEditors;
   if (hasNoRestrictions) {
-    return { allowed: true, reason: "Petition mode - no restrictions" };
+    return { allowed: true, reason: "petition_mode" };
   }
 
   // 4. Named users
   if (config.signers?.includes(accountId)) {
-    return { allowed: true, reason: "User is a named signer" };
+    return { allowed: true, reason: "named_signer" };
   }
 
   // 5. Group membership
@@ -98,11 +98,11 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     try {
       userGroups = await getUserGroups(accountId);
     } catch {
-      return { allowed: false, reason: "error.api_failure" };
+      return { allowed: false, reason: "error.auth_check_failed" };
     }
     for (const groupId of config.signerGroups) {
       if (userGroups.includes(groupId)) {
-        return { allowed: true, reason: `User is member of group ${groupId}` };
+        return { allowed: true, reason: "group_member" };
       }
     }
   }
@@ -113,7 +113,7 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     try {
       hasView = await checkPagePermission(pageId, accountId, "VIEW");
     } catch {
-      return { allowed: false, reason: "error.api_failure" };
+      return { allowed: false, reason: "error.auth_check_failed" };
     }
     if (hasView) {
       // If inheritEditors is disabled, exclude users with EDIT permission
@@ -123,17 +123,17 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
         try {
           hasEdit = await checkPagePermission(pageId, accountId, "EDIT");
         } catch {
-          return { allowed: false, reason: "error.api_failure" };
+          return { allowed: false, reason: "error.auth_check_failed" };
         }
         if (hasEdit) {
           // User has EDIT permission but inheritEditors is false
           // Fall through to check other authorization criteria
         } else {
-          return { allowed: true, reason: "User has VIEW permission on page" };
+          return { allowed: true, reason: "view_permission" };
         }
       } else {
         // inheritEditors is also enabled, so VIEW permission is sufficient
-        return { allowed: true, reason: "User has VIEW permission on page" };
+        return { allowed: true, reason: "view_permission" };
       }
     }
   }
@@ -142,10 +142,10 @@ export async function canUserSign(accountId, pageId, config, signatureEntity) {
     try {
       hasEdit = await checkPagePermission(pageId, accountId, "EDIT");
     } catch {
-      return { allowed: false, reason: "error.api_failure" };
+      return { allowed: false, reason: "error.auth_check_failed" };
     }
     if (hasEdit) {
-      return { allowed: true, reason: "User has EDIT permission on page" };
+      return { allowed: true, reason: "edit_permission" };
     }
   }
 

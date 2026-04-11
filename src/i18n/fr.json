@@ -80,7 +80,8 @@
       },
       "signers": {
         "label": "Signataires",
-        "description": "Sélectionnez les utilisateurs spécifiques qui peuvent signer ce contrat."
+        "placeholder": "Rechercher des utilisateurs par nom",
+        "description": "Sélectionnez des utilisateurs individuels pouvant signer ce contrat. Les équipes ne sont pas prises en charge ici — utilisez les groupes de signataires ci-dessous pour l'autorisation par groupe."
       },
       "signer_groups": {
         "label": "Groupes de signataires (IDs de groupe)",
@@ -109,16 +110,16 @@
         "label": "Afficher la liste des signataires",
         "options": {
           "always": "Toujours visible",
-          "signatory": "Seulement si l'utilisateur peut signer",
-          "signed": "Seulement si l'utilisateur a signé"
+          "signatory": "Visible uniquement pour les signataires autorisés",
+          "signed": "Visible uniquement après signature"
         }
       },
       "pending_visible": {
         "label": "Afficher la liste des signataires en attente",
         "options": {
           "always": "Toujours visible",
-          "signatory": "Seulement si l'utilisateur peut signer",
-          "signed": "Seulement si l'utilisateur a signé"
+          "signatory": "Visible uniquement pour les signataires autorisés",
+          "signed": "Visible uniquement après signature"
         }
       }
     },
@@ -127,6 +128,12 @@
     }
   },
   "admin": {
+    "tabs": {
+      "statistics": "Statistiques",
+      "backup_restore": "Sauvegarde et restauration",
+      "migration": "Migration",
+      "danger_zone": "Zone de danger"
+    },
     "statistics": {
       "metric": "Métrique",
       "value": "Valeur",

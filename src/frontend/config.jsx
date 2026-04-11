@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ForgeReconciler, { useConfig, useTranslation, I18nProvider, Button, HelperMessage, Label, SectionMessage, Stack, Text, Textfield, Link, UserPicker, Checkbox, TextArea, RadioGroup, ErrorMessage } from '@forge/react';
 import { view } from '@forge/bridge';
-
-// Simple parameter interpolation for translation strings with {variable} placeholders.
-// Forge's t() only supports (key, defaultValue) — it does not interpolate parameters.
-const interpolate = (str, params) => {
-  let result = str;
-  for (const [key, value] of Object.entries(params)) {
-    result = result.replace(`{${key}}`, String(value));
-  }
-  return result;
-};
+import { interpolate } from './utils/i18n';
 
 const useSubmit = () => {
   const { t } = useTranslation();
@@ -142,7 +133,7 @@ const Config = () => {
   return (
     <Stack space="space.200">
       <Text>
-        {t('config.description_prefix')}<Link href="https://github.com/culmat/digital-signature/wiki/Signature-Macro-Usage">{t('config.documentation_link')}</Link>{t('config.description_suffix')}
+        {t('config.description_prefix')}<Link href="https://culm.at/digital-signature/using-the-macro/">{t('config.documentation_link')}</Link>{t('config.description_suffix')}
       </Text>
 
       {/* Contract Title */}
@@ -177,6 +168,7 @@ const Config = () => {
         id="signers"
         name="signers"
         isMulti={true}
+        placeholder={t('config.fields.signers.placeholder')}
         defaultValue={signers}
         onChange={handleSignersChange}
       />
@@ -271,7 +263,7 @@ const Config = () => {
       <Button appearance="subtle" onClick={view.close}>
         {t('ui.button.close')}
       </Button>
-      <Button appearance="primary" onClick={handleSubmit}>
+      <Button appearance="primary" onClick={handleSubmit} isDisabled={titleTooLong}>
         {t('config.button.submit')}
       </Button>
       
