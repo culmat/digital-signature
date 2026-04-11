@@ -7,7 +7,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src/**/*",
+    "lint": "eslint \"src/**/*.{js,jsx}\"",
     "test:e2e": "npx playwright test --config=e2e/playwright.config.js",
     "test:e2e:browser": "node e2e/scripts/launch-browser.js",
     "test:e2e:save-auth": "node e2e/scripts/launch-browser.js --save-auth",
