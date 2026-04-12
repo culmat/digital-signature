@@ -68,7 +68,7 @@ const Admin = () => {
       try {
         const ctx = await view.getContext();
         setMigrationEnvId(ctx?.environmentId || null);
-      } catch (e) {
+      } catch {
         // Ignore
       }
     })();
@@ -516,7 +516,7 @@ const Admin = () => {
                               const pageIds = scanResult.pages.map(p => p.id);
                               let offset = 0;
                               let allResults = [];
-                              let totalStats = { processed: 0, converted: 0, skipped: 0, errors: 0 };
+                              const totalStats = { processed: 0, converted: 0, skipped: 0, errors: 0 };
                               let completed = false;
 
                               while (!completed) {

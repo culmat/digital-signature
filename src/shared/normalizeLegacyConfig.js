@@ -64,7 +64,7 @@ export function normalizeLegacyConfig(config) {
 
   // -1 → undefined for numeric limits
   for (const field of ['maxSignatures', 'visibilityLimit']) {
-    if (out[field] == null || out[field] === '') continue;
+    if (out[field] === null || out[field] === undefined || out[field] === '') continue;
     const n = Number(out[field]);
     out[field] = n === -1 ? undefined : n;
   }

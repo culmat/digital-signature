@@ -10,9 +10,6 @@
 
 import { randomUUID } from 'crypto';
 
-// Server macro names to match
-const SERVER_MACRO_NAMES = ['signature', 'digital-signature'];
-
 // inheritSigners enum → boolean flags
 const INHERIT_MAP = {
   'none': [false, false],
@@ -107,7 +104,7 @@ function buildForgeAdf(params, body, appId, envId, macroKey) {
   let optional = '';
   for (const [serverKey, adfKey] of [['maxSignatures', 'max-signatures'], ['visibilityLimit', 'visibility-limit']]) {
     const val = params[serverKey];
-    if (val != null && val !== '' && val !== '-1') {
+    if (val !== null && val !== undefined && val !== '' && val !== '-1') {
       const n = parseInt(val, 10);
       if (!isNaN(n) && n !== -1) {
         optional += `<ac:adf-parameter key="${adfKey}" type="number">${n}</ac:adf-parameter>`;

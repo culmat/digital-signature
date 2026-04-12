@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useReducer, useCallback } from 'react';
-import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProvider, Box, Heading, Text, Button, LoadingButton, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Tooltip, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, ButtonGroup, TextArea, Toggle, Label } from '@forge/react';
+import ForgeReconciler, { useConfig, useProductContext, useTranslation, I18nProvider, Box, Heading, Text, Button, LoadingButton, Checkbox, Stack, SectionMessage, Strong, Spinner, xcss, User, Inline, Lozenge, Popup, Tooltip, Modal, ModalTransition, ModalHeader, ModalTitle, ModalBody, ModalFooter, TextArea, Toggle, Label } from '@forge/react';
 import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/parseAndSanitize';
 import { MarkdownContent } from './markdown/renderToReact';
 import { isSectionVisible } from '../shared/visibilityCheck';
@@ -554,14 +554,14 @@ const App = () => {
                 <Stack space="space.100">
                   <Signatures
                     signatures={
-                      visibilityLimit != null && !showAllSigned
+                      (visibilityLimit !== null && visibilityLimit !== undefined) && !showAllSigned
                         ? signatureState.entity.signatures.slice(0, visibilityLimit)
                         : signatureState.entity.signatures
                     }
                     label={t('ui.heading.signed')} 
                     formatDate={formatDate} 
                   />
-                  {visibilityLimit != null && signatureState.entity.signatures.length > visibilityLimit && (
+                  {(visibilityLimit !== null && visibilityLimit !== undefined) && signatureState.entity.signatures.length > visibilityLimit && (
                     showAllSigned ? (
                       <Button
                         appearance="link"

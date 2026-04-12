@@ -109,7 +109,7 @@ export async function handler(event, _context) {
   let pagesUnmapped = 0;
 
   // 5. Upsert each contract and its signatures
-  for (const { hash: serverHash, pageId: serverPageId, title, body, signatures } of contracts) {
+  for (const { hash: _serverHash, pageId: serverPageId, title, body, signatures } of contracts) {
     const cloudPageId = pageIdMap[String(serverPageId)];
     if (!cloudPageId) {
       console.warn(`[migration] No Cloud page ID mapping for server pageId: ${serverPageId} (skipped)`);

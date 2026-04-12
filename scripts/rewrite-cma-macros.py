@@ -42,9 +42,6 @@ APP_ID = 'bab5617e-dc42-4ca8-ad38-947c826fe58c'
 MACRO_KEY = 'digital-signature'
 DEFAULT_PROD_ENV_ID = '3db24628-d68b-465a-8bfd-ffb0aae164b4'
 
-# Server macro names to match
-SERVER_MACRO_NAMES = ('signature', 'digital-signature')
-
 # inheritSigners enum → boolean flags
 INHERIT_MAP = {
     'none':                (False, False),

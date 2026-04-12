@@ -18,10 +18,7 @@ export function validateRequiredFields(fields) {
   }
   if (missing.length > 0) {
     // Return key and metadata for frontend translation
-    return errorResponse({
-      key: 'error.missing_fields',
-      params: { fields: missing.join(', ') }
-    }, 400);
+    return validationError({ key: 'error.missing_fields', params: { fields: missing.join(', ') } });
   }
   return null;
 }

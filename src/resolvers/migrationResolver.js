@@ -144,7 +144,7 @@ async function handleConvert(payload) {
 
       if (!getResponse.ok) {
         const text = await getResponse.text();
-        console.error(`[migration-convert] Failed to fetch page ${pageId}: ${getResponse.status}`);
+        console.error(`[migration-convert] Failed to fetch page ${pageId}: ${getResponse.status} ${text.substring ? text.substring(0,200) : text}`);
         results.push({ pageId, status: 'error', error: `Fetch failed: ${getResponse.status}` });
         errors++;
         continue;

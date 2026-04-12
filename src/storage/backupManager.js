@@ -155,9 +155,9 @@ export async function importData(inputData) {
       try {
         const compressed = Buffer.from(trimmedInput, 'base64');
         sqlDump = gunzipSync(compressed).toString('utf-8');
-      } catch (decodeError) {
-        throw new Error('Invalid backup data format. Expected either plain SQL or base64-encoded .sql.gz data');
-      }
+          } catch {
+            throw new Error('Invalid backup data format. Expected either plain SQL or base64-encoded .sql.gz data');
+          }
     }
 
     const statements = parseSqlStatements(sqlDump);
