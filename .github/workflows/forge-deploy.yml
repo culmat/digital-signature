@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'test/**'
-      - 'manifest.yml'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'eslint.config.mjs'
-      - 'vitest.config.js'
-      - '.github/workflows/forge-deploy.yml'
+      - "src/**"
+      - "test/**"
+      - "manifest.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.mjs"
+      - "vitest.config.js"
+      - ".github/workflows/forge-deploy.yml"
   workflow_dispatch:
     inputs:
       environment:
@@ -27,86 +27,17 @@ concurrency:
   group: forge-deploy-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
 
-env:
-  FORGE_CLI: '@forge/cli@12'
-
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      - run: npx vitest run --coverage
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 14
-      - run: npx ${{ env.FORGE_CLI }} settings set usage-analytics true
-      - name: Forge lint
-        run: npx ${{ env.FORGE_CLI }} lint
-        env:
-          FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
-          FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-
   deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: forge-deploy-${{ github.event_name == 'push' && 'development' || inputs.environment }}
-    environment: ${{ github.event_name == 'push' && 'development' || inputs.environment }}
-    env:
+    permissions:
+      contents: write
+    uses: culmat/forge-ci/.github/workflows/forge-deploy.yml@main
+    with:
+      target-environment: ${{ github.event_name == 'push' && 'development' || inputs.environment }}
+      site-development: dev-cul.atlassian.net
+      site-staging: sta-cul.atlassian.net
+      site-production: cul.atlassian.net
+      pre-build-command: npm run lint && npx vitest run --coverage
+    secrets:
       FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
       FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx ${{ env.FORGE_CLI }} settings set usage-analytics true
-      - name: Build
-        run: npx ${{ env.FORGE_CLI }} build -t "$GITHUB_SHA" --non-interactive --no-verify
-      - name: Deploy and install
-        id: deploy
-        run: |
-          ENV="${{ github.event_name == 'push' && 'development' || inputs.environment }}"
-          case "$ENV" in
-            development) SITE="dev-cul.atlassian.net" ;;
-            staging)     SITE="sta-cul.atlassian.net" ;;
-            production)  SITE="cul.atlassian.net" ;;
-          esac
-          DEPLOY_OUTPUT=$(npx ${{ env.FORGE_CLI }} deploy -t "$GITHUB_SHA" --non-interactive -e "$ENV" 2>&1)
-          echo "$DEPLOY_OUTPUT"
-          VERSION=$(echo "$DEPLOY_OUTPUT" | grep -oP '\[\K[0-9]+\.[0-9]+\.[0-9]+')
-          echo "env=$ENV" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if [ "$ENV" != "production" ]; then
-            npx ${{ env.FORGE_CLI }} install --non-interactive --upgrade --site "$SITE" --product confluence -e "$ENV"
-          fi
-      - name: Tag deployment
-        if: steps.deploy.outputs.env != 'development' && steps.deploy.outputs.version != ''
-        run: |
-          ENV="${{ steps.deploy.outputs.env }}"
-          VERSION="${{ steps.deploy.outputs.version }}"
-          TAG="forge-${ENV}-v${VERSION}"
-          git tag -af "$TAG" -m "Deployed to ${ENV}"
-          git push origin "$TAG" --force
-      - name: Job summary
-        if: steps.deploy.outputs.version != ''
-        run: |
-          ENV="${{ steps.deploy.outputs.env }}"
-          VERSION="${{ steps.deploy.outputs.version }}"
-          echo "### Deployed to ${ENV}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Commit:** \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Forge version:** \`${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Build tag:** \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
