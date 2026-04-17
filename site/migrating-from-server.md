@@ -87,13 +87,31 @@ Signature history from Server can be migrated to Cloud using the Atlassian Cloud
 ### Prerequisites
 
 **Server/DC side:**
-- Confluence Server 7.x+ or Data Center
-- Digital Signature plugin **v9.2.0+** installed (contains the CMA migration listener)
-- Admin access to Confluence Server
+- Confluence **9.x** (Server or Data Center) — verified for this migration flow. Earlier versions (7.x / 8.x) may work but are not tested. **Confluence 10.x is not supported.**
+- Digital Signature plugin **9.2.0** — pinned; this build contains the CMA migration listener and is the one verified against the steps below.
+- Confluence admin access (to install the plugin and run CMA).
 
 **Cloud side:**
 - Confluence Cloud site with the **Digital Signature for Confluence** app installed via [Atlassian Marketplace](https://marketplace.atlassian.com/apps/1217404/digital-signature-for-confluence)
 - Admin access to the Cloud site
+
+### Install the Server/DC plugin
+
+The plugin is not on the Atlassian Marketplace (Server/DC EOL prevents republishing). Install the jar directly from GitHub Pages.
+
+| Confluence version |  Download |
+| --- | --- |
+| Confluence 9.x (Server or DC) | [digital-signature-9.2.0.jar](https://baloise.github.io/digital-signature/9.2.0/digital-signature-9.2.0.jar) |
+
+Older release folders (`7.0.x`, `9.1.0`) remain under `https://baloise.github.io/digital-signature/<version>/` for reference, but they predate the CMA migration listener and will not work for the migration flow below.
+
+To install:
+
+1. In Confluence, go to **Administration → Manage apps → Upload app** (`/plugins/servlet/upm`).
+2. Upload the jar you downloaded.
+3. **Data Center only:** the UPM shows a "This app is not an approved Data Center app" warning because the jar is not listed on the Marketplace. Click **Continue / Upload anyway** to proceed.
+4. After upload the app may be installed but **disabled** on Data Center. Open **Manage apps → User-installed apps**, locate *digital-signature*, and click **Enable** (and **Enable** again on any disabled modules underneath) before continuing to Step 1.
+5. Verify: the plugin appears in the user-installed list at version `9.2.0` with status **Enabled**. You're now ready for CMA dev mode.
 
 ### Step 1: Enable CMA dev mode
 
