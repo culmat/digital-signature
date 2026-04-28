@@ -15,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out app repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
 
       - name: Check out wiki
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: culmat/digital-signature.wiki
           path: wiki
