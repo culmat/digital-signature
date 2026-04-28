@@ -3,7 +3,7 @@
  */
 
 const fs = require('fs');
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 
 /**
  * Extract text content from a PDF file.
@@ -12,8 +12,9 @@ const pdfParse = require('pdf-parse');
  */
 async function extractPdfText(filePath) {
   const buffer = fs.readFileSync(filePath);
-  const data = await pdfParse(buffer);
-  return data.text;
+  const parser = new PDFParse({ data: buffer });
+  const result = await parser.getText();
+  return result.text;
 }
 
 /**
