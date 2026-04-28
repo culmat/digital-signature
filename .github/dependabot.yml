@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # @forge/react 11.x depends on react@^18 and react-reconciler@^0.29 (React 18 only).
+      # Re-evaluate when Forge UI Kit publishes a React-19-compatible release.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
