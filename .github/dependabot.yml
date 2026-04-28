@@ -10,6 +10,10 @@ updates:
       # Re-evaluate when Forge UI Kit publishes a React-19-compatible release.
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
+      # eslint-plugin-react peer is "^9.7" — does not yet support ESLint 10.
+      # Re-evaluate when eslint-plugin-react ships ESLint-10 support.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
