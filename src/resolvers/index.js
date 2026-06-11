@@ -6,6 +6,7 @@ import { getPendingSignersResolver } from './getPendingSignersResolver';
 import { adminDataResolver } from './adminDataResolver';
 import { emailAddressesResolver } from './emailAddressesResolver';
 import { migrationResolver } from './migrationResolver';
+import { getVersionInfoResolver } from './versionInfoResolver';
 import { runSchemaMigrations } from '../storage/migrations/schema';
 
 const resolver = new Resolver();
@@ -54,6 +55,8 @@ resolver.define('getPendingSigners', wrapResolver(getPendingSignersResolver));
 resolver.define('adminData', wrapResolver(adminDataResolver));
 resolver.define('getEmailAddresses', wrapResolver(emailAddressesResolver));
 resolver.define('migrationData', wrapResolver(migrationResolver));
+// Unwrapped: the About panel needs no DB access, so skip ensureMigrationsRun.
+resolver.define('getVersionInfo', getVersionInfoResolver);
 
 // Manually trigger schema migrations. Reached from the admin settings page, which
 // is gated in the manifest by `displayConditions.isSiteAdmin`.

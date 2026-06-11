@@ -24,6 +24,7 @@ export default [
         URL: 'readonly',
         document: 'readonly',
         window: 'readonly',
+        navigator: 'readonly',
         setTimeout: 'readonly',
         FormData: 'readonly',
         File: 'readonly',

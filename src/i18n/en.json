@@ -132,7 +132,8 @@
       "statistics": "Statistics",
       "backup_restore": "Backup & Restore",
       "migration": "Migration",
-      "danger_zone": "Danger Zone"
+      "danger_zone": "Danger Zone",
+      "about": "About"
     },
     "statistics": {
       "metric": "Metric",
@@ -200,7 +201,33 @@
     },
     "backup_description": "Export all signature data to a compressed SQL dump (base64-encoded .sql.gz)",
     "refresh_stats": "Refresh Statistics",
-    "no_stats": "No statistics available"
+    "no_stats": "No statistics available",
+    "about": {
+      "status_label_current": "Up to date",
+      "status_label_older_major": "Upgrade available",
+      "status_label_unknown": "Unknown",
+      "status_older_major": "A newer major version is available. You or a site admin must approve the upgrade.",
+      "upgrade_cta": "Review in Admin Hub",
+      "version_label": "Version",
+      "environment_label": "Environment",
+      "app_license_label": "App license",
+      "source_license_label": "Source code license",
+      "source_license_name": "AGPL-3.0-or-later",
+      "build_label": "Build",
+      "license_active": "Active",
+      "license_inactive": "Inactive",
+      "license_evaluation": "Evaluation",
+      "license_na": "Not applicable",
+      "debug_heading": "Debug info",
+      "debug_copy": "Copy",
+      "debug_copied": "Copied",
+      "debug_copy_failed": "Copy failed",
+      "tracking": "We don't track usage and don't know if and how you are using Digital Signature for Confluence — that's why we especially appreciate your {feedback} or {review}.",
+      "tracking_feedback": "feedback",
+      "tracking_review": "review",
+      "documentation": "For further information refer to the {documentation}.",
+      "documentation_link": "documentation"
+    }
   },
   "error": {
     "unauthorized": "Please sign in to continue",

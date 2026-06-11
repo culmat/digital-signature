@@ -132,7 +132,8 @@
       "statistics": "Statistiques",
       "backup_restore": "Sauvegarde et restauration",
       "migration": "Migration",
-      "danger_zone": "Zone de danger"
+      "danger_zone": "Zone de danger",
+      "about": "À propos"
     },
     "statistics": {
       "metric": "Métrique",
@@ -180,7 +181,33 @@
     },
     "backup_description": "Exporter toutes les données de signature vers un dump SQL compressé (encodé en base64 .sql.gz)",
     "refresh_stats": "Actualiser les statistiques",
-    "no_stats": "Aucune statistique disponible"
+    "no_stats": "Aucune statistique disponible",
+    "about": {
+      "status_label_current": "À jour",
+      "status_label_older_major": "Mise à niveau disponible",
+      "status_label_unknown": "Inconnue",
+      "status_older_major": "Une nouvelle version majeure est disponible. Vous ou un administrateur de site devez approuver la mise à niveau.",
+      "upgrade_cta": "Consulter dans Admin Hub",
+      "version_label": "Version",
+      "environment_label": "Environnement",
+      "app_license_label": "Licence de l'application",
+      "source_license_label": "Licence du code source",
+      "source_license_name": "AGPL-3.0-or-later",
+      "build_label": "Build",
+      "license_active": "Active",
+      "license_inactive": "Inactive",
+      "license_evaluation": "Évaluation",
+      "license_na": "Non applicable",
+      "debug_heading": "Informations de débogage",
+      "debug_copy": "Copier",
+      "debug_copied": "Copié",
+      "debug_copy_failed": "Échec de la copie",
+      "tracking": "Nous ne suivons pas votre utilisation et ne savons pas si ni comment vous utilisez Digital Signature for Confluence — c'est pourquoi nous apprécions particulièrement vos {feedback} ou votre {review}.",
+      "tracking_feedback": "retours",
+      "tracking_review": "avis",
+      "documentation": "Pour plus d'informations, consultez la {documentation}.",
+      "documentation_link": "documentation"
+    }
   },
   "error": {
     "unauthorized": "Veuillez vous connecter pour continuer",

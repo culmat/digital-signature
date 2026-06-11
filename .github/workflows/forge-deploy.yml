@@ -6,6 +6,7 @@ on:
     paths:
       - "src/**"
       - "test/**"
+      - "scripts/**"
       - "manifest.yml"
       - "package.json"
       - "package-lock.json"
@@ -37,7 +38,11 @@ jobs:
       site-development: dev-cul.atlassian.net
       site-staging: sta-cul.atlassian.net
       site-production: cul.atlassian.net
-      pre-build-command: npm run lint && npx vitest run --coverage
+      pre-build-command: node scripts/write-build-info.mjs && npm run lint && npx vitest run --coverage
+      # After each successful deploy, write the assigned Forge version to the
+      # per-env `LATEST_VERSION` variable (backport-safe). The About tab's
+      # getVersionInfo resolver reads this to flag older-major installs.
+      maintain-latest-version: true
     secrets:
       FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
       FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}

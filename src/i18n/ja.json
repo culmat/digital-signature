@@ -132,7 +132,8 @@
       "statistics": "統計",
       "backup_restore": "バックアップと復元",
       "migration": "移行",
-      "danger_zone": "危険ゾーン"
+      "danger_zone": "危険ゾーン",
+      "about": "情報"
     },
     "statistics": {
       "metric": "項目",
@@ -180,7 +181,33 @@
     },
     "backup_description": "すべての署名データを圧縮SQLダンプ（base64エンコードされた .sql.gz）にエクスポート",
     "refresh_stats": "統計を更新",
-    "no_stats": "統計データがありません"
+    "no_stats": "統計データがありません",
+    "about": {
+      "status_label_current": "最新",
+      "status_label_older_major": "アップグレード可能",
+      "status_label_unknown": "不明",
+      "status_older_major": "新しいメジャーバージョンが利用可能です。ユーザーまたはサイト管理者がアップグレードを承認する必要があります。",
+      "upgrade_cta": "Admin Hub で確認",
+      "version_label": "バージョン",
+      "environment_label": "環境",
+      "app_license_label": "アプリのライセンス",
+      "source_license_label": "ソースコードのライセンス",
+      "source_license_name": "AGPL-3.0-or-later",
+      "build_label": "ビルド",
+      "license_active": "有効",
+      "license_inactive": "無効",
+      "license_evaluation": "評価版",
+      "license_na": "該当なし",
+      "debug_heading": "デバッグ情報",
+      "debug_copy": "コピー",
+      "debug_copied": "コピーしました",
+      "debug_copy_failed": "コピーに失敗しました",
+      "tracking": "Digital Signature for Confluence の使用状況は追跡しておらず、ご利用の有無や方法も把握していません。そのため、{feedback} や {review} をいただけると大変ありがたいです。",
+      "tracking_feedback": "フィードバック",
+      "tracking_review": "レビュー",
+      "documentation": "詳細については{documentation}をご覧ください。",
+      "documentation_link": "ドキュメント"
+    }
   },
   "error": {
     "unauthorized": "続行するにはサインインしてください",

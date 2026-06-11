@@ -132,7 +132,8 @@
       "statistics": "Statistiken",
       "backup_restore": "Sicherung & Wiederherstellung",
       "migration": "Migration",
-      "danger_zone": "Gefahrenzone"
+      "danger_zone": "Gefahrenzone",
+      "about": "Über"
     },
     "statistics": {
       "metric": "Metrik",
@@ -180,7 +181,33 @@
     },
     "backup_description": "Alle Unterschriftsdaten in einen komprimierten SQL-Dump exportieren (base64-kodiertes .sql.gz)",
     "refresh_stats": "Statistiken aktualisieren",
-    "no_stats": "Keine Statistiken verfügbar"
+    "no_stats": "Keine Statistiken verfügbar",
+    "about": {
+      "status_label_current": "Aktuell",
+      "status_label_older_major": "Upgrade verfügbar",
+      "status_label_unknown": "Unbekannt",
+      "status_older_major": "Eine neuere Hauptversion ist verfügbar. Sie oder ein Site-Administrator müssen das Upgrade bestätigen.",
+      "upgrade_cta": "Im Admin Hub prüfen",
+      "version_label": "Version",
+      "environment_label": "Umgebung",
+      "app_license_label": "App-Lizenz",
+      "source_license_label": "Quellcode-Lizenz",
+      "source_license_name": "AGPL-3.0-or-later",
+      "build_label": "Build",
+      "license_active": "Aktiv",
+      "license_inactive": "Inaktiv",
+      "license_evaluation": "Testversion",
+      "license_na": "Nicht relevant",
+      "debug_heading": "Debug-Info",
+      "debug_copy": "Kopieren",
+      "debug_copied": "Kopiert",
+      "debug_copy_failed": "Kopieren fehlgeschlagen",
+      "tracking": "Wir erfassen keine Nutzungsdaten und wissen nicht, ob und wie Sie Digital Signature for Confluence verwenden — deshalb freuen wir uns besonders über Ihr {feedback} oder Ihre {review}.",
+      "tracking_feedback": "Feedback",
+      "tracking_review": "Bewertung",
+      "documentation": "Weitere Informationen finden Sie in der {documentation}.",
+      "documentation_link": "Dokumentation"
+    }
   },
   "error": {
     "unauthorized": "Bitte melden Sie sich an, um fortzufahren",

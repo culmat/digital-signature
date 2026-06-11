@@ -22,6 +22,7 @@ import ForgeReconciler, {
 import { invoke, view } from '@forge/bridge';
 import { interpolate } from './utils/i18n';
 import { runBatched } from './utils/batch';
+import AboutPanel from './AboutPanel';
 
 const rightAlignStyle = xcss({ textAlign: 'right' });
 const statsTableStyle = xcss({ width: 'fit-content' });
@@ -296,6 +297,7 @@ const Admin = () => {
           <Tab>{t('admin.tabs.statistics')}</Tab>
           <Tab>{t('admin.tabs.backup_restore')}</Tab>
           <Tab>{t('admin.tabs.migration')}</Tab>
+          <Tab>{t('admin.tabs.about')}</Tab>
           {deleteAllEnabled && <Tab>{t('admin.tabs.danger_zone')}</Tab>}
         </TabList>
 
@@ -580,6 +582,11 @@ const Admin = () => {
               )}
             </Stack>
           </Box>
+        </TabPanel>
+
+        {/* About Tab */}
+        <TabPanel>
+          <AboutPanel />
         </TabPanel>
 
         {/* Danger Zone Tab (only rendered when enabled) */}
