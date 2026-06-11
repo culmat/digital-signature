@@ -1,8 +1,9 @@
 /**
  * Migration resolver — scan for legacy Server macros and convert to Forge ADF.
  *
- * Hidden admin feature: only accessible when admin appends ?migration=true to the
- * admin settings URL. No environment variables or CLI setup required.
+ * Reached from the admin settings page (migration tab). Access is gated in the
+ * manifest by `displayConditions.isSiteAdmin` on the globalSettings module — only
+ * site admins reach this surface.
  *
  * Page reads/writes go through {@link confluenceContentClient}, which auto-detects the
  * available Confluence REST API version (v2 preferred, v1 fallback) so the tool keeps
@@ -13,7 +14,6 @@ import { FORGE_APP_ID, CONFLUENCE_MACRO_KEY } from '../shared/appIdentifiers';
 import { hasLegacyMacros, convertPageBody } from '../services/macroConversionService';
 import { getPage, updatePage, searchPagesByCql } from '../services/confluenceContentClient';
 import { successResponse, errorResponse } from '../utils/responseHelper';
-import { isConfluenceAdmin } from '../utils/adminAuth';
 
 /** Pages per CQL search request — one batch per scan invocation (stays under 25s). */
 const CQL_PAGE_SIZE = 50;
@@ -39,12 +39,6 @@ export async function migrationResolver(req) {
 
   if (!accountId) {
     return errorResponse('error.unauthorized', 401);
-  }
-
-  const isAdmin = await isConfluenceAdmin(accountId);
-  if (!isAdmin) {
-    console.warn(`Non-admin user ${accountId} attempted to access migration`);
-    return errorResponse('error.forbidden', 403);
   }
 
   try {

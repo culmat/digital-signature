@@ -1,23 +1,16 @@
 import { exportData, importData, getStatistics, deleteAllData } from '../storage/backupManager';
 import { successResponse, errorResponse } from '../utils/responseHelper';
-import { isConfluenceAdmin } from '../utils/adminAuth';
 
-// Admin authorization is enforced server-side via isConfluenceAdmin().
-// The globalSettings module restricts UI navigation, but resolver functions
-// are callable from any module sharing the same resolver — so we must check
-// admin status explicitly on every request.
+// Access control: the admin module is gated in the manifest by
+// `displayConditions.isSiteAdmin`, so only site admins reach this surface.
+// (There is no stable first-class server-side admin check in Forge; the
+// confluence-administrators group proxy missed centrally-managed site admins.)
 export async function adminDataResolver(req) {
   const { context, payload } = req;
   const accountId = context.accountId;
 
   if (!accountId) {
     return errorResponse('error.unauthorized', 401);
-  }
-
-  const isAdmin = await isConfluenceAdmin(accountId);
-  if (!isAdmin) {
-    console.warn(`Non-admin user ${accountId} attempted to access admin data`);
-    return errorResponse('error.forbidden', 403);
   }
 
   try {

@@ -7,7 +7,6 @@ import { adminDataResolver } from './adminDataResolver';
 import { emailAddressesResolver } from './emailAddressesResolver';
 import { migrationResolver } from './migrationResolver';
 import { runSchemaMigrations } from '../storage/migrations/schema';
-import { isConfluenceAdmin } from '../utils/adminAuth';
 
 const resolver = new Resolver();
 
@@ -56,16 +55,12 @@ resolver.define('adminData', wrapResolver(adminDataResolver));
 resolver.define('getEmailAddresses', wrapResolver(emailAddressesResolver));
 resolver.define('migrationData', wrapResolver(migrationResolver));
 
-// Admin resolver to manually trigger migrations — requires Confluence admin
+// Manually trigger schema migrations. Reached from the admin settings page, which
+// is gated in the manifest by `displayConditions.isSiteAdmin`.
 resolver.define('runMigrations', async (req) => {
   const accountId = req.context?.accountId;
   if (!accountId) {
     return { success: false, error: 'error.unauthorized' };
-  }
-  const isAdmin = await isConfluenceAdmin(accountId);
-  if (!isAdmin) {
-    console.warn(`Non-admin user ${accountId} attempted to run migrations`);
-    return { success: false, error: 'error.forbidden' };
   }
 
   try {

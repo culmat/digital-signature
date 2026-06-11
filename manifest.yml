@@ -23,6 +23,8 @@ modules:
       render: native
       resolver:
         function: resolver
+      displayConditions:
+        isSiteAdmin: true
   trigger:
     - key: page-lifecycle-trigger
       function: pageLifecycleHandler

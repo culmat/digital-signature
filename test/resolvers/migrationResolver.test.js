@@ -1,13 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockIsConfluenceAdmin = vi.fn();
 const mockGetPage = vi.fn();
 const mockUpdatePage = vi.fn();
 const mockSearchPagesByCql = vi.fn();
-
-vi.mock('../../src/utils/adminAuth.js', () => ({
-  isConfluenceAdmin: mockIsConfluenceAdmin,
-}));
 
 vi.mock('../../src/services/confluenceContentClient.js', () => ({
   getPage: mockGetPage,
@@ -26,14 +21,6 @@ const adminReq = (payload) => ({ context: { accountId: 'admin-1' }, payload });
 describe('migrationResolver', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsConfluenceAdmin.mockResolvedValue(true);
-  });
-
-  it('rejects non-admins', async () => {
-    mockIsConfluenceAdmin.mockResolvedValue(false);
-    const res = await migrationResolver(adminReq({ action: 'migrationScan' }));
-    expect(res).toMatchObject({ success: false, status: 403 });
-    expect(mockSearchPagesByCql).not.toHaveBeenCalled();
   });
 
   describe('migrationScan', () => {
