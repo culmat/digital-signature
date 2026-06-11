@@ -80,6 +80,10 @@ permissions:
     - read:confluence-content.summary
     - search:confluence
     - write:confluence-content
+    # Granular v2 scopes — required for the REST API v2 page read/update used by the
+    # migration tool (v1 content API is being removed / returns 410 on some sites).
+    - read:page:confluence
+    - write:page:confluence
     - storage:app
     - read:user:confluence
     - read:email-address:confluence

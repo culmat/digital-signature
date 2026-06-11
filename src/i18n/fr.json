@@ -199,7 +199,8 @@
     "missing_account_ids": "accountIds doit être un tableau non vide",
     "generic": "Un problème est survenu. Veuillez réessayer.",
     "auth_check_failed": "Échec de la vérification d'autorisation : {message}",
-    "unknown_action": "Action inconnue : {action}"
+    "unknown_action": "Action inconnue : {action}",
+    "invalid_space_key": "Format de clé d'espace invalide"
   },
   "success": {
     "signed": "Signé avec succès ! Ce contrat compte maintenant {count} signature(s).",

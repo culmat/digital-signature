@@ -199,7 +199,8 @@
     "missing_account_ids": "accountIds muss ein nicht-leeres Array sein",
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "auth_check_failed": "Berechtigungsprüfung fehlgeschlagen: {message}",
-    "unknown_action": "Unbekannte Aktion: {action}"
+    "unknown_action": "Unbekannte Aktion: {action}",
+    "invalid_space_key": "Ungültiges Format des Bereichsschlüssels"
   },
   "success": {
     "signed": "Erfolgreich unterschrieben! Dieser Vertrag hat jetzt {count} Unterschrift(en).",

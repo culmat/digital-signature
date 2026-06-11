@@ -199,7 +199,8 @@
     "missing_account_ids": "accountIds は空でない配列である必要があります",
     "generic": "問題が発生しました。もう一度お試しください。",
     "auth_check_failed": "認可チェックに失敗しました: {message}",
-    "unknown_action": "不明なアクション: {action}"
+    "unknown_action": "不明なアクション: {action}",
+    "invalid_space_key": "スペースキーの形式が無効です"
   },
   "success": {
     "signed": "署名が完了しました！この契約の署名数は {count} 件になりました。",

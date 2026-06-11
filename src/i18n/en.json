@@ -185,6 +185,7 @@
       "env_id_missing": "Could not detect Forge environment ID. Migration tools require the environment context.",
       "space_placeholder": "Space key (leave empty to scan all spaces)",
       "scan_button": "Scan for Legacy Macros",
+      "scanning": "Scanning… {pages} pages found so far",
       "scan_result": "Found {pages} pages with {macros} legacy macros",
       "scan_empty": "No pages with legacy Server macros found.",
       "convert_button": "Convert All",
@@ -218,7 +219,8 @@
     "missing_account_ids": "accountIds must be a non-empty array",
     "generic": "Something went wrong. Please try again.",
     "auth_check_failed": "Authorization check failed: {message}",
-    "unknown_action": "Unknown action: {action}"
+    "unknown_action": "Unknown action: {action}",
+    "invalid_space_key": "Invalid space key format"
   },
   "success": {
     "signed": "Signed successfully! This contract now has {count} signature(s).",

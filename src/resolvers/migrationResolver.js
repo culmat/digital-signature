@@ -3,15 +3,19 @@
  *
  * Hidden admin feature: only accessible when admin appends ?migration=true to the
  * admin settings URL. No environment variables or CLI setup required.
+ *
+ * Page reads/writes go through {@link confluenceContentClient}, which auto-detects the
+ * available Confluence REST API version (v2 preferred, v1 fallback) so the tool keeps
+ * working as Atlassian retires the v1 content API.
  */
 
-import api, { route } from '@forge/api';
 import { FORGE_APP_ID, CONFLUENCE_MACRO_KEY } from '../shared/appIdentifiers';
 import { hasLegacyMacros, convertPageBody } from '../services/macroConversionService';
+import { getPage, updatePage, searchPagesByCql } from '../services/confluenceContentClient';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 import { isConfluenceAdmin } from '../utils/adminAuth';
 
-/** Pages per CQL search request */
+/** Pages per CQL search request — one batch per scan invocation (stays under 25s). */
 const CQL_PAGE_SIZE = 50;
 
 /** Pages to convert per resolver invocation (within 25s Forge timeout) */
@@ -22,6 +26,12 @@ const UPDATE_DELAY_MS = 200;
 
 /** Strict pattern for Confluence space keys */
 const SPACE_KEY_PATTERN = /^[A-Za-z0-9_~]+$/;
+
+/** Counts legacy macros in a storage body. */
+function countLegacyMacros(storageBody) {
+  const macroRe = /<ac:structured-macro\s+ac:name="(?:signature|digital-signature)"/g;
+  return (storageBody.match(macroRe) || []).length;
+}
 
 export async function migrationResolver(req) {
   const { context, payload } = req;
@@ -54,10 +64,15 @@ export async function migrationResolver(req) {
 }
 
 /**
- * Scan for pages with legacy Server-format signature macros via CQL.
+ * Scan one page of CQL results for pages with legacy Server-format signature macros.
+ *
+ * Incremental: returns a single batch plus `{ offset, completed }` so the frontend can
+ * loop (the same offset/`completed` contract used by backup-export and convert). This
+ * keeps every invocation well under the 25s Forge function limit, even when scanning all
+ * spaces.
  */
 async function handleScan(payload) {
-  const { spaceKey } = payload;
+  const { spaceKey, offset = 0 } = payload;
 
   // Validate spaceKey to prevent CQL injection
   if (spaceKey && !SPACE_KEY_PATTERN.test(spaceKey)) {
@@ -67,51 +82,35 @@ async function handleScan(payload) {
   const spaceCql = spaceKey ? ` AND space="${spaceKey}"` : '';
   const cql = `type=page${spaceCql} AND (macro="signature" OR macro="digital-signature")`;
 
-  console.log(`[migration-scan] CQL: ${cql}`);
-
-  const pages = [];
-  let start = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    const searchUrl = route`/wiki/rest/api/content/search?cql=${cql}&limit=${CQL_PAGE_SIZE}&start=${start}&expand=body.storage,space,version`;
-    const response = await api.asApp().requestConfluence(searchUrl);
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`[migration-scan] CQL search failed: ${response.status} ${text}`);
-      return errorResponse({ key: 'error.generic', params: { message: `CQL search failed: ${response.status}` } }, 500);
-    }
-
-    const data = await response.json();
-    const results = data.results || [];
-
-    for (const page of results) {
-      const body = page.body?.storage?.value || '';
-      if (hasLegacyMacros(body)) {
-        // Count macros in page
-        const macroRe = /<ac:structured-macro\s+ac:name="(?:signature|digital-signature)"/g;
-        const macroCount = (body.match(macroRe) || []).length;
-
-        pages.push({
-          id: page.id,
-          title: page.title,
-          spaceKey: page.space?.key || '?',
-          macroCount,
-        });
-      }
-    }
-
-    start += results.length;
-    hasMore = results.length === CQL_PAGE_SIZE;
+  if (offset === 0) {
+    console.log(`[migration-scan] CQL: ${cql}`);
   }
 
-  console.log(`[migration-scan] Found ${pages.length} pages with legacy macros`);
+  let batch;
+  try {
+    batch = await searchPagesByCql(cql, { start: offset, limit: CQL_PAGE_SIZE });
+  } catch (error) {
+    console.error(`[migration-scan] ${error.message}`);
+    return errorResponse({ key: 'error.generic', params: { message: 'CQL search failed' } }, 500);
+  }
+
+  const pages = [];
+  let totalMacros = 0;
+  for (const page of batch.pages) {
+    if (hasLegacyMacros(page.storageValue)) {
+      const macroCount = countLegacyMacros(page.storageValue);
+      pages.push({ id: page.id, title: page.title, spaceKey: page.spaceKey, macroCount });
+      totalMacros += macroCount;
+    }
+  }
+
+  console.log(`[migration-scan] batch @${offset}: ${pages.length} pages with legacy macros${batch.hasMore ? '' : ' (scan complete)'}`);
 
   return successResponse({
     pages,
-    totalPages: pages.length,
-    totalMacros: pages.reduce((sum, p) => sum + p.macroCount, 0),
+    offset: batch.nextStart,
+    completed: !batch.hasMore,
+    stats: { totalMacros },
   });
 }
 
@@ -138,61 +137,43 @@ async function handleConvert(payload) {
 
   for (const pageId of batch) {
     try {
-      // Fetch current page body and version
-      const getUrl = route`/wiki/rest/api/content/${pageId}?expand=body.storage,version`;
-      const getResponse = await api.asApp().requestConfluence(getUrl);
-
-      if (!getResponse.ok) {
-        const text = await getResponse.text();
-        console.error(`[migration-convert] Failed to fetch page ${pageId}: ${getResponse.status} ${text.substring ? text.substring(0,200) : text}`);
-        results.push({ pageId, status: 'error', error: `Fetch failed: ${getResponse.status}` });
+      // Fetch current page body and version (auto-detects v2/v1)
+      let page;
+      try {
+        page = await getPage(pageId);
+      } catch (fetchErr) {
+        console.error(`[migration-convert] Failed to fetch page ${pageId}: ${fetchErr.message}`);
+        results.push({ pageId, status: 'error', error: 'Fetch failed' });
         errors++;
         continue;
       }
 
-      const pageData = await getResponse.json();
-      const body = pageData.body?.storage?.value || '';
-      const version = pageData.version?.number || 1;
-      const title = pageData.title;
-
       // Convert macros
-      const conversion = convertPageBody(body, FORGE_APP_ID, envId, CONFLUENCE_MACRO_KEY);
+      const conversion = convertPageBody(page.storageValue, FORGE_APP_ID, envId, CONFLUENCE_MACRO_KEY);
 
       if (!conversion.converted) {
-        results.push({ pageId, title, status: 'skipped', macroCount: 0 });
+        results.push({ pageId, title: page.title, status: 'skipped', macroCount: 0 });
         skipped++;
         continue;
       }
 
       // Update page with converted body
-      const putUrl = route`/wiki/rest/api/content/${pageId}`;
-      const putResponse = await api.asApp().requestConfluence(putUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: pageId,
-          type: 'page',
-          title,
-          version: { number: version + 1 },
-          body: {
-            storage: {
-              value: conversion.body,
-              representation: 'storage',
-            },
-          },
-        }),
-      });
-
-      if (!putResponse.ok) {
-        const text = await putResponse.text();
-        console.error(`[migration-convert] Failed to update page ${pageId}: ${putResponse.status} ${text.substring(0, 200)}`);
-        results.push({ pageId, title, status: 'error', error: `Update failed: ${putResponse.status}` });
+      try {
+        await updatePage(pageId, {
+          title: page.title,
+          status: page.status,
+          storageValue: conversion.body,
+          versionNumber: page.versionNumber,
+        });
+      } catch (updateErr) {
+        console.error(`[migration-convert] Failed to update page ${pageId}: ${updateErr.message}`);
+        results.push({ pageId, title: page.title, status: 'error', error: 'Update failed' });
         errors++;
         continue;
       }
 
-      console.log(`[migration-convert] Converted page ${pageId} "${title}" (${conversion.macroCount} macros)`);
-      results.push({ pageId, title, status: 'converted', macroCount: conversion.macroCount });
+      console.log(`[migration-convert] Converted page ${pageId} "${page.title}" (${conversion.macroCount} macros)`);
+      results.push({ pageId, title: page.title, status: 'converted', macroCount: conversion.macroCount });
       converted++;
 
       // Rate limit delay

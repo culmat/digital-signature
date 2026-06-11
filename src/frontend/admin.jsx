@@ -21,6 +21,7 @@ import ForgeReconciler, {
 } from '@forge/react';
 import { invoke, view } from '@forge/bridge';
 import { interpolate } from './utils/i18n';
+import { runBatched } from './utils/batch';
 
 const rightAlignStyle = xcss({ textAlign: 'right' });
 const statsTableStyle = xcss({ width: 'fit-content' });
@@ -55,6 +56,7 @@ const Admin = () => {
   const [migrationEnvId, setMigrationEnvId] = useState(null);
   const [migrationSpaceKey, setMigrationSpaceKey] = useState('');
   const [scanResult, setScanResult] = useState(null);
+  const [scanStatus, setScanStatus] = useState('');
   const [isScanInProgress, setIsScanInProgress] = useState(false);
   const [isConvertInProgress, setIsConvertInProgress] = useState(false);
   const [convertProgress, setConvertProgress] = useState(0);
@@ -112,38 +114,18 @@ const Admin = () => {
       setBackupData('');
 
       const chunks = [];
-      let offset = 0;
-      let completed = false;
 
-      while (!completed) {
-        setBackupStatus(tp('admin.backup.chunk', { offset }));
-
-        const response = await invoke('adminData', {
-          action: 'export',
-          offset,
-          limit: 5000
-        });
-
-        if (!response.success) {
-          setError(response.error || 'error.failed_backup');
-          setBackupStatus('');
-          setIsBackupInProgress(false);
-          return;
-        }
-
+      await runBatched('adminData', { action: 'export', limit: 5000 }, (response) => {
+        setBackupStatus(tp('admin.backup.chunk', { offset: response.offset }));
         chunks.push(response.data);
-        completed = response.completed;
-
-        if (!completed) {
-          offset = response.offset;
-          const progress = Math.round(
-            (response.stats.processedContracts / response.stats.totalContracts) * 100
-          );
-          setBackupProgress(progress);
-        } else {
+        if (response.completed) {
           setBackupProgress(100);
+        } else if (response.stats?.totalContracts) {
+          setBackupProgress(Math.round(
+            (response.stats.processedContracts / response.stats.totalContracts) * 100
+          ));
         }
-      }
+      });
 
       const fullBackup = chunks.join('');
       
@@ -155,7 +137,10 @@ const Admin = () => {
       setBackupData(fullBackup);
       setBackupStatus(tp('admin.backup.downloaded', { filename }));
     } catch (err) {
-      setError({ key: 'error.failed_backup', params: { message: err.message } });
+      // runBatched throws the resolver's error value (string/object); real failures throw Error
+      setError(err instanceof Error
+        ? { key: 'error.failed_backup', params: { message: err.message } }
+        : (err || 'error.failed_backup'));
       setBackupStatus('');
     } finally {
       setIsBackupInProgress(false);
@@ -458,20 +443,25 @@ const Admin = () => {
                       setScanResult(null);
                       setConvertResults([]);
                       setConvertStats(null);
+                      setScanStatus('');
                       setError(null);
+                      const allPages = [];
+                      let totalMacros = 0;
                       try {
-                        const response = await invoke('migrationData', {
+                        await runBatched('migrationData', {
                           action: 'migrationScan',
                           spaceKey: migrationSpaceKey.trim() || undefined,
+                        }, (response) => {
+                          allPages.push(...response.pages);
+                          totalMacros += response.stats?.totalMacros || 0;
+                          setScanStatus(tp('admin.migration.scanning', { pages: allPages.length }));
                         });
-                        if (response.success) {
-                          setScanResult(response);
-                        } else {
-                          setError(response.error?.message || response.error || 'Scan failed');
-                        }
+                        setScanResult({ pages: allPages, totalPages: allPages.length, totalMacros });
                       } catch (e) {
-                        setError(e.message);
+                        // runBatched throws the resolver's error value (string/object) or an Error
+                        setError(e instanceof Error ? e.message : (e?.message || e || 'Scan failed'));
                       } finally {
+                        setScanStatus('');
                         setIsScanInProgress(false);
                       }
                     }}
@@ -480,6 +470,9 @@ const Admin = () => {
                   >
                     {t('admin.migration.scan_button')}
                   </LoadingButton>
+                  {isScanInProgress && scanStatus && (
+                    <Text>{scanStatus}</Text>
+                  )}
 
                   {scanResult && (
                     <Stack space="space.100">
@@ -514,38 +507,25 @@ const Admin = () => {
                               setConvertResults([]);
                               setConvertStats(null);
                               const pageIds = scanResult.pages.map(p => p.id);
-                              let offset = 0;
                               let allResults = [];
                               const totalStats = { processed: 0, converted: 0, skipped: 0, errors: 0 };
-                              let completed = false;
 
-                              while (!completed) {
-                                try {
-                                  const response = await invoke('migrationData', {
-                                    action: 'migrationConvert',
-                                    pageIds,
-                                    offset,
-                                    envId: migrationEnvId,
-                                  });
-                                  if (response.success) {
-                                    const d = response;
-                                    allResults = [...allResults, ...d.results];
-                                    totalStats.processed += d.stats.processed;
-                                    totalStats.converted += d.stats.converted;
-                                    totalStats.skipped += d.stats.skipped;
-                                    totalStats.errors += d.stats.errors;
-                                    offset = d.offset;
-                                    completed = d.completed;
-                                    setConvertProgress(offset / pageIds.length);
-                                    setConvertResults(allResults);
-                                  } else {
-                                    setError(response.error?.message || 'Convert failed');
-                                    break;
-                                  }
-                                } catch (e) {
-                                  setError(e.message);
-                                  break;
-                                }
+                              try {
+                                await runBatched('migrationData', {
+                                  action: 'migrationConvert',
+                                  pageIds,
+                                  envId: migrationEnvId,
+                                }, (d) => {
+                                  allResults = [...allResults, ...d.results];
+                                  totalStats.processed += d.stats.processed;
+                                  totalStats.converted += d.stats.converted;
+                                  totalStats.skipped += d.stats.skipped;
+                                  totalStats.errors += d.stats.errors;
+                                  setConvertProgress(d.offset / pageIds.length);
+                                  setConvertResults(allResults);
+                                });
+                              } catch (e) {
+                                setError(e instanceof Error ? e.message : (e?.message || e || 'Convert failed'));
                               }
                               setConvertStats(totalStats);
                               setIsConvertInProgress(false);
