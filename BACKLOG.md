@@ -16,6 +16,7 @@
 - i0041: Admin route in resolvers/index.js — add tests
 - i0043: Admin cleanup UI — add tests
 - i0042: Admin: test with large datasets
+- i0053: Migration: group-only Server macro wrongly locked. In macroConversionService.js / rewrite-cma-macros.py, the isLocked condition `(!groupsRaw || groupsRaw.trim() !== '*')` flags a macro restricted to a real group as locked when it has no named signers and no inheritance, forcing max-signatures:0 so that group can't sign on Cloud. Should only lock when groups are genuinely empty.
 
 ## Archive (do not reuse IDs)
 - i0045: Sync missing signers list on config change
@@ -54,7 +55,7 @@
 - i0001: Optimize for many signatures; sort by signed timestamp (done)
 - i0044: Missing signatures Phase 1: named signers only (done)
 
-<!-- next-id: i0053 -->
+<!-- next-id: i0054 -->
 
 <!--
 CONVENTIONS
