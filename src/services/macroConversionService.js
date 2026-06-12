@@ -88,12 +88,11 @@ function buildForgeAdf(params, body, appId, envId, macroKey) {
     ).join('')
     : '<ac:adf-parameter-value />';
 
-  // signer groups
+  // signer groups — drop the Server "*" wildcard (means "anyone" = petition mode on Cloud)
   const groupsRaw = params.signerGroups || '';
-  const groupsVals = groupsRaw
-    ? groupsRaw.split(',').filter(g => g.trim()).map(g =>
-      `<ac:adf-parameter-value>${escapeXml(g.trim())}</ac:adf-parameter-value>`
-    ).join('')
+  const groupTokens = groupsRaw.split(',').map(g => g.trim()).filter(g => g && g !== '*');
+  const groupsVals = groupTokens.length
+    ? groupTokens.map(g => `<ac:adf-parameter-value>${escapeXml(g)}</ac:adf-parameter-value>`).join('')
     : '<ac:adf-parameter-value />';
 
   // inheritSigners → inherit-viewers + inherit-editors

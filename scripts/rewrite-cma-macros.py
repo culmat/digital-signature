@@ -133,12 +133,13 @@ def build_forge_adf(params, body, env_id):
     else:
         signers_vals = '<ac:adf-parameter-value />'
 
-    # signer groups
+    # signer groups — drop the Server "*" wildcard (means "anyone" = petition mode on Cloud)
     groups_raw = params.get('signerGroups', '')
-    if groups_raw:
+    group_tokens = [g.strip() for g in groups_raw.split(',') if g.strip() and g.strip() != '*']
+    if group_tokens:
         groups_vals = ''.join(
-            f'<ac:adf-parameter-value>{escape_xml(g.strip())}</ac:adf-parameter-value>'
-            for g in groups_raw.split(',') if g.strip()
+            f'<ac:adf-parameter-value>{escape_xml(g)}</ac:adf-parameter-value>'
+            for g in group_tokens
         )
     else:
         groups_vals = '<ac:adf-parameter-value />'
