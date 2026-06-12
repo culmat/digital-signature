@@ -23,12 +23,15 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
       sqlStatements.push('');
     }
 
+    // NOTE: LIMIT/OFFSET are inlined (not bound) because Forge SQL rejects bound
+    // parameters in the LIMIT clause. Safe to interpolate: both are coerced to
+    // non-negative integers above (see sanitization of offset/limit).
     const contractsResult = await sql.prepare(`
       SELECT hash, pageId, createdAt, deletedAt
       FROM contract
       ORDER BY hash
-      LIMIT ? OFFSET ?
-    `).bindParams(limit, offset).execute();
+      LIMIT ${limit} OFFSET ${offset}
+    `).execute();
 
     const contracts = contractsResult?.rows || contractsResult || [];
 
@@ -42,8 +45,8 @@ export async function exportData(offset = 0, limit = DEFAULT_CHUNK_SIZE) {
       SELECT contractHash, accountId, signedAt
       FROM signature
       ORDER BY contractHash, accountId
-      LIMIT ? OFFSET ?
-    `).bindParams(limit, offset).execute();
+      LIMIT ${limit} OFFSET ${offset}
+    `).execute();
 
     const signatures = signaturesResult?.rows || signaturesResult || [];
 

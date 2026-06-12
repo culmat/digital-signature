@@ -284,11 +284,16 @@ const Admin = () => {
 
       {error && (
         <SectionMessage appearance="error" title={t('error.generic')}>
-          <Text>
-            {typeof error === 'string'
-              ? t(error)
-              : (error.key && error.params ? tp(error.key, error.params) : t(error.key || 'error.generic'))}
-          </Text>
+          <Stack space="space.050">
+            <Text>
+              {typeof error === 'string'
+                ? t(error)
+                : (error.key && error.params ? tp(error.key, error.params) : t(error.key || 'error.generic'))}
+            </Text>
+            {typeof error === 'object' && error.params?.message && (
+              <Text size="small">{error.params.message}</Text>
+            )}
+          </Stack>
         </SectionMessage>
       )}
 
