@@ -5,6 +5,7 @@
   "license": "AGPLv3",
   "private": true,
   "scripts": {
+    "deploy": "node scripts/write-build-info.mjs && forge deploy",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint \"src/**/*.{js,jsx}\"",
