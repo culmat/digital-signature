@@ -187,6 +187,8 @@
       "space_placeholder": "Space key (leave empty to scan all spaces)",
       "scan_button": "Scan for Legacy Macros",
       "scanning": "Scanning… {pages} pages found so far",
+      "cancel_scan": "Cancel scan",
+      "scan_cancelling": "Cancelling scan…",
       "scan_result": "Found {pages} pages with {macros} legacy macros",
       "scan_empty": "No pages with legacy Server macros found.",
       "convert_button": "Convert All",

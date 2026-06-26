@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ForgeReconciler, {
   Text,
   Button,
@@ -59,6 +59,8 @@ const Admin = () => {
   const [scanResult, setScanResult] = useState(null);
   const [scanStatus, setScanStatus] = useState('');
   const [isScanInProgress, setIsScanInProgress] = useState(false);
+  // Live cancel flag for the scan loop (a ref so runBatched sees the current value between batches).
+  const scanAbortRef = useRef(false);
   const [isConvertInProgress, setIsConvertInProgress] = useState(false);
   const [convertProgress, setConvertProgress] = useState(0);
   const [convertResults, setConvertResults] = useState([]);
@@ -444,39 +446,55 @@ const Admin = () => {
                     maxHeight="32px"
                   />
 
-                  <LoadingButton
-                    onClick={async () => {
-                      setIsScanInProgress(true);
-                      setScanResult(null);
-                      setConvertResults([]);
-                      setConvertStats(null);
-                      setScanStatus('');
-                      setError(null);
-                      const allPages = [];
-                      let totalMacros = 0;
-                      try {
-                        await runBatched('migrationData', {
-                          action: 'migrationScan',
-                          spaceKey: migrationSpaceKey.trim() || undefined,
-                        }, (response) => {
-                          allPages.push(...response.pages);
-                          totalMacros += response.stats?.totalMacros || 0;
-                          setScanStatus(tp('admin.migration.scanning', { pages: allPages.length }));
-                        });
-                        setScanResult({ pages: allPages, totalPages: allPages.length, totalMacros });
-                      } catch (e) {
-                        // runBatched throws the resolver's error value (string/object) or an Error
-                        setError(e instanceof Error ? e.message : (e?.message || e || 'Scan failed'));
-                      } finally {
+                  <ButtonGroup>
+                    <LoadingButton
+                      onClick={async () => {
+                        setIsScanInProgress(true);
+                        scanAbortRef.current = false;
+                        setScanResult(null);
+                        setConvertResults([]);
+                        setConvertStats(null);
                         setScanStatus('');
-                        setIsScanInProgress(false);
-                      }
-                    }}
-                    isLoading={isScanInProgress}
-                    isDisabled={isConvertInProgress}
-                  >
-                    {t('admin.migration.scan_button')}
-                  </LoadingButton>
+                        setError(null);
+                        const allPages = [];
+                        let totalMacros = 0;
+                        try {
+                          const { aborted } = await runBatched('migrationData', {
+                            action: 'migrationScan',
+                            spaceKey: migrationSpaceKey.trim() || undefined,
+                          }, (response) => {
+                            allPages.push(...response.pages);
+                            totalMacros += response.stats?.totalMacros || 0;
+                            setScanStatus(tp('admin.migration.scanning', { pages: allPages.length }));
+                          }, 0, () => scanAbortRef.current);
+                          // Show whatever was discovered so far — partial results are usable
+                          // (the admin can convert them and re-scan to continue in batches).
+                          setScanResult({ pages: allPages, totalPages: allPages.length, totalMacros, partial: aborted });
+                        } catch (e) {
+                          // runBatched throws the resolver's error value (string/object) or an Error
+                          setError(e instanceof Error ? e.message : (e?.message || e || 'Scan failed'));
+                        } finally {
+                          setScanStatus('');
+                          setIsScanInProgress(false);
+                        }
+                      }}
+                      isLoading={isScanInProgress}
+                      isDisabled={isConvertInProgress}
+                    >
+                      {t('admin.migration.scan_button')}
+                    </LoadingButton>
+                    {isScanInProgress && (
+                      <Button
+                        appearance="danger"
+                        onClick={() => {
+                          scanAbortRef.current = true;
+                          setScanStatus(t('admin.migration.scan_cancelling'));
+                        }}
+                      >
+                        {t('admin.migration.cancel_scan')}
+                      </Button>
+                    )}
+                  </ButtonGroup>
                   {isScanInProgress && scanStatus && (
                     <Text>{scanStatus}</Text>
                   )}

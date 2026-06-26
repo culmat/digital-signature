@@ -60,3 +60,45 @@ describe('macroConversionService — signerGroups "*" wildcard', () => {
     expect(hasMaxSignatures(body)).toBe(false);
   });
 });
+
+describe('macroConversionService — CMA-renamed Forge-key macro', () => {
+  // After CMA migration the macro is renamed to the full Forge extension key but keeps the
+  // params + <ac:plain-text-body>; the Forge macro reads its text from the `content` guest-param,
+  // so an unconverted CMA macro renders "Only 0 Characters found". The convert must recognize this
+  // form and move the body into `content`. (ac:name + body taken from the real CMAMIG4 page.)
+  const FORGE_NAME = `${APP_ID}/${ENV_ID}/static/digital-signature`;
+
+  function cmaMacro({ title, body, params = {} }) {
+    const paramXml = Object.entries({ title, ...params })
+      .map(([k, v]) => `<ac:parameter ac:name="${k}">${v}</ac:parameter>`)
+      .join('');
+    const bodyXml = `<ac:plain-text-body><![CDATA[${body}]]></ac:plain-text-body>`;
+    return `<ac:structured-macro ac:name="${FORGE_NAME}" ac:schema-version="1" ac:macro-id="abc">${paramXml}${bodyXml}</ac:structured-macro>`;
+  }
+
+  it('recognizes the CMA-renamed macro and moves the body into the content guest-param', () => {
+    const storage = cmaMacro({ title: 'Full Config', body: 'Complete test', params: { signerGroups: '*' } });
+    const { converted, macroCount, body } = convertPageBody(storage, APP_ID, ENV_ID, MACRO_KEY);
+    expect(converted).toBe(true);
+    expect(macroCount).toBe(1);
+    expect(body).toContain('<ac:adf-extension>');
+    expect(body).toContain('<ac:adf-parameter key="content">Complete test</ac:adf-parameter>');
+    expect(body).toContain('<ac:adf-parameter key="title">Full Config</ac:adf-parameter>');
+    // the legacy plain-text-body is gone (rewritten into the ADF extension)
+    expect(body).not.toContain('<ac:plain-text-body>');
+  });
+
+  it('still converts the legacy ac:name="signature" form', () => {
+    const legacy = '<ac:structured-macro ac:name="signature"><ac:parameter ac:name="title">T</ac:parameter><ac:plain-text-body><![CDATA[Hello there]]></ac:plain-text-body></ac:structured-macro>';
+    const { converted, body } = convertPageBody(legacy, APP_ID, ENV_ID, MACRO_KEY);
+    expect(converted).toBe(true);
+    expect(body).toContain('<ac:adf-parameter key="content">Hello there</ac:adf-parameter>');
+  });
+
+  it('does not touch an already-converted ac:adf-extension (no double conversion)', () => {
+    const already = convertPageBody(cmaMacro({ title: 'X', body: 'Some agreement body', params: {} }), APP_ID, ENV_ID, MACRO_KEY).body;
+    const second = convertPageBody(already, APP_ID, ENV_ID, MACRO_KEY);
+    expect(second.converted).toBe(false);
+    expect(second.macroCount).toBe(0);
+  });
+});

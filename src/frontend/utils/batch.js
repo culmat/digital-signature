@@ -15,12 +15,20 @@ import { invoke } from '@forge/bridge';
  * @param {object} baseParams params merged into every invocation (e.g. {action, spaceKey})
  * @param {(res:object)=>void} onBatch called with each successful response
  * @param {number} [startOffset=0] initial offset
+ * @param {()=>boolean} [shouldAbort] checked before each batch; if it returns true the loop
+ *        stops cleanly (partial results already delivered via onBatch). Pass a predicate that
+ *        reads a live ref (e.g. `() => abortRef.current`) so it reflects user cancellation.
+ * @returns {Promise<{aborted: boolean, offset: number}>}
  */
-export async function runBatched(resolver, baseParams, onBatch, startOffset = 0) {
+export async function runBatched(resolver, baseParams, onBatch, startOffset = 0, shouldAbort) {
   let offset = startOffset;
   let completed = false;
 
   while (!completed) {
+    if (shouldAbort && shouldAbort()) {
+      return { aborted: true, offset };
+    }
+
     const response = await invoke(resolver, { ...baseParams, offset });
 
     if (!response || !response.success) {
@@ -31,4 +39,6 @@ export async function runBatched(resolver, baseParams, onBatch, startOffset = 0)
     completed = response.completed;
     offset = response.offset;
   }
+
+  return { aborted: false, offset };
 }

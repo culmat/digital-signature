@@ -27,9 +27,9 @@ const UPDATE_DELAY_MS = 200;
 /** Strict pattern for Confluence space keys */
 const SPACE_KEY_PATTERN = /^[A-Za-z0-9_~]+$/;
 
-/** Counts legacy macros in a storage body. */
+/** Counts convertible signature macros (legacy names + the CMA-renamed Forge-key form). */
 function countLegacyMacros(storageBody) {
-  const macroRe = /<ac:structured-macro\s+ac:name="(?:signature|digital-signature)"/g;
+  const macroRe = /<ac:structured-macro\s+ac:name="(?:signature|digital-signature|[^"]*\/static\/digital-signature)"/g;
   return (storageBody.match(macroRe) || []).length;
 }
 
@@ -73,8 +73,14 @@ async function handleScan(payload) {
     return errorResponse({ key: 'error.invalid_space_key' }, 400);
   }
 
-  const spaceCql = spaceKey ? ` AND space="${spaceKey}"` : '';
-  const cql = `type=page${spaceCql} AND (macro="signature" OR macro="digital-signature")`;
+  // CMA renames the macro to the full Forge extension key (…/static/digital-signature) during
+  // migration, which a `macro="…"` CQL clause may not match — and freshly-migrated pages lag the
+  // macro index. So for a SPACE-scoped scan, enumerate the space's pages and let the storage regex
+  // (hasLegacyMacros, which matches legacy + the CMA-renamed form) decide — robust + bounded by the
+  // space size. For a whole-instance scan, keep the macro filter so we don't read every page.
+  const cql = spaceKey
+    ? `type=page AND space="${spaceKey}"`
+    : `type=page AND (macro="signature" OR macro="digital-signature")`;
 
   if (offset === 0) {
     console.log(`[migration-scan] CQL: ${cql}`);

@@ -24,8 +24,14 @@ const VISIBILITY_UPPER = {
   'if signed': 'IF_SIGNED',
 };
 
-// Regex to match a full <ac:structured-macro> block for our macro
-const MACRO_RE = /<ac:structured-macro\s+ac:name="(?:signature|digital-signature)"[^>]*>(.*?)<\/ac:structured-macro>/gs;
+// Regex to match a full <ac:structured-macro> block for our macro.
+// Matches three forms of ac:name:
+//   - "signature"  / "digital-signature"  → legacy Server macro (CMA mapping off / not migrated)
+//   - "<appId>/<envId>/static/digital-signature" → the form CMA produces when it renames the macro
+//     to the Forge extension key during migration. CMA keeps the params + <ac:plain-text-body>, but
+//     the Forge macro reads its text from a `content` guest-param, not the body — so an unconverted
+//     CMA macro renders "Only 0 Characters found". Converting it here moves body → content.
+const MACRO_RE = /<ac:structured-macro\s+ac:name="(?:signature|digital-signature|[^"]*\/static\/digital-signature)"[^>]*>(.*?)<\/ac:structured-macro>/gs;
 const PARAM_RE = /<ac:parameter\s+ac:name="([^"]+)">(.*?)<\/ac:parameter>/gs;
 const BODY_RE = /<ac:plain-text-body><!\[CDATA\[(.*?)\]\]><\/ac:plain-text-body>/s;
 
