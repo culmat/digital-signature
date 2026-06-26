@@ -173,3 +173,36 @@ export async function searchPagesByCql(cql, { start = 0, limit = 50 } = {}) {
   }));
   return { pages, nextStart: start + results.length, hasMore: results.length === limit };
 }
+
+/**
+ * List page IDs/titles in a space via the REST **v2** API — index-independent (unlike CQL search,
+ * which lags for freshly-migrated pages). Returns IDs only (no bodies) so callers can cheaply
+ * intersect against a known set (e.g. SQL contract pageIds) before fetching full bodies.
+ *
+ * @param {string} spaceKey
+ * @param {{cursor?:string, limit?:number}} opts  opaque v2 `cursor` from a prior call; default limit 250
+ * @returns {Promise<{pages:Array<{id:string,title:string}>, nextCursor:string|null}>}
+ */
+export async function listSpacePageIds(spaceKey, { cursor, limit = 250 } = {}) {
+  // Resolve space key → numeric id (v2 has no list-by-key for pages). Requires read:space:confluence.
+  const spaceResp = await api.asApp().requestConfluence(
+    route`/wiki/api/v2/spaces?keys=${spaceKey}`, { headers: { Accept: 'application/json' } });
+  if (!spaceResp.ok) {
+    throw new Error(`space lookup failed: ${spaceResp.status} ${(await safeText(spaceResp)).slice(0, 200)}`);
+  }
+  const spaceId = (await spaceResp.json()).results?.[0]?.id;
+  if (!spaceId) return { pages: [], nextCursor: null }; // space not found / not visible to the app
+
+  const url = cursor
+    ? route`/wiki/api/v2/spaces/${spaceId}/pages?status=current&limit=${limit}&cursor=${cursor}`
+    : route`/wiki/api/v2/spaces/${spaceId}/pages?status=current&limit=${limit}`;
+  const resp = await api.asApp().requestConfluence(url, { headers: { Accept: 'application/json' } });
+  if (!resp.ok) {
+    throw new Error(`list space pages failed: ${resp.status} ${(await safeText(resp)).slice(0, 200)}`);
+  }
+  const data = await resp.json();
+  const pages = (data.results || []).map((p) => ({ id: String(p.id), title: p.title }));
+  const next = data._links?.next;
+  const m = next && /[?&]cursor=([^&]+)/.exec(next);
+  return { pages, nextCursor: m ? decodeURIComponent(m[1]) : null };
+}

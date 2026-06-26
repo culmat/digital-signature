@@ -3,11 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockGetPage = vi.fn();
 const mockUpdatePage = vi.fn();
 const mockSearchPagesByCql = vi.fn();
+const mockListSpacePageIds = vi.fn();
+const mockSqlExecute = vi.fn();
 
 vi.mock('../../src/services/confluenceContentClient.js', () => ({
   getPage: mockGetPage,
   updatePage: mockUpdatePage,
   searchPagesByCql: mockSearchPagesByCql,
+  listSpacePageIds: mockListSpacePageIds,
+}));
+
+vi.mock('@forge/sql', () => ({
+  default: { prepare: () => ({ execute: mockSqlExecute }) },
 }));
 
 const { migrationResolver } = await import('../../src/resolvers/migrationResolver.js');
@@ -30,7 +37,39 @@ describe('migrationResolver', () => {
       expect(mockSearchPagesByCql).not.toHaveBeenCalled();
     });
 
-    it('returns one batch with offset/completed and counts macros', async () => {
+    it('space scan: returns the space pages that have migrated signatures (v2 IDs ∩ contract pageIds)', async () => {
+      // contract table: pages 1 (2 contracts) and 3 (1) carry migrated signatures
+      mockSqlExecute.mockResolvedValueOnce({ rows: [{ pageId: 1, cnt: 2 }, { pageId: 3, cnt: 1 }] });
+      // space lists pages 1 and 2 — page 2 has no contract → excluded; reads no bodies
+      mockListSpacePageIds.mockResolvedValueOnce({
+        pages: [{ id: '1', title: 'A' }, { id: '2', title: 'B' }],
+        nextCursor: 'CUR2',
+      });
+
+      const res = await migrationResolver(adminReq({ action: 'migrationScan', spaceKey: 'CMAMIG4', offset: 0 }));
+
+      expect(res.success).toBe(true);
+      expect(res.completed).toBe(false);
+      expect(res.offset).toBe('CUR2');
+      expect(res.pages).toEqual([{ id: '1', title: 'A', spaceKey: 'CMAMIG4', macroCount: 2 }]);
+      expect(res.stats.totalMacros).toBe(2);
+      expect(mockListSpacePageIds).toHaveBeenCalledWith('CMAMIG4', { cursor: undefined });
+      expect(mockSearchPagesByCql).not.toHaveBeenCalled();
+    });
+
+    it('space scan: passes the v2 cursor through `offset` and completes when there is no nextCursor', async () => {
+      mockSqlExecute.mockResolvedValueOnce({ rows: [{ pageId: 3, cnt: 1 }] });
+      mockListSpacePageIds.mockResolvedValueOnce({ pages: [{ id: '3', title: 'C' }], nextCursor: null });
+
+      const res = await migrationResolver(adminReq({ action: 'migrationScan', spaceKey: 'CMAMIG4', offset: 'CUR2' }));
+
+      expect(mockListSpacePageIds).toHaveBeenCalledWith('CMAMIG4', { cursor: 'CUR2' });
+      expect(res.completed).toBe(true);
+      expect(res.offset).toBe(0);
+      expect(res.pages).toEqual([{ id: '3', title: 'C', spaceKey: 'CMAMIG4', macroCount: 1 }]);
+    });
+
+    it('whole-instance scan (no spaceKey): uses CQL macro search and counts macros', async () => {
       mockSearchPagesByCql.mockResolvedValueOnce({
         pages: [
           { id: '1', title: 'A', spaceKey: 'DIG', storageValue: `<p>${MACRO()}${MACRO('def')}</p>` },
@@ -40,29 +79,21 @@ describe('migrationResolver', () => {
         hasMore: true,
       });
 
-      const res = await migrationResolver(adminReq({ action: 'migrationScan', spaceKey: 'DIG', offset: 0 }));
+      const res = await migrationResolver(adminReq({ action: 'migrationScan', offset: 0 }));
 
-      expect(res.success).toBe(true);
-      expect(res.completed).toBe(false);
       expect(res.offset).toBe(50);
       expect(res.pages).toEqual([{ id: '1', title: 'A', spaceKey: 'DIG', macroCount: 2 }]);
       expect(res.stats.totalMacros).toBe(2);
+      expect(mockListSpacePageIds).not.toHaveBeenCalled();
     });
 
-    it('marks completed when the search has no more results', async () => {
-      mockSearchPagesByCql.mockResolvedValueOnce({ pages: [], nextStart: 10, hasMore: false });
-      const res = await migrationResolver(adminReq({ action: 'migrationScan', offset: 0 }));
-      expect(res.completed).toBe(true);
-      expect(res.pages).toEqual([]);
-    });
-
-    it('passes start=offset through to the search', async () => {
+    it('whole-instance scan: passes start=offset through to CQL search', async () => {
       mockSearchPagesByCql.mockResolvedValueOnce({ pages: [], nextStart: 100, hasMore: false });
       await migrationResolver(adminReq({ action: 'migrationScan', offset: 50 }));
       expect(mockSearchPagesByCql).toHaveBeenCalledWith(expect.any(String), { start: 50, limit: 50 });
     });
 
-    it('returns a 500 error when the search throws', async () => {
+    it('returns a 500 error when the whole-instance search throws', async () => {
       mockSearchPagesByCql.mockRejectedValueOnce(new Error('boom'));
       const res = await migrationResolver(adminReq({ action: 'migrationScan' }));
       expect(res).toMatchObject({ success: false, status: 500 });

@@ -10,9 +10,10 @@
  * working as Atlassian retires the v1 content API.
  */
 
+import sql from '@forge/sql';
 import { FORGE_APP_ID, CONFLUENCE_MACRO_KEY } from '../shared/appIdentifiers';
 import { hasLegacyMacros, convertPageBody } from '../services/macroConversionService';
-import { getPage, updatePage, searchPagesByCql } from '../services/confluenceContentClient';
+import { getPage, updatePage, searchPagesByCql, listSpacePageIds } from '../services/confluenceContentClient';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 
 /** Pages per CQL search request — one batch per scan invocation (stays under 25s). */
@@ -58,34 +59,28 @@ export async function migrationResolver(req) {
 }
 
 /**
- * Scan one page of CQL results for pages with legacy Server-format signature macros.
+ * Discover pages whose signature macros need converting. Incremental: one batch + `{ offset,
+ * completed }` per call (the shared frontend loop), under the 25s Forge limit.
  *
- * Incremental: returns a single batch plus `{ offset, completed }` so the frontend can
- * loop (the same offset/`completed` contract used by backup-export and convert). This
- * keeps every invocation well under the 25s Forge function limit, even when scanning all
- * spaces.
+ * Space-scoped (the migration workflow): intersect the space's page IDs (v2 list — index-independent,
+ * so it sees freshly-migrated pages that CQL doesn't) with the pages that actually carry migrated
+ * signatures (SQL `contract` table). Reads NO page bodies during discovery and never touches other
+ * spaces. Whole-instance (no spaceKey): best-effort CQL macro search (index-dependent).
  */
 async function handleScan(payload) {
   const { spaceKey, offset = 0 } = payload;
 
-  // Validate spaceKey to prevent CQL injection
   if (spaceKey && !SPACE_KEY_PATTERN.test(spaceKey)) {
     return errorResponse({ key: 'error.invalid_space_key' }, 400);
   }
 
-  // CMA renames the macro to the full Forge extension key (…/static/digital-signature) during
-  // migration, which a `macro="…"` CQL clause may not match — and freshly-migrated pages lag the
-  // macro index. So for a SPACE-scoped scan, enumerate the space's pages and let the storage regex
-  // (hasLegacyMacros, which matches legacy + the CMA-renamed form) decide — robust + bounded by the
-  // space size. For a whole-instance scan, keep the macro filter so we don't read every page.
-  const cql = spaceKey
-    ? `type=page AND space="${spaceKey}"`
-    : `type=page AND (macro="signature" OR macro="digital-signature")`;
-
-  if (offset === 0) {
-    console.log(`[migration-scan] CQL: ${cql}`);
+  if (spaceKey) {
+    return handleScanSpace(spaceKey, offset);
   }
 
+  // Whole-instance: CQL macro search (index-dependent; won't see freshly-migrated pages).
+  const cql = `type=page AND (macro="signature" OR macro="digital-signature")`;
+  if (offset === 0) console.log(`[migration-scan] CQL: ${cql}`);
   let batch;
   try {
     batch = await searchPagesByCql(cql, { start: offset, limit: CQL_PAGE_SIZE });
@@ -93,7 +88,6 @@ async function handleScan(payload) {
     console.error(`[migration-scan] ${error.message}`);
     return errorResponse({ key: 'error.generic', params: { message: 'CQL search failed' } }, 500);
   }
-
   const pages = [];
   let totalMacros = 0;
   for (const page of batch.pages) {
@@ -103,15 +97,51 @@ async function handleScan(payload) {
       totalMacros += macroCount;
     }
   }
-
   console.log(`[migration-scan] batch @${offset}: ${pages.length} pages with legacy macros${batch.hasMore ? '' : ' (scan complete)'}`);
+  return successResponse({ pages, offset: batch.nextStart, completed: !batch.hasMore, stats: { totalMacros } });
+}
 
+/** Space-scoped scan: v2 page IDs ∩ SQL contract pageIds. Carries the v2 cursor in `offset`. */
+async function handleScanSpace(spaceKey, offset) {
+  const counts = await contractPageCounts();
+  const cursor = offset && offset !== 0 ? String(offset) : undefined;
+
+  let listing;
+  try {
+    listing = await listSpacePageIds(spaceKey, { cursor });
+  } catch (error) {
+    console.error(`[migration-scan] ${error.message}`);
+    return errorResponse({ key: 'error.generic', params: { message: 'space page listing failed' } }, 500);
+  }
+
+  const pages = [];
+  let totalMacros = 0;
+  for (const p of listing.pages) {
+    const cnt = counts.get(String(p.id));
+    if (cnt) {
+      pages.push({ id: p.id, title: p.title, spaceKey, macroCount: cnt });
+      totalMacros += cnt;
+    }
+  }
+
+  console.log(`[migration-scan] space=${spaceKey}: listed ${listing.pages.length}, ${pages.length} with migrated signatures${listing.nextCursor ? '' : ' (complete)'}`);
   return successResponse({
     pages,
-    offset: batch.nextStart,
-    completed: !batch.hasMore,
+    offset: listing.nextCursor || 0,
+    completed: !listing.nextCursor,
     stats: { totalMacros },
   });
+}
+
+/** Map of Cloud pageId → number of non-deleted migrated contracts on that page. */
+async function contractPageCounts() {
+  const result = await sql
+    .prepare('SELECT pageId, COUNT(*) AS cnt FROM contract WHERE deletedAt IS NULL GROUP BY pageId')
+    .execute();
+  const rows = result?.rows || result || [];
+  const map = new Map();
+  for (const r of rows) map.set(String(r.pageId), Number(r.cnt));
+  return map;
 }
 
 /**

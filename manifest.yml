@@ -86,6 +86,8 @@ permissions:
     # migration tool (v1 content API is being removed / returns 410 on some sites).
     - read:page:confluence
     - write:page:confluence
+    # v2 space lookup (key→id) for the space-scoped migration scan (index-independent listing).
+    - read:space:confluence
     - storage:app
     - read:user:confluence
     - read:email-address:confluence
