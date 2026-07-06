@@ -9,6 +9,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { decodeHTML } from 'entities';
 
 // inheritSigners enum → boolean flags
 const INHERIT_MAP = {
@@ -39,22 +40,20 @@ function escapeXml(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Decode HTML entities in a Server macro parameter value.
+//
+// CMA HTML-entity-encodes non-ASCII text inside <ac:parameter> elements during
+// migration (e.g. the title "Ünïcödé" → "&Uuml;n&iuml;c&ouml;d&eacute;"), while
+// keeping <ac:plain-text-body><![CDATA[…]]> bodies literal. The signature key is
+// SHA-256(pageId:title:content), so a title left entity-encoded produces a hash that
+// no longer matches the migrated `contract` row → the signature can't be found and
+// appears lost. We must decode it back to raw Unicode here.
+//
+// Uses `entities.decodeHTML` (named + numeric entities, no `document` dependency) —
+// the previous hand-rolled version relied on `document`, which is undefined in the
+// Forge backend where conversion runs, so named entities passed through un-decoded.
 function unescapeHtml(text) {
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    // Named HTML entities common in Confluence
-    .replace(/&[a-zA-Z]+;/g, (match) => {
-      const el = typeof document !== 'undefined'
-        ? document.createElement('span')
-        : null;
-      if (el) { el.innerHTML = match; return el.textContent; }
-      return match;
-    });
+  return decodeHTML(text);
 }
 
 /**

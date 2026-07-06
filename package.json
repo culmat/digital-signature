@@ -5,7 +5,7 @@
   "license": "AGPLv3",
   "private": true,
   "scripts": {
-    "deploy": "node scripts/write-build-info.mjs && forge deploy",
+    "deploy": "node scripts/deploy.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint \"src/**/*.{js,jsx}\"",
@@ -31,6 +31,7 @@
     "@forge/react": "11.17.0",
     "@forge/resolver": "1.8.0",
     "@forge/sql": "^3.0.26",
+    "entities": "^4.5.0",
     "react": "^18.2.0",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.5",
