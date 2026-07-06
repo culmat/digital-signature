@@ -282,8 +282,6 @@ const Admin = () => {
 
   return (
     <Stack space="space.300">
-      <Heading size="large">{t('app.admin_title')}</Heading>
-
       {error && (
         <SectionMessage appearance="error" title={t('error.generic')}>
           <Stack space="space.050">
