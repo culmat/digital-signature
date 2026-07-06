@@ -30,7 +30,7 @@
     "@forge/migrations": "^2.1.2",
     "@forge/react": "11.17.0",
     "@forge/resolver": "1.8.0",
-    "@forge/sql": "^3.0.26",
+    "@forge/sql": "^4.0.1",
     "entities": "^4.5.0",
     "react": "^18.2.0",
     "remark-parse": "^11.0.0",
