@@ -1,19 +1,25 @@
 /**
  * Migration resolver — scan for legacy Server macros and convert to Forge ADF.
  *
- * Reached from the admin settings page (migration tab). Access is gated in the
- * manifest by `displayConditions.isSiteAdmin` on the globalSettings module — only
- * site admins reach this surface.
+ * Reached from two surfaces: the global admin settings page (`isSiteAdmin`) and the per-space
+ * Space Settings page (`isSpaceAdmin`). The Space Settings surface locks the scope to its own space
+ * (derived server-side from `context.extension.space`, not the client).
  *
- * Page reads/writes go through {@link confluenceContentClient}, which auto-detects the
- * available Confluence REST API version (v2 preferred, v1 fallback) so the tool keeps
- * working as Atlassian retires the v1 content API.
+ * Discovery and conversion combine BOTH request principals — the app (`asApp`) and the invoking admin
+ * (`asUser`) — and union what each can reach, so view-restricted pages the app can't see are still
+ * found/healed when the acting user (e.g. a space admin) can. Conversion is idempotent and healing-only
+ * (moves the macro body into the `content` guest-param; skips already-converted macros), so reaching
+ * more pages can only help.
+ *
+ * Page reads/writes go through {@link confluenceContentClient}, which auto-detects the available
+ * Confluence REST API version (v2 preferred, v1 fallback) so the tool keeps working as Atlassian
+ * retires the v1 content API.
  */
 
 import sql from '@forge/sql';
 import { FORGE_APP_ID, CONFLUENCE_MACRO_KEY } from '../shared/appIdentifiers';
 import { hasLegacyMacros, convertPageBody } from '../services/macroConversionService';
-import { getPage, updatePage, searchPagesByCql, listSpacePageIds } from '../services/confluenceContentClient';
+import { getPage, updatePage, searchPagesByCql, unionSpacePageIds } from '../services/confluenceContentClient';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 
 /** Pages per CQL search request — one batch per scan invocation (stays under 25s). */
@@ -46,7 +52,10 @@ export async function migrationResolver(req) {
     const action = payload?.action;
 
     if (action === 'migrationScan') {
-      return await handleScan(payload);
+      // Space Settings locks scope to its own space (server-derived from context, not client-trusted);
+      // the global surface uses the payload spaceKey (or empty → whole-instance).
+      const spaceKey = context?.extension?.space?.key || payload?.spaceKey;
+      return await handleScan({ ...payload, spaceKey });
     } else if (action === 'migrationConvert') {
       return await handleConvert(payload);
     } else {
@@ -101,36 +110,28 @@ async function handleScan(payload) {
   return successResponse({ pages, offset: batch.nextStart, completed: !batch.hasMore, stats: { totalMacros } });
 }
 
-/** Space-scoped scan: v2 page IDs ∩ SQL contract pageIds. Carries the v2 cursor in `offset`. */
-async function handleScanSpace(spaceKey, offset) {
+/**
+ * Space-scoped scan. Unions the space's page IDs discovered under BOTH principals (app + invoking
+ * admin) so view-restricted pages the app can't see are still found when the acting user can, then
+ * intersects the union with SQL `contract` pageIds to return the signed pages needing conversion.
+ * Fully paginated per call (spaces are small); returns `completed: true` in one shot.
+ */
+async function handleScanSpace(spaceKey) {
   const counts = await contractPageCounts();
-  const cursor = offset && offset !== 0 ? String(offset) : undefined;
-
-  let listing;
-  try {
-    listing = await listSpacePageIds(spaceKey, { cursor });
-  } catch (error) {
-    console.error(`[migration-scan] ${error.message}`);
-    return errorResponse({ key: 'error.generic', params: { message: 'space page listing failed' } }, 500);
-  }
+  const idToTitle = await unionSpacePageIds(spaceKey);
 
   const pages = [];
   let totalMacros = 0;
-  for (const p of listing.pages) {
-    const cnt = counts.get(String(p.id));
+  for (const [id, title] of idToTitle) {
+    const cnt = counts.get(id);
     if (cnt) {
-      pages.push({ id: p.id, title: p.title, spaceKey, macroCount: cnt });
+      pages.push({ id, title, spaceKey, macroCount: cnt });
       totalMacros += cnt;
     }
   }
 
-  console.log(`[migration-scan] space=${spaceKey}: listed ${listing.pages.length}, ${pages.length} with migrated signatures${listing.nextCursor ? '' : ' (complete)'}`);
-  return successResponse({
-    pages,
-    offset: listing.nextCursor || 0,
-    completed: !listing.nextCursor,
-    stats: { totalMacros },
-  });
+  console.log(`[migration-scan] space=${spaceKey}: ${idToTitle.size} unique pages (asApp∪asUser), ${pages.length} with migrated signatures`);
+  return successResponse({ pages, offset: 0, completed: true, stats: { totalMacros } });
 }
 
 /** Map of Cloud pageId → number of non-deleted migrated contracts on that page. */
@@ -142,6 +143,23 @@ async function contractPageCounts() {
   const map = new Map();
   for (const r of rows) map.set(String(r.pageId), Number(r.cnt));
   return map;
+}
+
+/**
+ * Read a page as the app first; if the app can't see it (restricted → 404/error), retry as the
+ * invoking admin (e.g. a space admin who can). Returns the page + which principal succeeded, so the
+ * subsequent write uses the same principal. Throws only if BOTH principals fail.
+ */
+async function fetchPageAnyPrincipal(pageId) {
+  try {
+    return { page: await getPage(pageId, { asUser: false }), asUser: false };
+  } catch (appErr) {
+    try {
+      return { page: await getPage(pageId, { asUser: true }), asUser: true };
+    } catch (userErr) {
+      throw new Error(`app: ${appErr.message}; user: ${userErr.message}`);
+    }
+  }
 }
 
 /**
@@ -167,10 +185,11 @@ async function handleConvert(payload) {
 
   for (const pageId of batch) {
     try {
-      // Fetch current page body and version (auto-detects v2/v1)
+      // Fetch current page body + version, as the app or (if restricted) the invoking admin.
       let page;
+      let asUser;
       try {
-        page = await getPage(pageId);
+        ({ page, asUser } = await fetchPageAnyPrincipal(pageId));
       } catch (fetchErr) {
         console.error(`[migration-convert] Failed to fetch page ${pageId}: ${fetchErr.message}`);
         results.push({ pageId, status: 'error', error: 'Fetch failed' });
@@ -187,14 +206,14 @@ async function handleConvert(payload) {
         continue;
       }
 
-      // Update page with converted body
+      // Update page with converted body — as the SAME principal that could read it.
       try {
         await updatePage(pageId, {
           title: page.title,
           status: page.status,
           storageValue: conversion.body,
           versionNumber: page.versionNumber,
-        });
+        }, { asUser });
       } catch (updateErr) {
         console.error(`[migration-convert] Failed to update page ${pageId}: ${updateErr.message}`);
         results.push({ pageId, title: page.title, status: 'error', error: 'Update failed' });
@@ -202,7 +221,7 @@ async function handleConvert(payload) {
         continue;
       }
 
-      console.log(`[migration-convert] Converted page ${pageId} "${page.title}" (${conversion.macroCount} macros)`);
+      console.log(`[migration-convert] Converted page ${pageId} "${page.title}" (${conversion.macroCount} macros, asUser=${asUser})`);
       results.push({ pageId, title: page.title, status: 'converted', macroCount: conversion.macroCount });
       converted++;
 

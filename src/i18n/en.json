@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Digital Signature",
-    "admin_title": "Digital Signature Admin"
+    "admin_title": "Digital Signature Admin",
+    "space_admin_title": "Digital Signature"
   },
   "ui": {
     "button": {
@@ -181,6 +182,7 @@
     },
     "migration": {
       "title": "Migration Tools",
+      "current_space": "Current space: {spaceKey}",
       "description": "Post-CMA migration tool. Converts Server-format signature macros to Forge ADF format. Page history is preserved — all changes can be reverted via Confluence page versioning.",
       "env_id_label": "Forge Environment ID: {envId}",
       "env_id_missing": "Could not detect Forge environment ID. Migration tools require the environment context.",

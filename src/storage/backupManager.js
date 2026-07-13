@@ -266,6 +266,46 @@ export async function getStatistics() {
   }
 }
 
+/**
+ * Statistics scoped to a set of page IDs (a space's pages, discovered via unionSpacePageIds).
+ * Counts contracts (active/deleted) and signatures whose contract sits on one of those pages.
+ * Returns zeros for an empty set. Bound the set size upstream (spaces are small).
+ */
+export async function getStatisticsForPageIds(pageIds) {
+  if (!pageIds || pageIds.length === 0) {
+    return { totalContracts: 0, activeContracts: 0, deletedContracts: 0, totalSignatures: 0 };
+  }
+  try {
+    const placeholders = pageIds.map(() => '?').join(', ');
+    const contractStats = await sql.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN deletedAt IS NULL THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN deletedAt IS NOT NULL THEN 1 ELSE 0 END) as deleted
+      FROM contract WHERE pageId IN (${placeholders})
+    `).bindParams(...pageIds).execute();
+
+    const signatureStats = await sql.prepare(`
+      SELECT COUNT(*) as total
+      FROM signature s INNER JOIN contract c ON s.contractHash = c.hash
+      WHERE c.pageId IN (${placeholders})
+    `).bindParams(...pageIds).execute();
+
+    const contracts = (contractStats?.rows || contractStats || [])[0] || { total: 0, active: 0, deleted: 0 };
+    const signatures = (signatureStats?.rows || signatureStats || [])[0] || { total: 0 };
+
+    return {
+      totalContracts: Number(contracts.total || 0),
+      activeContracts: Number(contracts.active || 0),
+      deletedContracts: Number(contracts.deleted || 0),
+      totalSignatures: Number(signatures.total || 0),
+    };
+  } catch (error) {
+    console.error('Error fetching space statistics:', error);
+    throw new Error(`Failed to fetch space statistics: ${error.message}`);
+  }
+}
+
 export async function deleteAllData() {
   const startTime = Date.now();
 

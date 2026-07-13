@@ -3,14 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockGetPage = vi.fn();
 const mockUpdatePage = vi.fn();
 const mockSearchPagesByCql = vi.fn();
-const mockListSpacePageIds = vi.fn();
+const mockUnionSpacePageIds = vi.fn();
 const mockSqlExecute = vi.fn();
 
 vi.mock('../../src/services/confluenceContentClient.js', () => ({
   getPage: mockGetPage,
   updatePage: mockUpdatePage,
   searchPagesByCql: mockSearchPagesByCql,
-  listSpacePageIds: mockListSpacePageIds,
+  unionSpacePageIds: mockUnionSpacePageIds,
 }));
 
 vi.mock('@forge/sql', () => ({
@@ -37,36 +37,34 @@ describe('migrationResolver', () => {
       expect(mockSearchPagesByCql).not.toHaveBeenCalled();
     });
 
-    it('space scan: returns the space pages that have migrated signatures (v2 IDs ∩ contract pageIds)', async () => {
+    it('space scan: intersects the union of (app ∪ user) page IDs with contract pageIds', async () => {
       // contract table: pages 1 (2 contracts) and 3 (1) carry migrated signatures
       mockSqlExecute.mockResolvedValueOnce({ rows: [{ pageId: 1, cnt: 2 }, { pageId: 3, cnt: 1 }] });
-      // space lists pages 1 and 2 — page 2 has no contract → excluded; reads no bodies
-      mockListSpacePageIds.mockResolvedValueOnce({
-        pages: [{ id: '1', title: 'A' }, { id: '2', title: 'B' }],
-        nextCursor: 'CUR2',
-      });
+      // union across principals lists pages 1 and 2 — page 2 has no contract → excluded
+      mockUnionSpacePageIds.mockResolvedValueOnce(new Map([['1', 'A'], ['2', 'B']]));
 
-      const res = await migrationResolver(adminReq({ action: 'migrationScan', spaceKey: 'CMAMIG4', offset: 0 }));
+      const res = await migrationResolver(adminReq({ action: 'migrationScan', spaceKey: 'CMAMIG4' }));
 
       expect(res.success).toBe(true);
-      expect(res.completed).toBe(false);
-      expect(res.offset).toBe('CUR2');
+      expect(res.completed).toBe(true);
+      expect(res.offset).toBe(0);
       expect(res.pages).toEqual([{ id: '1', title: 'A', spaceKey: 'CMAMIG4', macroCount: 2 }]);
       expect(res.stats.totalMacros).toBe(2);
-      expect(mockListSpacePageIds).toHaveBeenCalledWith('CMAMIG4', { cursor: undefined });
+      expect(mockUnionSpacePageIds).toHaveBeenCalledWith('CMAMIG4');
       expect(mockSearchPagesByCql).not.toHaveBeenCalled();
     });
 
-    it('space scan: passes the v2 cursor through `offset` and completes when there is no nextCursor', async () => {
-      mockSqlExecute.mockResolvedValueOnce({ rows: [{ pageId: 3, cnt: 1 }] });
-      mockListSpacePageIds.mockResolvedValueOnce({ pages: [{ id: '3', title: 'C' }], nextCursor: null });
+    it('Space Settings: locks the scan to the space from context, ignoring the payload spaceKey', async () => {
+      mockSqlExecute.mockResolvedValueOnce({ rows: [] });
+      mockUnionSpacePageIds.mockResolvedValueOnce(new Map());
+      const req = {
+        context: { accountId: 'admin-1', extension: { space: { key: 'CCRuS' } } },
+        payload: { action: 'migrationScan', spaceKey: 'SOMEWHEREELSE' },
+      };
 
-      const res = await migrationResolver(adminReq({ action: 'migrationScan', spaceKey: 'CMAMIG4', offset: 'CUR2' }));
+      await migrationResolver(req);
 
-      expect(mockListSpacePageIds).toHaveBeenCalledWith('CMAMIG4', { cursor: 'CUR2' });
-      expect(res.completed).toBe(true);
-      expect(res.offset).toBe(0);
-      expect(res.pages).toEqual([{ id: '3', title: 'C', spaceKey: 'CMAMIG4', macroCount: 1 }]);
+      expect(mockUnionSpacePageIds).toHaveBeenCalledWith('CCRuS');
     });
 
     it('whole-instance scan (no spaceKey): uses CQL macro search and counts macros', async () => {
@@ -84,7 +82,7 @@ describe('migrationResolver', () => {
       expect(res.offset).toBe(50);
       expect(res.pages).toEqual([{ id: '1', title: 'A', spaceKey: 'DIG', macroCount: 2 }]);
       expect(res.stats.totalMacros).toBe(2);
-      expect(mockListSpacePageIds).not.toHaveBeenCalled();
+      expect(mockUnionSpacePageIds).not.toHaveBeenCalled();
     });
 
     it('whole-instance scan: passes start=offset through to CQL search', async () => {
@@ -106,7 +104,7 @@ describe('migrationResolver', () => {
       expect(res).toMatchObject({ success: false, status: 400 });
     });
 
-    it('converts a page via the content client and bumps version', async () => {
+    it('converts a page (as the app) via the content client and bumps version', async () => {
       mockGetPage.mockResolvedValueOnce({
         id: '1', title: 'A', status: 'current', versionNumber: 3, storageValue: `<p>${MACRO()}</p>`,
       });
@@ -117,9 +115,24 @@ describe('migrationResolver', () => {
       expect(res.success).toBe(true);
       expect(res.completed).toBe(true);
       expect(res.stats).toMatchObject({ processed: 1, converted: 1, skipped: 0, errors: 0 });
+      expect(mockGetPage).toHaveBeenCalledWith('1', { asUser: false });
       expect(mockUpdatePage).toHaveBeenCalledWith('1', expect.objectContaining({
         title: 'A', status: 'current', versionNumber: 3,
-      }));
+      }), { asUser: false });
+    });
+
+    it('falls back to asUser when the app cannot read a (restricted) page, and writes as that principal', async () => {
+      mockGetPage
+        .mockRejectedValueOnce(new Error('404 not visible to app'))  // asApp read fails
+        .mockResolvedValueOnce({ id: '9', title: 'R', status: 'current', versionNumber: 2, storageValue: `<p>${MACRO()}</p>` }); // asUser read succeeds
+      mockUpdatePage.mockResolvedValueOnce({});
+
+      const res = await migrationResolver(adminReq({ action: 'migrationConvert', pageIds: ['9'], envId: 'env-1' }));
+
+      expect(res.stats).toMatchObject({ converted: 1, errors: 0 });
+      expect(mockGetPage).toHaveBeenNthCalledWith(1, '9', { asUser: false });
+      expect(mockGetPage).toHaveBeenNthCalledWith(2, '9', { asUser: true });
+      expect(mockUpdatePage).toHaveBeenCalledWith('9', expect.any(Object), { asUser: true });
     });
 
     it('skips a page with no legacy macros', async () => {
@@ -133,9 +146,10 @@ describe('migrationResolver', () => {
       expect(mockUpdatePage).not.toHaveBeenCalled();
     });
 
-    it('records an error for one page and continues with the rest', async () => {
+    it('records an error only when BOTH principals fail to read a page, and continues with the rest', async () => {
       mockGetPage
-        .mockRejectedValueOnce(new Error('410 gone'))            // page 1 fetch fails
+        .mockRejectedValueOnce(new Error('app 410'))   // page 1 asApp
+        .mockRejectedValueOnce(new Error('user 403'))  // page 1 asUser → both fail → error
         .mockResolvedValueOnce({ id: '2', title: 'B', status: 'current', versionNumber: 1, storageValue: `<p>${MACRO()}</p>` });
       mockUpdatePage.mockResolvedValueOnce({});
 

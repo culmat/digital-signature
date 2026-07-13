@@ -1,4 +1,5 @@
-import { exportData, importData, getStatistics, deleteAllData } from '../storage/backupManager';
+import { exportData, importData, getStatistics, getStatisticsForPageIds, deleteAllData } from '../storage/backupManager';
+import { unionSpacePageIds } from '../services/confluenceContentClient';
 import { successResponse, errorResponse } from '../utils/responseHelper';
 
 // Access control: the admin module is gated in the manifest by
@@ -21,7 +22,9 @@ export async function adminDataResolver(req) {
     } else if (action === 'import') {
       return await handleImport(req);
     } else if (action === 'getStatistics') {
-      return await handleGetStatistics();
+      // Space Settings surface scopes stats to its own space (server-derived from context, not client).
+      const spaceKey = context?.extension?.space?.key || payload?.spaceKey;
+      return await handleGetStatistics(spaceKey);
     } else if (action === 'deleteAll') {
       return await handleDeleteAll();
     } else {
@@ -72,10 +75,22 @@ async function handleImport(req) {
   return successResponse(result);
 }
 
-async function handleGetStatistics() {
-  const stats = await getStatistics();
+async function handleGetStatistics(spaceKey) {
+  // Space-scoped: intersect the space's pages (union of app + invoking-admin views, so restricted
+  // pages are included) with the contract table. Global: unfiltered counts.
+  let stats;
+  if (spaceKey) {
+    const idToTitle = await unionSpacePageIds(spaceKey);
+    stats = await getStatisticsForPageIds([...idToTitle.keys()]);
+  } else {
+    stats = await getStatistics();
+  }
 
-  return successResponse({ ...stats, deleteAllEnabled: process.env.ENABLE_DELETE_ALL === 'true' });
+  return successResponse({
+    ...stats,
+    spaceKey: spaceKey || null,
+    deleteAllEnabled: process.env.ENABLE_DELETE_ALL === 'true',
+  });
 }
 
 async function handleDeleteAll() {

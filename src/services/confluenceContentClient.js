@@ -24,6 +24,15 @@ let contentApiVersion = null;
 /** Status codes meaning "this API version is gone / not here" → try the other one. */
 const VERSION_GONE_CODES = new Set([404, 410]);
 
+/**
+ * Pick the request principal. Default `asApp` (the app's identity). Pass `asUser: true` to act as the
+ * invoking user — used by the migration tool so a space admin can reach view-restricted pages the app
+ * itself can't. Combining both principals (union of what each can see/edit) maximizes migration coverage.
+ */
+function client(asUser) {
+  return asUser ? api.asUser() : api.asApp();
+}
+
 /** Test/diagnostic hook — reset the memoized version. */
 export function __resetContentApiVersion() {
   contentApiVersion = null;
@@ -72,17 +81,17 @@ async function withVersion(opName, runForVersion) {
   throw new Error(`${opName} failed: no Confluence content API version available`);
 }
 
-function getPageRequest(version, pageId) {
+function getPageRequest(version, pageId, asUser) {
   const url = version === 'v2'
     ? route`/wiki/api/v2/pages/${pageId}?body-format=storage`
     : route`/wiki/rest/api/content/${pageId}?expand=body.storage,version,space`;
-  return api.asApp().requestConfluence(url, { headers: { Accept: 'application/json' } });
+  return client(asUser).requestConfluence(url, { headers: { Accept: 'application/json' } });
 }
 
-function updatePageRequest(version, pageId, { title, status, storageValue, versionNumber, message }) {
+function updatePageRequest(version, pageId, { title, status, storageValue, versionNumber, message }, asUser) {
   const nextVersion = (versionNumber || 0) + 1;
   if (version === 'v2') {
-    return api.asApp().requestConfluence(route`/wiki/api/v2/pages/${pageId}`, {
+    return client(asUser).requestConfluence(route`/wiki/api/v2/pages/${pageId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
@@ -94,7 +103,7 @@ function updatePageRequest(version, pageId, { title, status, storageValue, versi
       }),
     });
   }
-  return api.asApp().requestConfluence(route`/wiki/rest/api/content/${pageId}`, {
+  return client(asUser).requestConfluence(route`/wiki/rest/api/content/${pageId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
@@ -132,8 +141,8 @@ function normalizePage(version, data) {
  * Fetch a page's storage body + version.
  * @returns {Promise<{id,title,status,versionNumber,storageValue,spaceKey?,spaceId?}>}
  */
-export async function getPage(pageId) {
-  const { version, response } = await withVersion('getPage', (v) => getPageRequest(v, pageId));
+export async function getPage(pageId, { asUser = false } = {}) {
+  const { version, response } = await withVersion('getPage', (v) => getPageRequest(v, pageId, asUser));
   return normalizePage(version, await response.json());
 }
 
@@ -142,8 +151,8 @@ export async function getPage(pageId) {
  * @param {string|number} pageId
  * @param {{title:string,status?:string,storageValue:string,versionNumber:number,message?:string}} update
  */
-export async function updatePage(pageId, update) {
-  const { response } = await withVersion('updatePage', (v) => updatePageRequest(v, pageId, update));
+export async function updatePage(pageId, update, { asUser = false } = {}) {
+  const { response } = await withVersion('updatePage', (v) => updatePageRequest(v, pageId, update, asUser));
   try {
     return await response.json();
   } catch {
@@ -157,9 +166,9 @@ export async function updatePage(pageId, update) {
  * @param {{start?:number, limit?:number}} opts
  * @returns {Promise<{pages:Array<{id,title,spaceKey,storageValue}>, nextStart:number, hasMore:boolean}>}
  */
-export async function searchPagesByCql(cql, { start = 0, limit = 50 } = {}) {
+export async function searchPagesByCql(cql, { start = 0, limit = 50, asUser = false } = {}) {
   const url = route`/wiki/rest/api/content/search?cql=${cql}&limit=${limit}&start=${start}&expand=body.storage,space,version`;
-  const response = await api.asApp().requestConfluence(url, { headers: { Accept: 'application/json' } });
+  const response = await client(asUser).requestConfluence(url, { headers: { Accept: 'application/json' } });
   if (!response.ok) {
     throw new Error(`CQL search failed: ${response.status} ${(await safeText(response)).slice(0, 200)}`);
   }
@@ -183,9 +192,9 @@ export async function searchPagesByCql(cql, { start = 0, limit = 50 } = {}) {
  * @param {{cursor?:string, limit?:number}} opts  opaque v2 `cursor` from a prior call; default limit 250
  * @returns {Promise<{pages:Array<{id:string,title:string}>, nextCursor:string|null}>}
  */
-export async function listSpacePageIds(spaceKey, { cursor, limit = 250 } = {}) {
+export async function listSpacePageIds(spaceKey, { cursor, limit = 250, asUser = false } = {}) {
   // Resolve space key → numeric id (v2 has no list-by-key for pages). Requires read:space:confluence.
-  const spaceResp = await api.asApp().requestConfluence(
+  const spaceResp = await client(asUser).requestConfluence(
     route`/wiki/api/v2/spaces?keys=${spaceKey}`, { headers: { Accept: 'application/json' } });
   if (!spaceResp.ok) {
     throw new Error(`space lookup failed: ${spaceResp.status} ${(await safeText(spaceResp)).slice(0, 200)}`);
@@ -196,7 +205,7 @@ export async function listSpacePageIds(spaceKey, { cursor, limit = 250 } = {}) {
   const url = cursor
     ? route`/wiki/api/v2/spaces/${spaceId}/pages?status=current&limit=${limit}&cursor=${cursor}`
     : route`/wiki/api/v2/spaces/${spaceId}/pages?status=current&limit=${limit}`;
-  const resp = await api.asApp().requestConfluence(url, { headers: { Accept: 'application/json' } });
+  const resp = await client(asUser).requestConfluence(url, { headers: { Accept: 'application/json' } });
   if (!resp.ok) {
     throw new Error(`list space pages failed: ${resp.status} ${(await safeText(resp)).slice(0, 200)}`);
   }
@@ -205,4 +214,29 @@ export async function listSpacePageIds(spaceKey, { cursor, limit = 250 } = {}) {
   const next = data._links?.next;
   const m = next && /[?&]cursor=([^&]+)/.exec(next);
   return { pages, nextCursor: m ? decodeURIComponent(m[1]) : null };
+}
+
+/**
+ * Union a space's current page IDs discovered under BOTH principals — the app (`asApp`) and the
+ * invoking user (`asUser`) — so view-restricted pages one principal can't see are still included when
+ * the other can. Fully paginates each principal (bounded by `maxPages`), never throws (a failing
+ * principal — e.g. `asUser` not consented — is logged and skipped). Returns Map(pageId → title).
+ */
+export async function unionSpacePageIds(spaceKey, { maxPages = 10000 } = {}) {
+  const into = new Map();
+  for (const asUser of [false, true]) {
+    let listed = 0;
+    try {
+      let cursor;
+      do {
+        const { pages, nextCursor } = await listSpacePageIds(spaceKey, { cursor, asUser });
+        for (const p of pages) { into.set(String(p.id), p.title); listed += 1; }
+        cursor = nextCursor;
+      } while (cursor && listed < maxPages);
+    } catch (error) {
+      console.warn(`[content-client] unionSpacePageIds ${spaceKey} (asUser=${asUser}): ${error.message}`);
+    }
+    console.log(`[content-client] unionSpacePageIds ${spaceKey}: asUser=${asUser} listed ${listed}`);
+  }
+  return into;
 }

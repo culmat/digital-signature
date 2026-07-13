@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockRequestConfluence = vi.fn();
+const mockRequestConfluence = vi.fn();        // asApp
+const mockRequestConfluenceAsUser = vi.fn();  // asUser
 
 vi.mock('@forge/api', () => ({
   default: {
     asApp: () => ({
       requestConfluence: mockRequestConfluence,
+    }),
+    asUser: () => ({
+      requestConfluence: mockRequestConfluenceAsUser,
     }),
   },
   route: (strings, ...values) => {
@@ -22,6 +26,7 @@ const {
   getPage,
   updatePage,
   searchPagesByCql,
+  unionSpacePageIds,
   __resetContentApiVersion,
 } = await import('../../src/services/confluenceContentClient.js');
 
@@ -172,6 +177,58 @@ describe('confluenceContentClient', () => {
     it('throws on a non-OK search response', async () => {
       mockRequestConfluence.mockResolvedValueOnce(fail(500));
       await expect(searchPagesByCql('type=page', {})).rejects.toThrow(/CQL search failed/);
+    });
+  });
+
+  describe('asUser option', () => {
+    it('getPage({asUser:true}) requests as the user, not the app', async () => {
+      mockRequestConfluenceAsUser.mockResolvedValueOnce(ok(v2Page));
+
+      const page = await getPage('123', { asUser: true });
+
+      expect(mockRequestConfluenceAsUser).toHaveBeenCalledTimes(1);
+      expect(mockRequestConfluence).not.toHaveBeenCalled();
+      expect(page.storageValue).toBe('<p>v2 body</p>');
+    });
+
+    it('getPage() defaults to the app principal', async () => {
+      mockRequestConfluence.mockResolvedValueOnce(ok(v2Page));
+      await getPage('123');
+      expect(mockRequestConfluence).toHaveBeenCalledTimes(1);
+      expect(mockRequestConfluenceAsUser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unionSpacePageIds', () => {
+    const spaceLookup = ok({ results: [{ id: 'SID' }] });
+    const listOf = (pages) => ok({ results: pages, _links: {} });
+
+    it('unions page IDs across the app and the user, de-duping', async () => {
+      // asApp sees page 1; asUser sees pages 2 and 1 (overlap) — union should be {1,2}.
+      mockRequestConfluence
+        .mockResolvedValueOnce(spaceLookup)
+        .mockResolvedValueOnce(listOf([{ id: '1', title: 'A' }]));
+      mockRequestConfluenceAsUser
+        .mockResolvedValueOnce(spaceLookup)
+        .mockResolvedValueOnce(listOf([{ id: '2', title: 'B' }, { id: '1', title: 'A' }]));
+
+      const map = await unionSpacePageIds('SP');
+
+      expect([...map.keys()].sort()).toEqual(['1', '2']);
+      expect(map.get('2')).toBe('B');
+      expect(mockRequestConfluence).toHaveBeenCalled();
+      expect(mockRequestConfluenceAsUser).toHaveBeenCalled();
+    });
+
+    it('degrades gracefully when one principal fails (asUser not consented) — keeps the other', async () => {
+      mockRequestConfluence
+        .mockResolvedValueOnce(spaceLookup)
+        .mockResolvedValueOnce(listOf([{ id: '1', title: 'A' }]));
+      mockRequestConfluenceAsUser.mockRejectedValueOnce(new Error('no user consent'));
+
+      const map = await unionSpacePageIds('SP');
+
+      expect([...map.keys()]).toEqual(['1']); // asApp result survived
     });
   });
 });

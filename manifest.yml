@@ -25,6 +25,16 @@ modules:
         function: resolver
       displayConditions:
         isSiteAdmin: true
+  confluence:spaceSettings:
+    - key: digital-signature-space-settings
+      title:
+        i18n: app.space_admin_title
+      resource: space-admin-ui
+      render: native
+      resolver:
+        function: resolver
+      displayConditions:
+        isSpaceAdmin: true
   trigger:
     - key: page-lifecycle-trigger
       function: pageLifecycleHandler
@@ -55,6 +65,8 @@ resources:
     path: src/frontend/config.jsx
   - key: admin-ui
     path: src/frontend/admin.jsx
+  - key: space-admin-ui
+    path: src/frontend/spaceAdmin.jsx
 translations:
   resources:
     - key: en-US

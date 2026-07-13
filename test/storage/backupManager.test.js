@@ -23,7 +23,7 @@ vi.mock('@forge/sql', () => ({
   },
 }));
 
-const { exportData } = await import('../../src/storage/backupManager.js');
+const { exportData, getStatisticsForPageIds } = await import('../../src/storage/backupManager.js');
 
 // Route a prepared query to the right canned result based on its SQL text.
 function routeQuery(query) {
@@ -77,5 +77,32 @@ describe('backupManager.exportData', () => {
     for (const q of selects) {
       expect(q).toContain('LIMIT 10000 OFFSET 0');
     }
+  });
+});
+
+describe('backupManager.getStatisticsForPageIds (space-scoped)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    preparedQueries.length = 0;
+  });
+
+  it('returns zeros for an empty pageId set without touching the DB', async () => {
+    const stats = await getStatisticsForPageIds([]);
+    expect(stats).toEqual({ totalContracts: 0, activeContracts: 0, deletedContracts: 0, totalSignatures: 0 });
+    expect(mockPrepare).not.toHaveBeenCalled();
+  });
+
+  it('counts contracts (active/deleted) + signatures for the given pageIds with a bound IN list', async () => {
+    mockExecute.mockImplementation((q) => {
+      if (/FROM contract WHERE pageId IN/i.test(q)) return { rows: [{ total: 3, active: 2, deleted: 1 }] };
+      if (/FROM signature[\s\S]*INNER JOIN contract/i.test(q)) return { rows: [{ total: 5 }] };
+      return { rows: [] };
+    });
+
+    const stats = await getStatisticsForPageIds(['10', '11']);
+
+    expect(stats).toEqual({ totalContracts: 3, activeContracts: 2, deletedContracts: 1, totalSignatures: 5 });
+    const inQueries = preparedQueries.filter((q) => /IN \(\?, \?\)/.test(q));
+    expect(inQueries.length).toBe(2); // both count queries parameterize the 2 pageIds
   });
 });
