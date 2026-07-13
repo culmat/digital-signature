@@ -27,6 +27,7 @@ modules:
         isSiteAdmin: true
   confluence:spaceSettings:
     - key: digital-signature-space-settings
+      route: digital-signature
       title:
         i18n: app.space_admin_title
       resource: space-admin-ui
