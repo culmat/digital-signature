@@ -53,6 +53,13 @@
       "add_complete_text": "Veuillez ajouter le texte complet du contrat dans la configuration du macro. Le contrat doit être entièrement contenu dans ce macro.",
       "header_missing": "Titre 1 (#) manquant (requis comme titre)",
       "multiple_headers": "Plusieurs Titres 1 (#) trouvés"
+    },
+    "convert": {
+      "needed_title": "Contenu de signature hérité détecté",
+      "needed_body": "Cette signature a été migrée depuis Confluence Server et nécessite une conversion unique pour afficher le texte du contrat et les signatures. Elle utilise vos autorisations de page, donc les pages restreintes fonctionnent aussi.",
+      "button": "Convertir cette page",
+      "no_permission": "Vous avez besoin d'une autorisation de modification sur cette page pour la convertir. Demandez à un éditeur de la page de cliquer sur « Convertir ».",
+      "error": "Échec de la conversion : {message}"
     }
   },
   "config": {

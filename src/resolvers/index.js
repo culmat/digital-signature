@@ -7,6 +7,7 @@ import { adminDataResolver } from './adminDataResolver';
 import { emailAddressesResolver } from './emailAddressesResolver';
 import { migrationResolver } from './migrationResolver';
 import { getVersionInfoResolver } from './versionInfoResolver';
+import { convertStorageResolver } from './convertStorageResolver';
 import { runSchemaMigrations } from '../storage/migrations/schema';
 
 const resolver = new Resolver();
@@ -57,6 +58,8 @@ resolver.define('getEmailAddresses', wrapResolver(emailAddressesResolver));
 resolver.define('migrationData', wrapResolver(migrationResolver));
 // Unwrapped: the About panel needs no DB access, so skip ensureMigrationsRun.
 resolver.define('getVersionInfo', getVersionInfoResolver);
+// Unwrapped: pure macro-body transform for the page-editor "Convert" button — no DB, no Confluence call.
+resolver.define('convertStorage', convertStorageResolver);
 
 // Manually trigger schema migrations. Reached from the admin settings page, which
 // is gated in the manifest by `displayConditions.isSiteAdmin`.

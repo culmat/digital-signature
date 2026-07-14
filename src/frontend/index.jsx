@@ -40,7 +40,7 @@ const SignatureUser = ({ accountId, date }) => {
     </Inline>
   );
 };
-import { invoke, view, router } from '@forge/bridge';
+import { invoke, view, router, requestConfluence } from '@forge/bridge';
 import { signDocument, getSignatures, checkAuthorization } from './utils/signatureClient';
 
 const DEFAULT_LOCALE = 'en-GB';
@@ -111,6 +111,51 @@ function useContentContext(context) {
   }), [pageId, spaceKey]);
 }
 
+// --- Page-editor "Convert" self-heal (post-CMA migrated macros) -------------------------------
+// Page I/O runs through @forge/bridge `requestConfluence`, i.e. the VIEWER's own product session —
+// the only principal that reaches view-restricted pages (the app's asApp/asUser server sessions
+// cannot). The pure `convertStorage` resolver does the actual transform (no Confluence call → no
+// 3LO consent). See src/resolvers/convertStorageResolver.js.
+
+/** GET a page's storage body + version + title in the current viewer's session. Returns null if unreadable. */
+async function fetchPageStorage(pageId) {
+  const res = await requestConfluence(
+    `/wiki/api/v2/pages/${pageId}?body-format=storage`,
+    { headers: { Accept: 'application/json' } },
+  );
+  if (!res.ok) return null;
+  const page = await res.json();
+  return {
+    storage: page?.body?.storage?.value || '',
+    version: page?.version?.number || 1,
+    title: page?.title || '',
+  };
+}
+
+/** Read storage + ask the pure resolver to convert it. Returns { body, version, title } or null if nothing to heal. */
+async function fetchAndConvert(pageId, envId) {
+  const page = await fetchPageStorage(pageId);
+  if (!page || !page.storage) return null;
+  const result = await invoke('convertStorage', { storage: page.storage, envId });
+  if (!result?.success || !result.converted) return null;
+  return { body: result.body, version: page.version, title: page.title, macroCount: result.macroCount || 0 };
+}
+
+/** PUT converted storage back with version+1 (v2 optimistic-concurrency contract). Returns the raw Response. */
+function putPageStorage(pageId, pageTitle, body, version) {
+  return requestConfluence(`/wiki/api/v2/pages/${pageId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      id: String(pageId),
+      status: 'current',
+      title: pageTitle,
+      body: { representation: 'storage', value: body },
+      version: { number: (version || 0) + 1, message: 'Digital Signature: convert legacy macro' },
+    }),
+  });
+}
+
 const App = () => {
   const { ready, t } = useTranslation();
 
@@ -134,6 +179,22 @@ const App = () => {
 
   // null = context not yet loaded, true = licensed (or non-production env), false = inactive in production
   const [licensed, setLicensed] = useState(null);
+
+  // Forge environment id (from view.getContext) — needed to build the target extension key when
+  // healing a migrated macro. Sourced on the frontend, exactly as the admin/space migration tools do.
+  const [envId, setEnvId] = useState(null);
+
+  // Page-editor "Convert" state. `available` flips true only once we've confirmed (via the pure
+  // convertStorage resolver) that this page holds an unconverted legacy macro to heal.
+  const [convertState, setConvertState] = useState({
+    available: false,
+    body: null,
+    version: null,
+    title: null,
+    macroCount: 0,
+    isConverting: false,
+    error: null,
+  });
 
   const [uiState, setUIState] = useState({
     isSigning: false,
@@ -176,6 +237,7 @@ const App = () => {
           accountId: context.accountId,
           locale: context.locale || DEFAULT_LOCALE,
         });
+        setEnvId(context.environmentId || null);
         // Forge always returns license: null in dev/staging — the --license flag has no effect
         // on view.getContext(). Only enforce in production where Atlassian Marketplace injects
         // { active: true } for valid/trial licenses, or null/{ active: false } for inactive.
@@ -311,6 +373,78 @@ const App = () => {
     } catch (error) {
       setUIState(prev => ({ ...prev, isSigning: false, actionError: error.message || 'error.generic' }));
       console.error('Error signing:', error);
+    }
+  };
+
+  // Detect an unconverted (post-CMA) legacy macro on this page. Runs ONLY in the empty/validation-warning
+  // state (a healthy converted macro has content, so this never fires for it). Reads the page storage in
+  // the viewer's own session — reaching restricted pages — and asks the pure resolver whether there's
+  // anything to heal. No write happens here; it only reveals the Convert button.
+  useEffect(() => {
+    let cancelled = false;
+    async function detectLegacy() {
+      if (!validationWarning || !pageId || !envId) return;
+      try {
+        const healed = await fetchAndConvert(pageId, envId);
+        if (cancelled || !healed) return;
+        setConvertState({
+          available: true,
+          body: healed.body,
+          version: healed.version,
+          title: healed.title,
+          macroCount: healed.macroCount,
+          isConverting: false,
+          error: null,
+        });
+      } catch (error) {
+        // Best-effort detection — on any failure just fall back to the plain warning.
+        console.warn('Convert detection failed:', error?.message || error);
+      }
+    }
+    detectLegacy();
+    return () => { cancelled = true; };
+    // `content` fully captures the render condition; `validationWarning` is a fresh object each render
+    // and would re-fire this network probe every render — intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, pageId, envId]);
+
+  // Convert this page: PUT the healed storage as the current user, then reload the macro so useConfig()
+  // re-reads the now-populated `content` guest-param. Healing-only + idempotent.
+  const handleConvert = async () => {
+    setConvertState(prev => ({ ...prev, isConverting: true, error: null }));
+    try {
+      const { body, version, title: pageTitle } = convertState;
+      let putRes = await putPageStorage(pageId, pageTitle, body, version);
+
+      // 409: page changed since our read — re-read, re-convert, retry once.
+      if (putRes.status === 409) {
+        const fresh = await fetchAndConvert(pageId, envId);
+        if (fresh) putRes = await putPageStorage(pageId, fresh.title, fresh.body, fresh.version);
+      }
+
+      // 403: the viewer can read the page but not edit it.
+      if (putRes.status === 403) {
+        setConvertState(prev => ({ ...prev, isConverting: false, error: 'macro.convert.no_permission' }));
+        return;
+      }
+      if (!putRes.ok) {
+        const detail = await putRes.text().catch(() => '');
+        setConvertState(prev => ({
+          ...prev,
+          isConverting: false,
+          error: { key: 'macro.convert.error', params: { message: `${putRes.status} ${detail.slice(0, 120)}`.trim() } },
+        }));
+        return;
+      }
+
+      // Success — reload so the macro picks up its now-populated content guest-param.
+      await view.refresh();
+    } catch (error) {
+      setConvertState(prev => ({
+        ...prev,
+        isConverting: false,
+        error: { key: 'macro.convert.error', params: { message: error?.message || 'unknown' } },
+      }));
     }
   };
 
@@ -453,8 +587,36 @@ const App = () => {
     );
   }
 
-  // If validation fails (insufficient content), show warning instead of the macro
+  // If validation fails (insufficient content), show warning instead of the macro.
+  // When the empty content is actually an unconverted (post-CMA) legacy macro, offer a one-click,
+  // healing-only Convert instead of the plain warning.
   if (validationWarning) {
+    if (convertState.available) {
+      return (
+        <SectionMessage
+          appearance={convertState.error ? 'error' : 'information'}
+          title={t('macro.convert.needed_title')}
+        >
+          <Stack space="space.100">
+            <Text>{t('macro.convert.needed_body')}</Text>
+            {convertState.error && (
+              <Text>
+                {typeof convertState.error === 'string'
+                  ? t(convertState.error)
+                  : tp(convertState.error.key, convertState.error.params)}
+              </Text>
+            )}
+            <LoadingButton
+              appearance="primary"
+              onClick={handleConvert}
+              isLoading={convertState.isConverting}
+            >
+              {t('macro.convert.button')}
+            </LoadingButton>
+          </Stack>
+        </SectionMessage>
+      );
+    }
     return (
       <SectionMessage
         appearance="warning"

@@ -54,6 +54,13 @@
       "add_complete_text": "Please add the complete contract text in the macro configuration. The contract must be fully contained in this macro.",
       "header_missing": "Heading 1 (#) missing (required as title)",
       "multiple_headers": "Multiple Heading 1 (#) found"
+    },
+    "convert": {
+      "needed_title": "Legacy signature content detected",
+      "needed_body": "This signature was migrated from Confluence Server and needs a one-time conversion to show its contract text and signatures. It uses your page permissions, so restricted pages work too.",
+      "button": "Convert this page",
+      "no_permission": "You need edit permission on this page to convert it. Ask a page editor to click Convert.",
+      "error": "Conversion failed: {message}"
     }
   },
   "config": {
