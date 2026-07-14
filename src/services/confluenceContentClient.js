@@ -25,6 +25,20 @@ let contentApiVersion = null;
 const VERSION_GONE_CODES = new Set([404, 410]);
 
 /**
+ * Writes only ever use the REST **v2** page API. The v1 write endpoint
+ * (`PUT /wiki/rest/api/content/{id}`) is `410 Gone` on Confluence Cloud, so falling back to it
+ * turns a transient v2 `404` — the eventual-consistency window right after a page is created or
+ * CMA-migrated — into a hard, unrecoverable failure (observed on the CCRuS migration: a freshly
+ * migrated page 404'd on the v2 write, fell through to the dead v1 write, and threw). Instead we
+ * retry v2 with a short backoff. The v1 **read** fallback is unaffected (v1 GET still works).
+ */
+const WRITE_VERSIONS = ['v2'];
+const WRITE_404_RETRIES = 3;
+const WRITE_RETRY_BASE_MS = 300;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
  * Pick the request principal. Default `asApp` (the app's identity). Pass `asUser: true` to act as the
  * invoking user — used by the migration tool so a space admin can reach view-restricted pages the app
  * itself can't. Combining both principals (union of what each can see/edit) maximizes migration coverage.
@@ -56,14 +70,28 @@ async function safeText(response) {
  * Run an operation against the candidate API versions, falling back on 404/410 only.
  * Returns `{ version, response }` for the first OK response and memoizes that version.
  */
-async function withVersion(opName, runForVersion) {
-  const versions = candidateVersions();
+async function withVersion(opName, runForVersion, { write = false } = {}) {
+  // Reads negotiate v2↔v1 (v1 GET is still a valid fallback). Writes are v2-only — see WRITE_VERSIONS.
+  const versions = write ? WRITE_VERSIONS : candidateVersions();
+
   for (let i = 0; i < versions.length; i++) {
     const version = versions[i];
-    const response = await runForVersion(version);
+    let response = await runForVersion(version);
+
+    // A v2 write can transiently 404 while a freshly created / CMA-migrated page settles. Retry with
+    // backoff rather than failing — there is no live v1 write endpoint to fall back to (410 Gone).
+    if (write && version === 'v2') {
+      for (let attempt = 1; attempt <= WRITE_404_RETRIES && !response.ok && response.status === 404; attempt++) {
+        console.warn(`[content-client] ${opName}: v2 write returned 404, retry ${attempt}/${WRITE_404_RETRIES}`);
+        await sleep(WRITE_RETRY_BASE_MS * attempt);
+        response = await runForVersion(version);
+      }
+    }
 
     if (response.ok) {
-      if (contentApiVersion !== version) {
+      // Only reads update the shared version memo; a write must not steer subsequent reads to v2,
+      // which on some sites 404 on GET and need to keep their v1 fallback.
+      if (!write && contentApiVersion !== version) {
         console.log(`[content-client] using ${version} content API`);
         contentApiVersion = version;
       }
@@ -152,7 +180,7 @@ export async function getPage(pageId, { asUser = false } = {}) {
  * @param {{title:string,status?:string,storageValue:string,versionNumber:number,message?:string}} update
  */
 export async function updatePage(pageId, update, { asUser = false } = {}) {
-  const { response } = await withVersion('updatePage', (v) => updatePageRequest(v, pageId, update, asUser));
+  const { response } = await withVersion('updatePage', (v) => updatePageRequest(v, pageId, update, asUser), { write: true });
   try {
     return await response.json();
   } catch {

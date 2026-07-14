@@ -148,6 +148,60 @@ describe('confluenceContentClient', () => {
       expect(body.status).toBe('current');
       expect(body.body).toEqual({ representation: 'storage', value: '<p>new</p>' });
     });
+
+    it('retries the v2 write on a transient 404 and never falls back to v1', async () => {
+      vi.useFakeTimers();
+      try {
+        mockRequestConfluence
+          .mockResolvedValueOnce(fail(404)) // transient (freshly-migrated page settling)
+          .mockResolvedValueOnce(fail(404))
+          .mockResolvedValueOnce(ok({ id: '123' })); // recovers
+        const p = updatePage('123', { title: 'T', storageValue: '<p>x</p>', versionNumber: 7 });
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(mockRequestConfluence).toHaveBeenCalledTimes(3);
+        for (const call of mockRequestConfluence.mock.calls) {
+          expect(call[0]).toContain('/wiki/api/v2/pages/123');
+          expect(call[0]).not.toContain('/wiki/rest/api/content'); // never the dead v1 write endpoint
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('throws after exhausting v2 retries on a persistent 404 — no v1 write fallback', async () => {
+      vi.useFakeTimers();
+      try {
+        mockRequestConfluence.mockResolvedValue(fail(404)); // v2 never recovers
+        const p = updatePage('123', { title: 'T', storageValue: '<p>x</p>', versionNumber: 7 });
+        const assertion = expect(p).rejects.toThrow(/updatePage failed on v2: 404/);
+        await vi.runAllTimersAsync();
+        await assertion;
+
+        // initial attempt + WRITE_404_RETRIES (3) = 4 attempts, all v2, user principal untouched
+        expect(mockRequestConfluence).toHaveBeenCalledTimes(4);
+        expect(mockRequestConfluenceAsUser).not.toHaveBeenCalled();
+        for (const call of mockRequestConfluence.mock.calls) {
+          expect(call[0]).toContain('/wiki/api/v2/pages/123');
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('always writes via v2 even when a prior read memoized v1', async () => {
+      // A read on a site whose v2 GET is gone memoizes v1 for reads...
+      mockRequestConfluence.mockResolvedValueOnce(fail(410)).mockResolvedValueOnce(ok(v1Page));
+      await getPage('123');
+
+      // ...but the write must still go straight to v2 (the v1 write endpoint is 410 Gone).
+      mockRequestConfluence.mockResolvedValueOnce(ok({ id: '123' }));
+      await updatePage('123', { title: 'T', storageValue: '<p>x</p>', versionNumber: 7 });
+
+      const lastUrl = mockRequestConfluence.mock.calls.at(-1)[0];
+      expect(lastUrl).toContain('/wiki/api/v2/pages/123');
+    });
   });
 
   describe('searchPagesByCql', () => {
