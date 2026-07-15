@@ -5,6 +5,7 @@
     "space_admin_title": "Digital Signature"
   },
   "ui": {
+    "former_user": "former user",
     "button": {
       "sign": "Sign",
       "signing": "Signing...",

@@ -30,6 +30,7 @@ import { migration } from '@forge/migrations';
 import sql from '@forge/sql';
 import { createHash } from 'crypto';
 import { gunzipSync } from 'zlib';
+import { LEGACY_SIGNER_PREFIX } from '../shared/appIdentifiers';
 
 /** Label written by DigitalSignatureMigrationListener#onStartAppMigration (every chunk shares it) */
 const SIGNATURES_LABEL = 'signatures';
@@ -186,9 +187,9 @@ export async function handler(event, _context) {
     const contractRows = [];
     const signatureRows = [];
     let pagesUnmapped = 0;
-    let signaturesMissing = 0;
+    let legacySigners = 0; // signatures preserved as legacy:<userKey> (signer had no Cloud account)
     const missingPageSample = [];
-    const missingUserSample = [];
+    const legacyUserSample = [];
 
     for (const { pageId: serverPageId, title, body, signatures } of contracts) {
       const cloudPageId = pageIdMap[String(serverPageId)];
@@ -208,8 +209,14 @@ export async function handler(event, _context) {
       for (const [userKey, signedAt] of Object.entries(signatures || {})) {
         const accountId = usernameToAccountId[userKey];
         if (!accountId) {
-          signaturesMissing++;
-          if (missingUserSample.length < 10) missingUserSample.push(userKey);
+          // Signer has no Cloud account mapping — typically a user who left the company (gone from the
+          // CMA identity mapping). Preserve the historical signature as a LEGACY row instead of dropping
+          // it: audit/compliance for a legal secrecy declaration. Stored behind LEGACY_SIGNER_PREFIX in
+          // the existing accountId column (no schema change); rendered as a former-user chip and excluded
+          // from the live pending calc so it never resurfaces as "pending".
+          legacySigners++;
+          if (legacyUserSample.length < 10) legacyUserSample.push(userKey);
+          signatureRows.push({ contractHash: cloudHash, accountId: `${LEGACY_SIGNER_PREFIX}${userKey}`, signedAt: parseDate(signedAt) });
           continue;
         }
         signatureRows.push({ contractHash: cloudHash, accountId, signedAt: parseDate(signedAt) });
@@ -217,10 +224,10 @@ export async function handler(event, _context) {
     }
     console.log(
       `[migration] ${tag} prepared contractRows=${contractRows.length} signatureRows=${signatureRows.length} ` +
-      `skippedNoPage=${pagesUnmapped} skippedNoUser=${signaturesMissing} +${ms()}ms`,
+      `skippedNoPage=${pagesUnmapped} legacySigners=${legacySigners} +${ms()}ms`,
     );
     if (missingPageSample.length) console.log(`[migration] ${tag} sample unmapped pageIds: ${missingPageSample.join(',')}`);
-    if (missingUserSample.length) console.log(`[migration] ${tag} sample unmapped userKeys: ${missingUserSample.join(',')}`);
+    if (legacyUserSample.length) console.log(`[migration] ${tag} sample legacy (no-account) userKeys: ${legacyUserSample.join(',')}`);
 
     // 5. Batched, idempotent upserts.
     const contractStmts = await batchUpsert(
@@ -237,14 +244,14 @@ export async function handler(event, _context) {
     console.log(
       `[migration] ${tag} DONE contracts=${contractRows.length}(${contractStmts} stmts) ` +
       `signatures=${signatureRows.length}(${signatureStmts} stmts) ` +
-      `skippedNoPage=${pagesUnmapped} skippedNoUser=${signaturesMissing} totalContracts=${contracts.length} +${ms()}ms`,
+      `skippedNoPage=${pagesUnmapped} legacySigners=${legacySigners} totalContracts=${contracts.length} +${ms()}ms`,
     );
 
     // Concise milestone into the CMA migration report (admin-visible).
     await reportLog(
       transferId,
       `[digital-signature] imported chunk: contracts=${contractRows.length} signatures=${signatureRows.length} ` +
-      `(skipped: pages=${pagesUnmapped}, users=${signaturesMissing}) in ${ms()}ms`,
+      `(skipped pages=${pagesUnmapped}, legacy/no-account signers preserved=${legacySigners}) in ${ms()}ms`,
     );
 
     // Acknowledge — required, or CMA re-delivers this chunk.

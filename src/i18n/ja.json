@@ -4,6 +4,7 @@
     "admin_title": "電子署名 管理"
   },
   "ui": {
+    "former_user": "元ユーザー",
     "button": {
       "sign": "署名する",
       "signing": "署名中...",

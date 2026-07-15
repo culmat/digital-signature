@@ -49,4 +49,32 @@ describe('adfExport handler', () => {
       expect(mockParseAndSanitize).not.toHaveBeenCalled();
     });
   });
+
+  describe('signature section rendering', () => {
+    const withSigs = (signatures) => {
+      mockGetSignature.mockResolvedValue({ signatures });
+      return handler({
+        extensionPayload: { config: { title: 'T', content: 'hello' } },
+        context: { content: { id: 'page-1' } },
+      });
+    };
+    const allText = (node, acc = []) => {
+      if (!node) return acc;
+      if (Array.isArray(node)) { node.forEach((n) => allText(n, acc)); return acc; }
+      if (node.type === 'text' && typeof node.text === 'string') acc.push(node.text);
+      if (node.content) allText(node.content, acc);
+      return acc;
+    };
+
+    it('renders a legacy (former-user) signer as a label, not a raw legacy: accountId', async () => {
+      const adf = await withSigs([
+        { accountId: 'acc-real', signedAt: new Date('2025-03-06T10:00:00Z') },
+        { accountId: 'legacy:B022106', signedAt: new Date('2025-03-06T11:00:00Z') },
+      ]);
+      const text = allText(adf.content).join(' | ');
+      expect(text).toContain('B022106 (former user)'); // preserved DC userKey, marked as former user
+      expect(text).toContain('acc-real');              // real signer still shown
+      expect(text).not.toContain('legacy:B022106');    // sentinel prefix never surfaces in the export
+    });
+  });
 });

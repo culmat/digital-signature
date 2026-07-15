@@ -10,6 +10,7 @@ import { createHash } from 'crypto';
 import { parseAndSanitize } from './shared/markdown/parseAndSanitize';
 import { renderToADF } from './shared/markdown/renderToADF';
 import { getSignature } from './storage/signatureStore';
+import { isLegacySigner, legacySignerLabel } from './shared/appIdentifiers';
 
 /**
  * Computes SHA-256 hash for content lookup.
@@ -64,10 +65,17 @@ function createSignatureSection(signatures, configuredSigners) {
                 type: 'listItem',
                 content: [{
                     type: 'paragraph',
-                    content: [
-                        { type: 'text', text: `${sig.accountId}` },
-                        { type: 'text', text: ` — ${formatDate(sig.signedAt)}` },
-                    ],
+                    // A legacy signer (former employee, no Cloud account) has no resolvable user — show
+                    // the preserved DC userKey with a "former user" note instead of a raw accountId.
+                    content: isLegacySigner(sig.accountId)
+                        ? [
+                            { type: 'text', text: `${legacySignerLabel(sig.accountId)} (former user)` },
+                            { type: 'text', text: ` — ${formatDate(sig.signedAt)}` },
+                        ]
+                        : [
+                            { type: 'text', text: `${sig.accountId}` },
+                            { type: 'text', text: ` — ${formatDate(sig.signedAt)}` },
+                        ],
                 }],
             })),
         };

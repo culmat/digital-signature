@@ -4,6 +4,7 @@ import { parseAndSanitize, validateMarkdownContent } from '../shared/markdown/pa
 import { MarkdownContent } from './markdown/renderToReact';
 import { isSectionVisible } from '../shared/visibilityCheck';
 import { normalizeLegacyConfig } from '../shared/normalizeLegacyConfig';
+import { isLegacySigner, legacySignerLabel } from '../shared/appIdentifiers';
 import { interpolate } from './utils/i18n';
 
 const Signatures = ({ signatures, label, formatDate }) => {
@@ -24,19 +25,28 @@ const Signatures = ({ signatures, label, formatDate }) => {
   );
 };
 
-// Custom component to render a signature user with optional date and checkbox
+// Custom component to render a signature user with optional date and checkbox.
+// The accountId is shown alongside the name for identification/audit (e.g. distinguishing
+// users whose display name resolves ambiguously).
 const SignatureUser = ({ accountId, date }) => {
+  const { t } = useTranslation();
+  // A legacy signer (former employee migrated without a Cloud account) has no resolvable <User> —
+  // render the preserved DC userKey with a "former user" lozenge instead of a user chip + accountId.
+  const legacy = isLegacySigner(accountId);
   return (
-    <Inline space="space.100">
+    <Inline space="space.100" alignBlock="center">
       <Checkbox
         isChecked={!!date}
         isDisabled
         label=""
       />
       <Text>
-        <User accountId={accountId} />
+        {legacy
+          ? <>{legacySignerLabel(accountId)} <Lozenge appearance="default">{t('ui.former_user')}</Lozenge></>
+          : <User accountId={accountId} />}
         {date ? <> – <Lozenge>{date}</Lozenge></> : null}
       </Text>
+      {legacy ? null : <Lozenge appearance="default">{accountId}</Lozenge>}
     </Inline>
   );
 };

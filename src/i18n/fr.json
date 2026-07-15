@@ -4,6 +4,7 @@
     "admin_title": "Digital Signature Admin"
   },
   "ui": {
+    "former_user": "ancien utilisateur",
     "button": {
       "sign": "Signer",
       "signing": "Signature en cours...",

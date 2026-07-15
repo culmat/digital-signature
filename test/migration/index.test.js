@@ -139,7 +139,7 @@ describe('migration handler (chunked, batched import)', () => {
     expect(mockMessageProcessed).toHaveBeenCalledOnce();
   });
 
-  it('skips contracts whose page did not map and signatures whose user did not map', async () => {
+  it('skips contracts whose page did not map, and PRESERVES an unmapped signer as a legacy row', async () => {
     mockGetAppDataPayload.mockResolvedValueOnce(payload([
       { pageId: 10, title: 'A', body: 'a', signatures: { alice: 1, ghost: 2 } }, // ghost user unmapped
       { pageId: 99, title: 'Z', body: 'z', signatures: { alice: 3 } },            // page 99 unmapped
@@ -148,10 +148,13 @@ describe('migration handler (chunked, batched import)', () => {
 
     await handler(EVENT());
 
-    // only page 10 becomes a contract
+    // only page 10 becomes a contract (page 99 unmapped → whole contract skipped)
     expect(tupleCount(contractInserts()[0].query)).toBe(1);
-    // only alice's signature on page 10 (ghost skipped, page-99 signature skipped)
-    expect(tupleCount(signatureInserts()[0].query)).toBe(1);
+    // page 10 keeps BOTH signatures: alice (mapped) + ghost preserved as legacy:ghost.
+    // page-99's signature is absent because its contract was skipped.
+    expect(tupleCount(signatureInserts()[0].query)).toBe(2);
+    const accountIds = signatureInserts()[0].params.filter((_, i) => i % 3 === 1);
+    expect(accountIds).toEqual(expect.arrayContaining(['acc-alice', 'legacy:ghost']));
     expect(mockMessageProcessed).toHaveBeenCalledOnce();
   });
 
