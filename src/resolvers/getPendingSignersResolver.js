@@ -110,6 +110,46 @@ async function getPagePermissionUsers(pageId, operation) {
 }
 
 /**
+ * Drop deactivated / non-signable accounts from a candidate list.
+ *
+ * Deactivated ("Former user") Atlassian accounts can never sign, yet they linger in a page's
+ * VIEW/EDIT restrictions — so an inherit-viewers/editors macro counts them as pending forever
+ * (observed post-migration: e.g. 27 "Former user" ghosts on one declaration). Confluence's user
+ * endpoint exposes no explicit status flag, so we treat an account as deactivated when the lookup
+ * 404s or returns an empty `accountType` (active humans/collaborators are "atlassian"). We FAIL
+ * OPEN on any other/transient error so a real signer is never hidden from the pending list.
+ */
+async function filterActiveAccounts(accountIds) {
+  if (!accountIds || accountIds.length === 0) return [];
+
+  const checks = await Promise.all(accountIds.map(async (accountId) => {
+    try {
+      const res = await api.asUser().requestConfluence(
+        route`/wiki/rest/api/user?accountId=${accountId}`,
+        { headers: { Accept: 'application/json' } },
+      );
+      if (res.status === 404) return { accountId, active: false, reason: '404' };
+      if (!res.ok) return { accountId, active: true, reason: `http-${res.status}` };
+      const user = await res.json();
+      const accountType = user?.accountType;
+      // Empty accountType marks a deactivated account; anything non-empty (e.g. "atlassian") stays.
+      return { accountId, active: accountType !== '', reason: `accountType=${accountType ?? 'null'}` };
+    } catch (e) {
+      return { accountId, active: true, reason: `error:${e.message}` };
+    }
+  }));
+
+  const active = checks.filter((c) => c.active);
+  // Diagnostic (safe to keep): surfaces the real account-status signal on live pages so the
+  // heuristic can be tuned if a site reports deactivation differently.
+  console.log(
+    `[getPendingSigners] active-filter kept=${active.length}/${checks.length}` +
+    ` sample=[${checks.slice(0, 25).map((c) => `…${String(c.accountId).slice(-4)}:${c.reason}`).join(', ')}]`,
+  );
+  return active.map((c) => c.accountId);
+}
+
+/**
  * Resolver: calculate pending signers for a macro configuration.
  *
  * Config is read from the Forge extension context (server-side), consistent
@@ -226,7 +266,11 @@ export async function getPendingSignersResolver(req) {
     const signedSet = new Set(signedAccountIds);
     const pending = Array.from(authorizedUsers).filter(id => !signedSet.has(id));
 
-    return successResponse({ pending, isPetitionMode: false });
+    // Drop deactivated ("Former user") accounts — they can never sign, and via inherited page
+    // viewers/editors they otherwise pad the pending list with ghosts.
+    const activePending = await filterActiveAccounts(pending);
+
+    return successResponse({ pending: activePending, isPetitionMode: false });
   } catch (error) {
     console.error('Error calculating pending signers:', error);
     return errorResponse({ key: 'error.generic', params: { message: error.message } }, 500);
