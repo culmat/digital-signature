@@ -1,32 +1,45 @@
 #!/usr/bin/env node
 /**
- * Local deploy wrapper — parity with the CI `maintain-latest-version` step.
+ * Local deploy wrapper — a faithful local mirror of the culmat/forge-ci deploy pipeline
+ * (.github/actions/forge-deploy/action.yml), so `npm run deploy` produces the SAME deploy-time
+ * side effects as CI and never silently drifts from it.
  *
- * Does what `npm run deploy` used to do (write build info, then `forge deploy`),
- * PLUS maintains the per-environment `LATEST_VERSION` Forge variable that the
- * About tab reads (src/resolvers/versionInfoResolver.js) to render the
- * "upgrade available" hint. CI used to keep this variable current; since the
- * GitHub pipeline can't reach Atlassian's CDN (see the CI CDN issue), local
- * deploys are now the source of truth and must maintain it themselves.
+ * Per deploy it:
+ *   1. stamps buildInfo.json (scripts/write-build-info.mjs)
+ *   2. runs `forge deploy` (streamed live; stdout captured to read the assigned version)
+ *   3. maintains the per-env `LATEST_VERSION` Forge variable (backport-safe semver guard) — the
+ *      About tab's getVersionInfo resolver reads it to flag older-major installs
+ *   4. NON-PRODUCTION only: `forge install --upgrade` (fresh-install fallback) on the env's site
+ *   5. NON-DEVELOPMENT only: creates + force-pushes the `forge-<env>-v<version>` annotated tag
+ *
+ * CI-only aspects intentionally NOT replicated (they concern build *creation* — which `forge
+ * deploy` does inline locally — not the deploy *result*): build-artifact reuse across parallel
+ * env jobs, the forge lint/build CDN-retry wrappers, the `npm run lint && vitest --coverage`
+ * gate, and the GitHub step summary. Run `npm test && npm run lint` before deploying (as CI's
+ * pre-build-command does), or trigger the fully-gated pipeline directly instead of deploying local:
+ *     gh workflow run forge-deploy.yml -f environment=<development|staging|production>
  *
  * Usage:
- *   npm run deploy                       # -> development (forge deploy default)
- *   npm run deploy -- -e production      # -> production, maintains prod LATEST_VERSION
- *   npm run deploy -- -e staging --verbose
+ *   npm run deploy                    # -> development
+ *   npm run deploy -- -e staging      # -> staging     (+ install --upgrade, + tag)
+ *   npm run deploy -- -e production   # -> production   (+ tag; install --upgrade skipped, as in CI)
  *
- * All argv is passed straight through to `forge deploy`; we only *read* -e/-environment
- * to know which environment's LATEST_VERSION to update.
- *
- * The version pointer is derived from the `forge deploy` output ([X.Y.Z ...]), the same
- * regex CI uses. Backport guard: only overwrite when the new version is strictly greater.
- * Note: a changed Forge variable only takes effect on the *next* deploy (Forge injects
- * variables at deploy time) — same eventual-consistency behavior as CI.
+ * Env args pass straight through to `forge deploy`; we read -e/-environment to know the target.
+ * The version is parsed from the forge output ([X.Y.Z …]) exactly as CI does.
  */
 
 import { execSync, spawnSync } from 'node:child_process';
 
 const FORGE = process.env.FORGE_CLI_BIN || 'forge';
 const forgeArgs = process.argv.slice(2);
+
+// Confluence sites per env — mirrors the site-* inputs in .github/workflows/forge-deploy.yml.
+// Used only for the non-production `forge install --upgrade` step.
+const SITES = {
+  development: 'dev-cul.atlassian.net',
+  staging: 'sta-cul.atlassian.net',
+  production: 'cul.atlassian.net',
+};
 
 /** Read the target environment from the passed-through args (default: development). */
 function resolveEnv(args) {
@@ -65,10 +78,20 @@ if (child.status !== 0) {
 const versionMatch = captured.match(/\[(\d+\.\d+\.\d+)/);
 const version = versionMatch ? versionMatch[1] : '';
 if (!version) {
-  console.warn('\nCould not parse the deployed version from forge output; skipping LATEST_VERSION.');
+  console.warn('\nCould not parse the deployed version from forge output; skipping LATEST_VERSION, install --upgrade and tag.');
   process.exit(0);
 }
 maintainLatestVersionVar(envName, version);
+
+// 4) Non-production: forge install --upgrade so the env's install picks up new scopes/egress.
+if (envName !== 'production') {
+  installUpgrade(envName, SITES[envName]);
+}
+
+// 5) Non-development: create + push the release tag (forge-<env>-v<version>).
+if (envName !== 'development') {
+  createReleaseTag(envName, version);
+}
 
 // ── helpers (mirror forge-ci/.github/actions/forge-deploy/deploy-forge.mjs) ──
 
@@ -138,5 +161,47 @@ function maintainLatestVersionVar(env, newVersion) {
     }
   } else {
     console.log(`\nLATEST_VERSION ${action}: stored "${before}", deployed "${newVersion}".`);
+  }
+}
+
+/**
+ * Non-production only: `forge install --upgrade`, falling back to a fresh install when the site has
+ * no existing installation. Mirrors forge-ci action.yml (run-install-non-production). Best-effort:
+ * a failure is logged but does not abort — the deploy itself already succeeded.
+ */
+function installUpgrade(env, site) {
+  if (!site) {
+    console.warn(`\nNo site configured for env "${env}"; skipping install --upgrade.`);
+    return;
+  }
+  const tail = ['--site', site, '--product', 'confluence', '-e', env];
+  console.log(`\n==> forge install --upgrade (env=${env}, site=${site})`);
+  const res = spawnSync(FORGE, ['install', '--non-interactive', '--upgrade', ...tail],
+    { stdio: ['inherit', 'pipe', 'pipe'], encoding: 'utf8' });
+  const out = `${res.stdout || ''}${res.stderr || ''}`;
+  process.stdout.write(out);
+  if (res.status === 0) return;
+  if (/Could not find an installation/i.test(out)) {
+    console.log(`No existing installation on ${site} for env ${env} — performing a fresh install.`);
+    const fresh = spawnSync(FORGE, ['install', '--non-interactive', ...tail], { stdio: 'inherit', encoding: 'utf8' });
+    if (fresh.status !== 0) console.error(`Fresh install failed (rc=${fresh.status}); continuing.`);
+  } else {
+    console.error(`install --upgrade failed (rc=${res.status}); continuing.`);
+  }
+}
+
+/**
+ * Non-development only: create + force-push the `forge-<env>-v<version>` annotated tag, matching
+ * forge-ci action.yml byte-for-byte (`git tag -af "$TAG" -m "Deployed to $ENV"` + `git push
+ * --force`). Uses the local git identity (no bot override). Best-effort: a failure is logged, not fatal.
+ */
+function createReleaseTag(env, version) {
+  const tag = `forge-${env}-v${version}`;
+  try {
+    execSync(`git tag -af "${tag}" -m "Deployed to ${env}"`, { stdio: 'inherit' });
+    execSync(`git push origin "${tag}" --force`, { stdio: 'inherit' });
+    console.log(`\nRelease tag ${tag} created and pushed.`);
+  } catch (error) {
+    console.error(`\nRelease tag ${tag} failed: ${error.message}. Continuing.`);
   }
 }
