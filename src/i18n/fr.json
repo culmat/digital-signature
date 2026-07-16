@@ -60,7 +60,8 @@
       "needed_body": "Cette signature a été migrée depuis Confluence Server et nécessite une conversion unique pour afficher le texte du contrat et les signatures. Elle utilise vos autorisations de page, donc les pages restreintes fonctionnent aussi.",
       "button": "Convertir cette page",
       "no_permission": "Vous avez besoin d'une autorisation de modification sur cette page pour la convertir. Demandez à un éditeur de la page de cliquer sur « Convertir ».",
-      "error": "Échec de la conversion : {message}"
+      "error": "Échec de la conversion : {message}",
+      "done": "Converti. Actualisez la page pour voir le résultat."
     }
   },
   "config": {

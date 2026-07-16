@@ -60,7 +60,8 @@
       "needed_body": "Diese Signatur wurde aus Confluence Server migriert und muss einmalig konvertiert werden, um den Vertragstext und die Unterschriften anzuzeigen. Es werden Ihre Seitenberechtigungen verwendet, sodass auch eingeschränkte Seiten funktionieren.",
       "button": "Diese Seite konvertieren",
       "no_permission": "Sie benötigen Bearbeitungsrechte für diese Seite, um sie zu konvertieren. Bitten Sie einen Seiten-Editor, auf „Konvertieren“ zu klicken.",
-      "error": "Konvertierung fehlgeschlagen: {message}"
+      "error": "Konvertierung fehlgeschlagen: {message}",
+      "done": "Konvertiert. Aktualisieren Sie die Seite, um das Ergebnis zu sehen."
     }
   },
   "config": {

@@ -61,7 +61,8 @@
       "needed_body": "This signature was migrated from Confluence Server and needs a one-time conversion to show its contract text and signatures. It uses your page permissions, so restricted pages work too.",
       "button": "Convert this page",
       "no_permission": "You need edit permission on this page to convert it. Ask a page editor to click Convert.",
-      "error": "Conversion failed: {message}"
+      "error": "Conversion failed: {message}",
+      "done": "Converted. Refresh the page to see the result."
     }
   },
   "config": {

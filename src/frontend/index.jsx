@@ -204,6 +204,7 @@ const App = () => {
     macroCount: 0,
     isConverting: false,
     error: null,
+    done: false,
   });
 
   const [uiState, setUIState] = useState({
@@ -447,8 +448,17 @@ const App = () => {
         return;
       }
 
-      // Success — reload so the macro picks up its now-populated content guest-param.
-      await view.refresh();
+      // Success — the conversion is persisted. Reload the HOST PAGE so the macro re-renders with its
+      // now-populated `content` guest-param. A native macro's own view is not refreshable
+      // (view.refresh() throws "this resource's view is not refreshable"), so reload the page instead.
+      try {
+        await router.reload();
+      } catch {
+        // Conversion already succeeded server-side; if the host can't be reloaded programmatically,
+        // stop the spinner and ask for a manual refresh — never report a conversion failure here.
+        setConvertState(prev => ({ ...prev, isConverting: false, done: true, error: null }));
+      }
+      return;
     } catch (error) {
       setConvertState(prev => ({
         ...prev,
@@ -608,7 +618,7 @@ const App = () => {
           title={t('macro.convert.needed_title')}
         >
           <Stack space="space.100">
-            <Text>{t('macro.convert.needed_body')}</Text>
+            <Text>{convertState.done ? t('macro.convert.done') : t('macro.convert.needed_body')}</Text>
             {convertState.error && (
               <Text>
                 {typeof convertState.error === 'string'
@@ -616,13 +626,15 @@ const App = () => {
                   : tp(convertState.error.key, convertState.error.params)}
               </Text>
             )}
-            <LoadingButton
-              appearance="primary"
-              onClick={handleConvert}
-              isLoading={convertState.isConverting}
-            >
-              {t('macro.convert.button')}
-            </LoadingButton>
+            {!convertState.done && (
+              <LoadingButton
+                appearance="primary"
+                onClick={handleConvert}
+                isLoading={convertState.isConverting}
+              >
+                {t('macro.convert.button')}
+              </LoadingButton>
+            )}
           </Stack>
         </SectionMessage>
       );
