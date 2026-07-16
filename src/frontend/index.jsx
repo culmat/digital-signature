@@ -26,8 +26,9 @@ const Signatures = ({ signatures, label, formatDate }) => {
 };
 
 // Custom component to render a signature user with optional date and checkbox.
-// The accountId is shown alongside the name for identification/audit (e.g. distinguishing
-// users whose display name resolves ambiguously).
+// A resolvable user renders as a <User> chip (name + avatar) only — the raw cloud accountId
+// is intentionally not shown. The identifier surfaces solely for legacy/former users (who
+// have no resolvable <User>), via the `legacy` branch below.
 const SignatureUser = ({ accountId, date }) => {
   const { t } = useTranslation();
   // A legacy signer (former employee migrated without a Cloud account) has no resolvable <User> —
@@ -46,7 +47,6 @@ const SignatureUser = ({ accountId, date }) => {
           : <User accountId={accountId} />}
         {date ? <> – <Lozenge>{date}</Lozenge></> : null}
       </Text>
-      {legacy ? null : <Lozenge appearance="default">{accountId}</Lozenge>}
     </Inline>
   );
 };
