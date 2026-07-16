@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "deploy": "node scripts/deploy.mjs",
+    "site": "node scripts/preview-site.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint \"src/**/*.{js,jsx}\"",
