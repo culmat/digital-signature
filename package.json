@@ -27,7 +27,7 @@
     "vitest": "^4.1.8"
   },
   "dependencies": {
-    "@forge/bridge": "5.16.0",
+    "@forge/bridge": "6.0.0",
     "@forge/migrations": "^2.1.2",
     "@forge/react": "11.17.0",
     "@forge/resolver": "1.8.0",
